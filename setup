@@ -1,0 +1,313 @@
+#!/bin/bash
+######################################################
+#          author      : chenhui  01107267           #
+#          create time : 2017-09-13                  #	
+#          version     : 0.0.1                       #
+######################################################
+
+# This is script which auto-setuping datebase backup software sfbp
+
+logDate=$(date +%Y%m%d)
+curDate="date +%Y-%m-%d%t%H:%M:%S"
+
+#config file path
+conf_path=$(cd "$(dirname "$0")"; pwd)/config
+root_path=$(cd "$(dirname "$0")"; pwd)
+
+glfsip=$(cat ${conf_path} | grep "glusterfs_ip =" | awk '{print $3}')
+webip=$(cat ${conf_path} | grep "web_ip =" | awk '{print $3}') 
+hostname=$(hostname)
+os_version=$(cat /etc/redhat-release | grep -o -G '[0-9][.0-9]*')
+py_version=$(/usr/bin/python -V 2>&1 | awk -F " " '{print $2}')
+
+#pid
+client_pid="/var/log/bak/watch_process.pid"
+server_pid="/var/run/backuppid"
+
+os_version_array=("6.6" "6.8" "7.0" "7.1" "7.2")
+py_version_array=("2.6" "2.7" "3.0")
+
+DOUBPLET="==================="
+
+
+# compare version
+funCompareVersion(){
+    #if version_gt $1 $2; then
+    #    echo ">"
+    #fi
+    if version_le $1 $2; then
+        #return -1
+        return 0
+    fi
+    #if version_lt $1 $2; then
+    #    echo "<"
+    #fi
+    if version_ge $1 $2; then
+        return 1
+    fi
+}
+
+# compare func
+function version_gt() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" != "$1"; }
+function version_le() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" == "$1"; }
+function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
+function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; }
+
+#check pip
+funCheckpip(){
+    pip > /dev/null 2>&1
+    if [[ "$?" != "0" ]]; then
+        echo "[${hostname}] "$(${curDate})" INFO: pip is not setuped"
+        echo "[${hostname}] "$(${curDate})" INFO: setuping pip..."
+        cnt=$(find /usr/lib* -name site-packages | wc -l)
+        if [[ $cnt -ge 2 ]]; then
+            funSetupPypi $1 pip-9.0.1
+        else
+            echo "[${hostname}] "$(${curDate})" INFO: Not found setuptools, setup it first..."
+            funSetupPypi $1 setuptools-23.1.0
+            funSetupPypi $1 pip-9.0.1
+        fi
+    fi
+}
+
+funSetupPypi(){
+    cd $root_path/requirePackage
+    tar xzf ${2}.tar.gz
+    cd $2
+    $1 setup.py install
+    if [[ "$?" != "0" ]]; then
+        echo "[${hostname}] "$(${curDate})" ERROR: setup $2 failed"
+        exit 1
+    else
+        echo "[${hostname}] "$(${curDate})" INFO: setup $2 success"
+    fi
+    cd ../
+    rm -rf $2
+    cd $root_path
+}
+
+funSetupPy27(){
+    yum install zlib
+    yum install zlib-devel
+    cd $root_path/requirePackage
+    tar xf Python-2.7.8.tgz
+    cd Python-2.7.8
+    ./configure --prefix=/usr/local
+    make && make install
+    cd $root_path/requirePackage
+    rm -rf Python-2.7.8
+    funSetupPypi /usr/local/bin/python2.7 setuptools-23.1.0
+    funSetupPypi /usr/local/bin/python2.7 pip-9.0.1
+    cd $root_path
+}
+
+# set up py
+funSetupPy(){
+    case $1 in
+        py27)
+            funSetupPy27
+            ;;
+        pyLib)
+            funCheckpip /usr/bin/python
+            funSetupPyLib /usr/bin/python
+            ;;
+    esac
+}
+
+funInitialPy(){
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        funSetupPy py27
+    else
+        funSetupPy pyLib
+    fi
+}
+
+funSetupPipyByRequirements(){
+    cd $root_path
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        /usr/local/bin/python2.7 -m pip install --no-index -f requirePackage -r requirements.txt
+    else
+        /usr/bin/python -m pip install --no-index -f requirePackage -r requirements.txt
+    fi
+}
+
+funPrintInfo(){
+    echo $DOUBPLET" STARTING"
+    echo $DOUBPLET" Config is"
+    printf "%-20s %-15s\n" "glusterfs addr" $glfsip
+    printf "%-20s %-15s\n" "web server addr" $webip
+    echo "[${hostname}] "$(${curDate})" INFO: This host OS version is Centos release "$os_version
+    echo "[${hostname}] "$(${curDate})" INFO: This host Python version is "$py_version
+}
+
+funSetupLibs(){
+    echo "[${hostname}] "$(${curDate})" INFO: setuping lib*.so..."
+    cd $root_path/glusterSo
+    tar xzf ${1}.tar.gz
+    cp -f libs/lib* /lib64/
+    rm -rf libs
+    cd /lib64
+    ln -s libgfapi.so.0.0.0 libgfapi.so.0
+    ln -s libgfrpc.so.0.0.1 libgfrpc.so.0
+    ln -s libgfxdr.so.0.0.1 libgfxdr.so.0
+    ln -s libglusterfs.so.0.0.1 libglusterfs.so.0
+    ln -s libgfchangelog.so.0.0.1 libgfchangelog.so.0
+    cd $root_path
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    echo "[${hostname}] "$(${curDate})" INFO: setuping libgfapi-python "
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        funSetupPypi /usr/local/bin/python2.7 libgfapi-python
+    else
+        funSetupPypi /usr/bin/python libgfapi-python
+    fi
+}
+
+funcInitialOs(){
+    echo "[${hostname}] "$(${curDate})" INFO: Create dir /data/work/"
+    mkdir -p /data/work/    
+    funCompareVersion $os_version 6.6
+    os66=$?
+    #funCompareVersion $os_version 6.7
+    #os67=$?
+    #funCompareVersion $os_version 6.8
+    #os68=$?
+    funCompareVersion $os_version 6.9
+    os69=$?
+    funCompareVersion $os_version 7.0
+    os70=$?
+    if [[ $os69 -eq 0 ]]; then
+        funSetupLibs libs-6
+    elif [[ $os70 -eq 1 ]]; then
+        funSetupLibs libs-7
+    fi
+}
+
+funStopProcess(){
+    if [[ $1 == "client" ]]; then
+        kill -9 `cat $client_pid`
+    elif [[ $1 == "server" ]]; then
+        kill -9 `cat $server_pid`
+    fi
+}
+
+funStartProcess(){
+    cd $root_path
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        if [[ $1 == "client" ]]; then
+            /usr/local/bin/python2.7 $root_path/client/start.py start $glfsip $webip
+        else
+            /usr/local/bin/python2.7 $root_path/server/server.py
+        fi
+    else
+        if [[ $1 == "client" ]]; then
+            /usr/bin/python $root_path/client/start.py start $glfsip $webip
+        else 
+            /usr/bin/python $root_path/server/server.py
+        fi
+    fi
+}
+
+
+option=$2
+action=$1
+case "$action" in 
+    initial)
+        funPrintInfo
+        case "$option" in
+            -c|--client)
+                funcInitialOs
+                ;;
+            -s|--serverr)
+                funSetupPipyByRequirements
+                ;;
+            -a|--all)
+                funInitialPy
+                funcInitialOs
+                funSetupPipyByRequirements
+                ;;
+            -p|--python)
+		funInitialPy
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 initial <options>\n"
+                printf "Initial Options:\n"
+                printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
+                printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
+                printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
+                printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+                ;;
+        esac
+        ;;
+    start)
+        case "$option" in
+            -c|--client)
+                funPrintInfo
+                funStartProcess client
+                ;;
+            -s|--serverr)
+                funStartProcess server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 start <options>\n"
+                printf "Start Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+                ;;
+        esac
+        ;;
+    stop)
+        case "$option" in
+            -c|--client)
+                funPrintInfo
+                funStopProcess client
+                ;;
+            -s|--serverr)
+                funStopProcess server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 stop <options>\n"
+                printf "Stop Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+                ;;
+        esac
+        ;;
+    *)
+        printf "Usage:\n"
+        printf "  $0 <command> <options>\n"
+        printf "Commands:\n"
+        printf "%-20s %-50s\n" "  initial" "Runtime environment initialization."
+        printf "%-20s %-50s\n" "  start" "Startup Programs."
+        printf "%-20s %-50s\n" "  stop" "Stop Programs."
+        printf "Initial Options:\n"
+        printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
+        printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
+        printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
+        printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+        printf "Start Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+        printf "Stop Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+        ;;
+esac

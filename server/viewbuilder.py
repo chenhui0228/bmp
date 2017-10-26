@@ -1,0 +1,4 @@
+
+
+class TaskView(object):
+    pass
