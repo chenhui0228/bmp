@@ -1,46 +1,41 @@
 <template>
-    <nav class="navbar navbar-inverse navbar-fixed-top" style="border-radius: 0px;">
-        <div class="container-fluid">
-            <div class="navbar-header">
+    <el-row style="border-bottom: 1px solid hsla(0,0%,100%,.15);">
+        <el-col :span="4">
+            <div class="grid-content bg-purple-dark">
                 <a class="navbar-brand" href="#"><img alt="Brand" src="../assets/imgs/configuration-1.png" class="navbar-brand-img"></a>
+                <!--文件备份管理平台-->
             </div>
-            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                <ul class="nav navbar-nav">
-                    <li class="navbar-text"><a href="javascript:void(0);" class="navbar-link"><router-link class="nav-item" to="/task">任务管理</router-link></a></li>
-                    <!--<li class="navbar-text"><a href="javascript:void(0);" class="navbar-link"><router-link class="nav-item" to="/policy">策略管理</router-link></a></li>-->
-                    <!--<li class="navbar-text"><a href="javascript:void(0);" class="navbar-link"><router-link class="nav-item" to="/user">用户管理</router-link></a></li>-->
-                </ul>
-                <ul class="nav navbar-nav navbar-right">
-                    <!--<li class="navbar-text"><a href="javascript:void(0);" class="a-self navbar-link"><router-link class="nav-item" to="/">01107267</router-link></a></li>-->
-                    <!--<li class="navbar-text"><a href="javascript:void(0);" class="a-self navbar-link"><router-link class="nav-item" to="/">退出</router-link></a></li>-->
-                </ul>
+        </el-col>
+        <el-col :span="17">
+            <div class="grid-content bg-purple-dark"></div>
+        </el-col>
+        <el-col :span="3">
+            <div class="grid-content bg-purple-dark">
+                <el-menu theme="dark" :default-active="activeIndex" class="el-menu" mode="horizontal" @select="handleSelect">
+                    <el-menu-item index="1">01107267</el-menu-item>
+                    <el-menu-item index="2">退出</el-menu-item>
+                </el-menu>
             </div>
-        </div>
-    </nav>
+        </el-col>
+    </el-row>
 </template>
 <style type="text/css">
-    .navbar {
-        background-color: #373D41;
-        border-color: #080808;
-        position: relative;
-        min-height: 50px;
-        border: 1px solid transparent;
-    }
-    .navbar-brand-img {
-        height: 28px;
-    }
-    .navbar-text {
-        margin-top: 3px;
-        margin-bottom: 0px;
-        font-family: "Noto Sans",'Microsoft Yahei',SimSun;
-        -webkit-font-smoothing: antialiased;
-        margin-right: 0px!important;
-        margin-left: 0px!important;
-    }
     a {
         color: #FFFFFF!important;
         text-decoration: none;
     }
+    .navbar-brand-img {
+        height: 28px;
+    }
+    .navbar-brand {
+        float: left;
+        height: 53px;
+        padding-top: 13px;
+        padding-left: 20px;
+        font-size: 18px;
+        line-height: 20px;
+    }
+
     a:hover {
         color: #08F1F3!important;
         text-decoration: none;
@@ -49,10 +44,18 @@
         color: #08F1F3!important;
         text-decoration: underline;
     }
-    .a-self .navbar-link :focus{
-        color: #08F1F3!important;
-        text-decoration: none;
+
+    .el-menu--horizontal .el-menu-item {
+        float: left;
+        height: 53px;
+        line-height: 53px;
+        margin: 0;
+        cursor: pointer;
+        position: relative;
+        box-sizing: border-box;
+         border-bottom: 5px solid transparent;
     }
+
     * {
         margin: 0;
         padding: 0;
@@ -60,7 +63,6 @@
     *, :after, :before{
         box-sizing: border-box;
     }
-
 </style>
 <script>
 
