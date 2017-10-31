@@ -11,14 +11,17 @@ import 'element-ui/lib/theme-default/index.css';
 import taskPage from './views/task.vue';
 import policyPage from './views/policy.vue';
 import userPage from './views/user.vue';
+import loginPage from './views/login.vue'
 
 Vue.use(VueRouter);
 
 
 export default new VueRouter({
+    mode: 'history',
     routes:[
         {
             path:'/',
+            //meta:{ auth:true },
             component:taskPage
         },
         {
@@ -32,6 +35,11 @@ export default new VueRouter({
         {
             path:'/user',
             component:userPage
+        },
+        {
+            path:'/login',
+            meta:{ auth: false},
+            component:loginPage
         }
     ]
 });
