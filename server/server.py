@@ -24,10 +24,12 @@ from config import Config
 import errorpage
 from cherrypy.process.plugins import Daemonizer, PIDFile
 import log
+from auth import authentication
 
 MYPATH = os.path.abspath(__file__)
 MYDIR = os.path.dirname(MYPATH)
-BACKUP_VER = "1.0"
+BACKUP_VER = "1.1"
+
 
 
 def parse_cmdargs(args=None, target=''):
@@ -65,14 +67,46 @@ def do_basic_help(parser, args):
     sys.exit(0)
 
 
+from cherrypy._cpcompat import base64_decode
+
 class Root(object):
     @cherrypy.expose
-    def index(self):
+    @authentication.check_login
+    def index(self, *args, **kwargs):
         return open(os.path.join(MYDIR, 'static/index.html'))
 
+    @cherrypy.expose
+    def login(self,*args, **kwargs):
+        request = cherrypy.serving.request
+        username = kwargs.get('user')
+        auth_header = request.headers.get('authorization')
+        if cherrypy.request.method == 'POST':
+            if auth_header:
+                scheme, token = auth_header.split(' ', 1)
+            if scheme == 'Token':
+                try:
+                    authentication.check_token(token, username)
+                except:
+                    raise
+            raise cherrypy.HTTPRedirect('/')
+        elif cherrypy.request.method == 'GET':
+            request = cherrypy.serving.request
+            auth_header = request.headers.get('authorization')
+            if auth_header:
+                scheme, params = auth_header.split(' ', 1)
+                if scheme.lower() == 'basic':
+                    username, password = base64_decode(params).split(':', 1)
+                    print cherrypy.request.method, username, password
+                raise cherrypy.HTTPRedirect('/')
+
+        cherrypy.serving.response.headers[
+            'www-authenticate'] = 'Basic realm="%s"' % 'test'
+        raise cherrypy.HTTPError(
+            401, 'You are not authorized to access that resource')
 
 def CORS():
     cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
+
 
 
 @cherrypy.expose()
@@ -81,22 +115,25 @@ class BackupPolicyService(object):
         self.conf = conf
         self.router = router.APIRouter(conf)
 
-    @cherrypy.tools.json_out()
+    @authentication.check_login
     def GET(self, *args, **kwargs):
         result = self.router.dispatch(cherrypy.request)
         return result
 
     @cherrypy.tools.json_out()
+    @authentication.check_login
     def POST(self, *args, **kwargs):
         result = self.router.dispatch(cherrypy.request)
         return result
 
     @cherrypy.tools.json_out()
+    @authentication.check_login
     def PUT(self, *args, **kwargs):
         result = self.router.dispatch(cherrypy.request)
         return result
 
     @cherrypy.tools.json_out()
+    @authentication.check_login
     def DELETE(self, *args, **kwargs):
         result = self.router.dispatch(cherrypy.request)
         return result
@@ -123,9 +160,12 @@ if __name__ == '__main__':
     PIDFile(cherrypy.engine, parsed_args.pidfile).subscribe()
     if not parsed_args.foreground:
         Daemonizer(cherrypy.engine).subscribe()
+
+
     cherrypy.config.update({'log.screen': False,
                             'log.access_file': '',
                             'log.error_file': ''})
+
 
     cherrypy.config.update(errorpage.pages)
     cherrypy.engine.unsubscribe('graceful', cherrypy.log.reopen_files)

@@ -8,6 +8,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import and_
+from sqlalchemy import exc
 import models
 
 from cherrypy import NotFound
@@ -62,8 +63,9 @@ class Database(object):
         return query.order_by(sort_method())
 
     def create(self, force=False):
-        if not os.path.exists(self.db_path) or force:
-            Base.metadata.create_all(self.engine)
+        if self.type == 'sqlite':
+            if not os.path.exists(self.db_path) or force:
+                Base.metadata.create_all(self.engine)
 
     def add(self, session, obj):
         session.add(obj)
@@ -197,7 +199,7 @@ class API(object):
         logger.info('create task : %s'%task_values)
         session = self.db.get_session()
         values = copy.deepcopy(task_values)
-        values['id2'] = uuidutils.generate_uuid()
+        values['id'] = uuidutils.generate_uuid()
         task = models.Task()
         params = task.generate_param()
         for k, v in params.items():
@@ -299,7 +301,7 @@ class API(object):
         logger.info('create policy : %s ' % policy_values)
         session = self.db.get_session()
         values = copy.deepcopy(policy_values)
-        values['id2'] = uuidutils.generate_uuid()
+        values['id'] = uuidutils.generate_uuid()
         policy = models.Policy()
         params = policy.generate_param()
         for k, v in params.items():
@@ -402,7 +404,7 @@ class API(object):
         logger.info('create a worker : %s'%worker_values)
         session = self.db.get_session()
         values = copy.deepcopy(worker_values)
-        values['id2'] = uuidutils.generate_uuid()
+        values['id'] = uuidutils.generate_uuid()
         worker = models.Worker()
         params = worker.generate_param()
         for k, v in params.items():
@@ -458,6 +460,7 @@ class API(object):
             query = query.filter(models.User.name == name)
         return query.all(),  total
 
+
     def get_user(self, id, join=False, session=None, **kwargs):
         if not session:
             session = self.db.get_session()
@@ -480,6 +483,17 @@ class API(object):
         user = query.first()
         if not user:
             logger.error('user not found, %s'%kwargs)
+            raise NotFound()
+        return user
+
+    def get_user_by_name(self, username, session=None, **kwargs):
+        if not session:
+            session = self.db.get_session()
+        query = model_query(session, models.User)
+        query = query.filter(models.User.name == username)
+        user = query.first()
+        if not user:
+            logger.error('user not found, %s' % kwargs)
             raise NotFound()
         return user
 
@@ -636,20 +650,38 @@ def get_database(conf):
     :param conf:
     :return:
     '''
-
     db = None
     database_conf = {}
     if isinstance(conf.get('database'), dict):
         database_conf = conf['database']
         logger.info('database config %s' % database_conf)
-
+    else:
+        database_conf = conf
     driver = database_conf.get('driver', 'sqlite')
     if driver == 'sqlite':
         path = database_conf.get('path', '/var/backup/backup.db')
         path = 'sqlite:///%s' % path
         db = Database(driver, path)
     elif driver == 'mysql' or driver == 'mariadb':
-        raise TypeError()
+        user = database_conf.get('user')
+        password = database_conf.get('password')
+        host = database_conf.get('host')
+        port = database_conf.get('port', 3306)
+        database = database_conf.get('database')
+        if user and password and host and port and database:
+            if database_conf.get('create'):
+                url = 'mysql+mysqldb://{0}:{1}@{2}:{3}'. \
+                    format(user, password, host, port)
+                engine = create_engine(url)
+                engine.connect()
+                engine.execute("CREATE DATABASE IF NOT EXISTS {0}".format(database))
+                engine.execute("USE {0}".format(database))
+                Base.metadata.create_all(engine)
+
+            path='mysql+mysqldb://{0}:{1}@{2}:{3}/{4}'.\
+                format(user, password, host, port, database)
+            db = Database(driver, path)
+
     else:
         logger.error('database type is not supported , should be sqlite or mysql')
         raise TypeError()
