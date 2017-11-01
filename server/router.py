@@ -1,6 +1,7 @@
 from routes import Mapper
 from db.sqlalchemy import api as db_api
 from cherrypy import HTTPError
+from jsontools import json_out_decrator as json_out
 
 import logging
 logger = logging.getLogger('backup')
@@ -18,7 +19,8 @@ class Resource(object):
         try:
             method = self.get_method(action)
         except (AttributeError, TypeError):
-            raise
+            logger.error('method %s is not allowed .' % action)
+            raise HTTPError(405, 'method %s is not allowed .' % action)
         action_result = self.dispatch(method, action_args)
         return action_result
 
@@ -33,6 +35,7 @@ class Resource(object):
             else:
                 meth = getattr(self.controller, action)
         except AttributeError:
+                logger.error('method %s is not implemented.' % action)
                 raise
         return meth
 
@@ -41,6 +44,7 @@ class Controller(Resource):
         self.db = db_api.get_database(conf)
 
 class TasksController(Controller):
+    @json_out
     def index(self, action_args):
         logger.info('list tasks')
         tasks , total= self.db.get_tasks(**action_args)
@@ -49,6 +53,7 @@ class TasksController(Controller):
             result.append(p.to_dict())
         return {'total': total, 'tasks': result}
 
+    @json_out
     def detail(self, action_args):
         logger.info('list tasks with detail ')
         logger.debug('action_args :  %s'%action_args)
@@ -64,11 +69,12 @@ class TasksController(Controller):
                 task['policy'] = policy.to_dict()
             if worker:
                 task['worker'] = worker.to_dict()
-            if state :
+            if state:
                 task['state'] = state[0].to_dict()
             result.append(task)
         return {'total': total, 'tasks': result}
 
+    @json_out
     def show(self, action_args):
         logger.info('get tast  ')
         logger.debug('action_args :  %s'%action_args)
@@ -89,6 +95,7 @@ class TasksController(Controller):
     def _validate_prams(self, prams):
         pass
 
+
     def create(self, action_args):
         logger.info('create a task ')
         logger.debug('task params :  %s'%action_args)
@@ -96,9 +103,11 @@ class TasksController(Controller):
         task = self.db.create_task(action_args)
         return {'task': task.to_dict()}
 
+
     def delete(self, action_args):
         id = action_args.get('id')
         return self.db.delete_task(id)
+
 
     def update(self, action_args):
         self._validate_prams(action_args)
@@ -109,6 +118,8 @@ class TasksController(Controller):
 
 
 class PoliciesController(Controller):
+
+    @json_out
     def index(self, action_args):
         policies , total = self.db.get_policies(**action_args)
         result = list()
@@ -116,11 +127,13 @@ class PoliciesController(Controller):
             result.append(p.to_dict())
         return {'total': total, 'policies': result}
 
+    @json_out
     def show(self, action_args):
         id = action_args.get('id')
         policy = self.db.get_policy(id)
         return {'policy':policy.to_dict()}
 
+    @json_out
     def detail(self, action_args):
         return self.index(action_args)
 
@@ -150,6 +163,7 @@ class PoliciesController(Controller):
 
 
 class WorkersController(Controller):
+    @json_out
     def index(self, action_args):
         workers , total=  self.db.get_workers(**action_args)
         result = list()
@@ -157,9 +171,11 @@ class WorkersController(Controller):
             result.append(p.to_dict())
         return {'total': total, 'workers': result}
 
+    @json_out
     def detail(self, action_args):
         return self.index(action_args)
 
+    @json_out
     def show(self, action_args):
         id = action_args.get('id')
         action_args.pop('id')
@@ -193,6 +209,7 @@ class WorkersController(Controller):
 
 
 class UserController(Controller):
+    @json_out
     def index(self, action_args):
         users , total=  self.db.get_users(**action_args)
         result = list()
@@ -200,9 +217,11 @@ class UserController(Controller):
             result.append(p.to_dict())
         return {'total': total, 'users': result}
 
+    @json_out
     def detail(self, action_args):
         self.index(action_args)
 
+    @json_out
     def show(self, action_args):
         id = action_args.get('id')
         user = self.db.get_user(id)
@@ -233,6 +252,7 @@ class UserController(Controller):
 
 
 class BackupStateController(Controller):
+    @json_out
     def index(self, action_args):
         states, total = self.db.bk_list(**action_args)
         result = list()
@@ -240,6 +260,7 @@ class BackupStateController(Controller):
             result.append(s.to_dict())
         return {'total': total, 'states': result}
 
+    @json_out
     def detail(self, action_args):
         states, total = self.db.bk_list(True, **action_args)
         result = list()
@@ -251,6 +272,7 @@ class BackupStateController(Controller):
             })
         return {'total': total, 'states': result}
 
+    @json_out
     def show(self, action_args):
         id = action_args.get('id')
         state = self.db.get_bk_state(id, True)
@@ -271,6 +293,18 @@ class BackupStateController(Controller):
         state = self.db.bk_update(action_args)
         return {'state':state.to_dict()}
 
+import os
+import cherrypy
+class ReportController(Controller):
+    def generate(self, action_args):
+        filename = '/home/python/hello.py'
+        basename = os.path.dirname(filename)
+        mime = 'application/octet-stream'
+        return cherrypy.lib.static.serve_file(filename, mime, basename)
+
+    @json_out
+    def tasks(self, action_args):
+        return action_args
 
 class BackupMapper(Mapper):
     def resource(self, member_name, collection_name, **kwargs):
@@ -291,6 +325,7 @@ class APIRouter(object):
         self.resources['workers'] = Resource(WorkersController(self.conf))
         self.resources['users'] = Resource(UserController(self.conf))
         self.resources['backupstates'] = Resource(BackupStateController(self.conf))
+        self.resources['reports'] = Resource(ReportController(self.conf))
         self.mapper.resource('task','tasks',
                              controller=self.resources['tasks'],
                              collection={'detail': 'GET'})
@@ -311,6 +346,12 @@ class APIRouter(object):
                              controller=self.resources['backupstates'],
                              collection={'detail': 'GET'})
 
+        self.mapper.resource('report', 'reports',
+                             controller=self.resources['reports'],
+                             member={'generate': 'GET'},
+                             collection={'tasks': 'GET'}
+                             )
+
     def dispatch(self, req):
         environ = req.wsgi_environ
         url = req.path_info
@@ -321,7 +362,7 @@ class APIRouter(object):
             reqargs.update(req.params)
             return controller(reqargs, req)
         else:
-            logger.error('method is not allowed, %s'%url)
-            raise HTTPError(405, 'the url %s  method is not allowed'%url)
+            logger.error('method is not allowed, %s, %s' % (url, reqargs))
+            raise HTTPError(405, 'the url %s  method is not allowed' % url)
 
 

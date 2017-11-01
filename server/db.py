@@ -74,12 +74,12 @@ def t5(db):
 
 def t6(db):
     state = {
-        'task_id':3,
+        'task_id':100,
         'start_time':10,
         'end_time':50,
         'state':'30'
     }
-    db.bk_create(state)
+    bk = db.bk_create(state)
 
 
 def t7(db):
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     #t3(db)
     #t1(db)
     #t5(db)
-    #t6(db)
-    t7(db)
+    t6(db)
+    #t7(db)
 
 
