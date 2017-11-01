@@ -5,8 +5,10 @@ import axios from 'axios'
 import MockAdapter from 'axios-mock-adapter'
 import {LoginUsers, Users} from './data/user'
 import {Books} from './data/book'
+import {Groups} from './data/group'
 let _Users = Users
 let _Books = Books
+let _Groups = Groups
 
 export default {
 
@@ -67,6 +69,22 @@ export default {
         setTimeout(() => {
           resolve([200, {
             users: mockUsers
+          }])
+        }, 500)
+      })
+    })
+
+    //获取组列表
+    mock.onGet('/user/group').reply(config => {
+      let {groupname} = config.params
+      let mockGroups = _Groups.filter(group => {
+        if (groupname && group.groupName.indexOf(groupname) === -1) return false
+        return true
+      })
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            groups: mockGroups
           }])
         }, 500)
       })
@@ -161,6 +179,7 @@ export default {
         }, 500)
       })
     })
+
   }
 
 }

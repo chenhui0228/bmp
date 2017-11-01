@@ -11,6 +11,8 @@ export const reqSaveUserProfile = params => { return axios.post(`${base}/selfinf
 
 export const reqGetUserList = params => { return axios.get(`${base}/user/list`, { params: params }) }
 
+export const reqGetGroupList = params => { return axios.get(`${base}/user/group`, { params: params }) }
+
 export const reqGetBookListPage = params => { return axios.get(`${base}/book/list`, { params: params }) }
 
 export const reqDeleteBook = params => { return axios.get(`${base}/book/delete`, { params: params }) }

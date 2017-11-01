@@ -9,6 +9,12 @@ const LoginUsers = [
     password: '123456',
     email: 'demo@demo.com',
     name: '超级管理员'
+  },{
+    id: 2,
+    username: 'bobo',
+    password: '123456',
+    email: 'bobo@bobo.com',
+    name: 'bobo'
   }
 ]
 
