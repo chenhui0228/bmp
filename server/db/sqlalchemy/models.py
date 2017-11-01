@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, BIGINT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime
@@ -148,8 +148,7 @@ class BackupBase(ModelBase,
 
 class Policy(Base, BackupBase):
     __tablename__ = 'policy'
-    id = Column(Integer, primary_key=True, nullable=False)
-    id2 = Column(String(36))
+    id = Column(String(36), primary_key=True, nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
     start_time = Column(Integer)
@@ -166,14 +165,34 @@ class Policy(Base, BackupBase):
     )
 
 
+class Role(Base, BackupBase):
+    __tablename__ = 'role'
+    id = Column(String(36), primary_key=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=True)
+
+class Group(Base, BackupBase):
+    __tablename__ = 'group'
+    id = Column(String(36), primary_key=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=True)
+
+    users = orm.relationship(
+        'User',
+        primaryjoin=(
+            'and_('
+            'Group.id == User.group_id)'
+        ),
+        back_populates='group'
+    )
+
 class User(Base, BackupBase):
     __tablename__ = 'user'
-    id = Column(Integer, primary_key=True, nullable=False)
-    id2 = Column(String(36))
+    id = Column(String(36),primary_key=True, nullable=False)
     name = Column(String(255), nullable=False)
-    digest = Column(Integer)
-    role = Column(String(255))
-
+    password = Column(String(255))
+    role_id = Column(String(36), ForeignKey('role.id'), nullable=False)
+    group_id = Column(String(36), ForeignKey('group.id'), nullable=False)
 
     tasks = orm.relationship(
         'Task',
@@ -184,13 +203,20 @@ class User(Base, BackupBase):
         back_populates='user'
     )
 
+    group = orm.relationship(
+        'Group',
+        primaryjoin=(
+            'and_('
+            'User.group_id == Group.id )'
+        ),
+        back_populates='users'
+    )
 class Worker(Base, BackupBase):
     __tablename__ = 'workers'
-    id = Column(Integer, primary_key=True, nullable=False)
-    id2 = Column(String(36))
+    id = Column(String(36), primary_key=True, nullable=False)
     ip = Column(String(255), nullable=False)
     port = Column(Integer, nullable=False)
-    name = Column(String, nullable=True)
+    name = Column(String(255), nullable=True)
 
 
     tasks = orm.relationship(
@@ -205,18 +231,19 @@ class Worker(Base, BackupBase):
 
 class Task(Base, BackupBase):
     __tablename__ = 'task'
-    id = Column(Integer, primary_key=True, nullable=False)
-    id2 = Column(String(36))
-    name = Column(String, nullable=True)
+    id = Column(String(36), primary_key=True, nullable=False)
+    name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    policy_id = Column(Integer, ForeignKey('policy.id'), nullable=False)
-    worker_id = Column(Integer, ForeignKey('workers.id'), nullable=False)
+    user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
+    policy_id = Column(String(36), ForeignKey('policy.id'), nullable=False)
+    worker_id = Column(String(36), ForeignKey('workers.id'), nullable=False)
     source = Column(String(1024), nullable=False)
     destination = Column(String(1024), nullable=False)
     start_time = Column(Integer, default=0)
     interval = Column(Integer, default=0)
     duration = Column(Integer, default=0)
+    script_path = Column(String(4096))
+    volume = Column(String(255))
 
     policy = orm.relationship(
         'Policy',
@@ -264,9 +291,8 @@ class Task(Base, BackupBase):
 
 class BackupState(Base, BackupBase):
     __tablename__ = 'backupstates'
-    id = Column(Integer, primary_key=True, nullable=False)
-    id2 = Column(String(36))
-    task_id = Column(Integer, ForeignKey('task.id'), nullable=False)
+    id = Column(String(36), primary_key=True, nullable=False)
+    task_id = Column(String(36), ForeignKey('task.id'), nullable=False)
     total_size = Column(Integer, default=0)
     current_size = Column(Integer, default=0)
     start_time = Column(Integer, nullable=True, default=0)
@@ -284,3 +310,14 @@ class BackupState(Base, BackupBase):
         back_populates='state'
     )
 
+
+class Volume(Base, BackupBase):
+    __tablename__ = 'volume'
+    id = Column(String(36), primary_key=True, nullable=False)
+    name = Column(String(255), nullable=True)
+    description = Column(String(255), nullable=True)
+
+class oplog(Base, BackupBase):
+    __tablename__ = 'oplog'
+    id = Column(BIGINT, primary_key=True, nullable=False)
+    message =  Column(String(2048))

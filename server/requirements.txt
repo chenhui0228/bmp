@@ -1,0 +1,8 @@
+routes
+cherrypy
+sqlalchemy
+six
+eventlet
+pyjwt
+pymysql
+
