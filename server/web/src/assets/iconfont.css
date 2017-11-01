@@ -1,10 +1,10 @@
 
 @font-face {font-family: "iconfont";
-  src: url('fonts/iconfont.eot?t=1492137439402'); /* IE9*/
-  src: url('fonts/iconfont.eot?t=1492137439402#iefix') format('embedded-opentype'), /* IE6-IE8 */
-  url('fonts/iconfont.woff?t=1492137439402') format('woff'), /* chrome, firefox */
-  url('fonts/iconfont.ttf?t=1492137439402') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-  url('fonts/iconfont.svg?t=1492137439402#iconfont') format('svg'); /* iOS 4.1- */
+  src: url('fonts/iconfont.eot?t=1509529240678'); /* IE9*/
+  src: url('fonts/iconfont.eot?t=1509529240678#iefix') format('embedded-opentype'), /* IE6-IE8 */
+  url('fonts/iconfont.woff?t=1509529240678') format('woff'), /* chrome, firefox */
+  url('fonts/iconfont.ttf?t=1509529240678') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  url('fonts/iconfont.svg?t=1509529240678#iconfont') format('svg'); /* iOS 4.1- */
 }
 
 .iconfont {
@@ -15,31 +15,43 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-fold:before { content: "\e7a2"; }
+
+.icon-unfold:before { content: "\e7a3"; }
+
 .icon-user:before { content: "\e600"; }
 
-.icon-home1:before { content: "\e635"; }
+.icon-add:before { content: "\e62c"; }
 
-.icon-home:before { content: "\e6a1"; }
+.icon-host:before { content: "\e65d"; }
 
-.icon-setting1:before { content: "\e601"; }
+.icon-task:before { content: "\e643"; }
 
-.icon-setting:before { content: "\e664"; }
+.icon-down:before { content: "\e638"; }
 
-.icon-down:before { content: "\e623"; }
+.icon-dowm2:before { content: "\e7c1"; }
 
-.icon-books1:before { content: "\e67f"; }
+.icon-search:before { content: "\e601"; }
 
-.icon-leaf:before { content: "\e645"; }
+.icon-see:before { content: "\e662"; }
 
-.icon-users1:before { content: "\e65a"; }
+.icon-up:before { content: "\e6ad"; }
 
-.icon-menuunfold:before { content: "\eacc"; }
+.icon-userMgr:before { content: "\e604"; }
 
-.icon-menufold:before { content: "\eacd"; }
+.icon-down1:before { content: "\e610"; }
 
-.icon-books:before { content: "\e605"; }
+.icon-modiffy:before { content: "\e602"; }
 
-.icon-users:before { content: "\e883"; }
+.icon-home:before { content: "\e698"; }
 
-.icon-books2:before { content: "\e7b9"; }
+.icon-info:before { content: "\e672"; }
+
+.icon-delete:before { content: "\e603"; }
+
+.icon-policy:before { content: "\e614"; }
+
+.icon-up1:before { content: "\e605"; }
+
+.icon-volume:before { content: "\e606"; }
 
