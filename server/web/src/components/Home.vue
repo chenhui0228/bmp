@@ -34,8 +34,8 @@
       <aside :class="{showSidebar:!collapsed}">
         <!--展开折叠开关-->
         <div class="menu-toggle" @click.prevent="collapse">
-          <i class="iconfont icon-menufold" v-show="!collapsed"></i>
-          <i class="iconfont icon-menuunfold" v-show="collapsed"></i>
+          <i class="iconfont icon-fold" v-show="!collapsed"></i>
+          <i class="iconfont icon-unfold" v-show="collapsed"></i>
         </div>
         <!--导航菜单-->
         <el-menu default-active="0" router :collapse="collapsed">
