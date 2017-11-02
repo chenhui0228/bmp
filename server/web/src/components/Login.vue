@@ -24,7 +24,7 @@
       return {
         logining: false,
         account: {
-          username: 'admin',
+          username: 'test',
           pwd: '123456'
         },
         rules: {
@@ -47,7 +47,7 @@
 
             this.logining = true;
             //NProgress.start();
-            var loginParams = { username: this.account.username, password: this.account.pwd };
+            var loginParams = { name: this.account.username, password: this.account.pwd };
             requestLogin(loginParams).then(data => {
               this.logining = false;
               //NProgress.done();

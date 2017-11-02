@@ -27,12 +27,12 @@ export default {
 
     // 登录
     mock.onPost('/login').reply(arg => {
-      let {username, password} = JSON.parse(arg.data)
+      let {name, password} = JSON.parse(arg.data)
       return new Promise((resolve, reject) => {
         let user = null
         setTimeout(() => {
           let hasUser = LoginUsers.some(u => {
-            if (u.username === username && u.password === password) {
+            if (u.name === name && u.password === password) {
               user = JSON.parse(JSON.stringify(u))
               delete user.password
               return true

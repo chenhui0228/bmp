@@ -2,31 +2,26 @@
  * Created by 01107267 on 2017/10/31.
  */
 import Mock from 'mockjs'
-const LoginUsers = [
-  {
-    id: 1,
-    username: 'admin',
-    password: '123456',
-    email: 'demo@demo.com',
-    name: '超级管理员'
-  },{
-    id: 2,
-    username: 'bobo',
-    password: '123456',
-    email: 'bobo@bobo.com',
-    name: 'bobo'
-  }
-]
+const LoginUsers = []
+
+LoginUsers.push(Mock.mock({
+  id: Mock.Random.guid(),
+  name: 'test',
+  password: '123456',
+  role: 0,
+  group: 0,
+  created_at: Mock.Random.datetime('T')
+}))
 
 const Users = []
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 16; i++) {
   Users.push(Mock.mock({
     id: Mock.Random.guid(),
-    name: Mock.Random.cname(),
-    addr: Mock.mock('@county(true)'),
-    'age|18-60': 1,
-    birth: Mock.Random.date(),
-    sex: Mock.Random.integer(0, 1)
+    name: Mock.Random.word(),
+    password: '123456',
+    role: Mock.Random.integer(1,4),
+    group: Mock.Random.integer(1,5),
+    created_at: Mock.Random.datetime('T')
   }))
 }
 
