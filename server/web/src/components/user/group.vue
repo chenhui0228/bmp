@@ -33,9 +33,9 @@
         </el-table-column>
         <el-table-column prop="role" label="角色" width="200" sortable>
         </el-table-column>
-        <el-table-column prop="description" label="描述" width="350" sortable>
+        <el-table-column prop="description" label="描述" sortable>
         </el-table-column>
-        <el-table-column label="操作">
+        <el-table-column label="操作" width="250">
           <template scope="scope">
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
