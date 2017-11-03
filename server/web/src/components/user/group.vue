@@ -10,15 +10,16 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-form :inline="true" :model="filters">
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+          批量删除
+        </el-button>
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.groupName" placeholder="组名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getGroup">查询</el-button>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="showAddDialog">新建</el-button>
           </el-form-item>
         </el-form>
       </el-col>
@@ -36,7 +37,7 @@
         <el-table-column prop="description" label="描述" sortable>
         </el-table-column>
         <el-table-column label="操作" width="250">
-          <template scope="scope">
+          <template slot-scope="scope">
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
             </el-button>
@@ -49,9 +50,6 @@
 
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="margin-top: 5px;">
-        <el-button type="danger" @click="batchDelete" v-if="isVisible" :disabled="this.sels.length===0">
-          批量删除
-        </el-button>
         <el-pagination
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
@@ -59,7 +57,7 @@
           :page-sizes="[10, 20, 30, 40]"
           :page-size="per_page"
           :current-page="page"
-          :total="total" style="float:right;">
+          :total="total" style="float:right;margin-right: 5px">
         </el-pagination>
       </el-col>
 

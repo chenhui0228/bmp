@@ -6,9 +6,12 @@ import MockAdapter from 'axios-mock-adapter'
 import {LoginUsers, Users} from './data/user'
 import {Books} from './data/book'
 import {Groups} from './data/group'
-let _Users = Users
-let _Books = Books
-let _Groups = Groups
+import {Workers} from "./data/worker";
+
+let _Users = Users;
+let _Books = Books;
+let _Groups = Groups;
+let _Workers = Workers;
 
 export default {
 
@@ -175,6 +178,95 @@ export default {
           resolve([200, {
             code: 200,
             msg: '新增成功'
+          }])
+        }, 500)
+      })
+    })
+
+    //主机管理
+    //获取主机列表
+    mock.onGet('/worker/list').reply(config => {
+      let {page, pagesize, ip} = config.params
+      let mockWorkers = _Workers.filter(worker => {
+        if (ip && worker.ip.indexOf(ip) === -1) return false
+        return true
+      })
+      let total = mockWorkers.length
+      mockWorkers = mockWorkers.filter((u, index) => index < pagesize * page && index >= pagesize * (page - 1))
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            total: total,
+            workers: mockWorkers
+          }])
+        }, 500)
+      })
+    })
+    //新增主机
+    mock.onGet('/worker/add').reply(config => {
+      let {workername, ip, user, workertype, description} = config.params
+      _Workers.push({
+        workername: workername,
+        ip: ip,
+        user: user,
+        workertype: workertype,
+        description: description
+      })
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            code: 200,
+            msg: '新增成功'
+          }])
+        }, 500)
+      })
+    })
+
+    // 编辑组
+    mock.onGet('/worker/edit').reply(config => {
+      let {id, workername, ip, user, workertype, description} = config.params
+      _Workers.some(u => {
+        if (u.id === id) {
+          u.workername = workername
+          u.ip = ip
+          u.user = user
+          u.workertype = workertype
+          u.description = description
+          return true
+        }
+      })
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            code: 200,
+            msg: '新增成功'
+          }])
+        }, 500)
+      })
+    })
+    // 删除组
+    mock.onGet('/worker/delete').reply(config => {
+      let {id} = config.params
+      _Workers = _Workers.filter(b => b.id !== id)
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            code: 200,
+            msg: '删除成功'
+          }])
+        }, 500)
+      })
+    })
+    //批量删除组
+    mock.onGet('/worker/batchdelete').reply(config => {
+      let {ids} = config.params
+      ids = ids.split(',')
+      _Workers = _Workers.filter(u => !ids.includes(u.id))
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve([200, {
+            code: 200,
+            msg: '删除成功'
           }])
         }, 500)
       })
