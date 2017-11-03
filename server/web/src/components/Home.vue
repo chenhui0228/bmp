@@ -113,10 +113,10 @@
       }
     },
     mounted() {
-      var user = sessionStorage.getItem('access-user');
-      if (user) {
-        user = JSON.parse(user);
-        this.sysUserName = user.name || '';
+      var accessInfo = sessionStorage.getItem('access-user');
+      if (accessInfo) {
+        accessInfo = JSON.parse(accessInfo);
+        this.sysUserName = accessInfo.username || '';
       }
     }
   }

@@ -48,17 +48,21 @@
             this.logining = true;
             //NProgress.start();
             var loginParams = { name: this.account.username, password: this.account.pwd };
-            requestLogin(loginParams).then(data => {
+            requestLogin(loginParams).then(res => {
               this.logining = false;
               //NProgress.done();
-              let { msg, code, user } = data;
-              if (code !== 200) {
+              let { msg, status, data } = res;
+              if (status !== 200) {
                 this.$message({
                   message: msg,
                   type: 'error'
                 });
               } else {
-                sessionStorage.setItem('access-user', JSON.stringify(user));
+                var accessInfo = {
+                  username: this.account.username,
+                  token: data.token
+                };
+                sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
                 this.$router.push({ path: '/' });
               }
             });

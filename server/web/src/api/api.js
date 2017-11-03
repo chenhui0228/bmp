@@ -3,9 +3,9 @@
  */
 import axios from 'axios'
 
-let base = ''
+let base = 'https://10.202.127.11:443'
 
-export const requestLogin = params => { return axios.post(`${base}/login`, params).then(res => res.data) }
+export const requestLogin = params => { return axios.post(`${base}/login`, params).then(res => res) }
 
 export const reqSaveUserProfile = params => { return axios.post(`${base}/selfinfo/profile`, params).then(res => res.data) }
 
