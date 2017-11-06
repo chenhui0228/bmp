@@ -51,19 +51,25 @@
             requestLogin(loginParams).then(res => {
               this.logining = false;
               //NProgress.done();
-              let { msg, status, data } = res;
-              if (status !== 200) {
+              let { status, data } = res;
+              var accessInfo = {
+                username: this.account.username,
+                token: data.token
+              };
+              sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
+              this.$router.push({ path: '/' });
+            },err => {
+              this.logining = false;
+              if (err.response.status == 401) {
                 this.$message({
-                  message: msg,
+                  message: "用户名不存在或者密码错误！",
                   type: 'error'
                 });
               } else {
-                var accessInfo = {
-                  username: this.account.username,
-                  token: data.token
-                };
-                sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
-                this.$router.push({ path: '/' });
+                this.$message({
+                  message: "登陆失败",
+                  type: 'error'
+                });
               }
             });
 
