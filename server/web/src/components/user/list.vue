@@ -8,9 +8,7 @@
     </el-col>
 
     <el-row class="warp">
-    <el-col :span="4" class="warp-main" style="min-height:12px">
-    </el-col>
-    <el-col :span="16" class="warp-main">
+    <el-col :span="24" class="warp-main">
       <!--工具条-->
       <div class="toolbar" style="float:left;margin-left: 10px;">
         <el-button type="primary" @click="">新建</el-button>
@@ -51,13 +49,9 @@
         </el-table-column>
       </el-table>
     </el-col>
-    <el-col :span="4" class="warp-main">
-    </el-col>
     </el-row>
     <el-row class="warp">
-      <el-col :span="4" class="warp-main" style="min-height:12px">
-      </el-col>
-    <el-col :span="16" class="warp-main">
+    <el-col :span="24" class="warp-main">
       <div class="tab-pagination" v-show="!tabLoading">
         <el-pagination
           @size-change="handleSizeChange"
@@ -71,8 +65,6 @@
         </el-pagination>
       </div>
     </el-col>
-      <el-col :span="4" class="warp-main">
-      </el-col>
     </el-row>
 
   </el-row>
