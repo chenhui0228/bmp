@@ -24,8 +24,8 @@
       return {
         logining: false,
         account: {
-          username: 'test',
-          pwd: '123456'
+          username: '',
+          pwd: ''
         },
         rules: {
           username: [
@@ -47,23 +47,29 @@
 
             this.logining = true;
             //NProgress.start();
-            var loginParams = { name: this.account.username, password: this.account.pwd };
+            var loginParams = { user: this.account.username, password: this.account.pwd };
             requestLogin(loginParams).then(res => {
               this.logining = false;
               //NProgress.done();
-              let { msg, status, data } = res;
-              if (status !== 200) {
+              let { status, data } = res;
+              var accessInfo = {
+                username: this.account.username,
+                token: data.token
+              };
+              sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
+              this.$router.push({ path: '/' });
+            },err => {
+              this.logining = false;
+              if (err.response.status == 401) {
                 this.$message({
-                  message: msg,
+                  message: "用户名不存在或者密码错误！",
                   type: 'error'
                 });
               } else {
-                var accessInfo = {
-                  username: this.account.username,
-                  token: data.token
-                };
-                sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
-                this.$router.push({ path: '/' });
+                this.$message({
+                  message: "登陆失败",
+                  type: 'error'
+                });
               }
             });
 

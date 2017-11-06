@@ -2,8 +2,21 @@
  * Created by 01107267 on 2017/10/31.
  */
 import axios from 'axios'
+import Qs from 'qs'
 
 let base = 'https://10.202.127.11:443'
+
+axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+axios.defaults.headers.put['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+//璇锋眰鏃剁殑鎷︽埅
+axios.interceptors.request.use((config) => {
+  if(config.method  === 'post' || config.method  === 'put'){
+    config.data = Qs.stringify(config.data);
+  }
+  return config;
+},error => {
+  alert("error");
+});
 
 export const requestLogin = params => { return axios.post(`${base}/login`, params).then(res => res) }
 
@@ -13,8 +26,8 @@ export const reqGetUserList = params => { return axios.get(`${base}/user/list`, 
 
 export const reqGetGroupList = params => { return axios.get(`${base}/user/group`, { params: params }) }
 
-//主机管理相关
-export const reqGetWorkerList = params => { return axios.get(`${base}/worker/list`, { params: params }) }
+//涓绘満绠＄悊鐩稿叧
+export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers?user=bobo`, { params: params }) }
 
 export const reqEditWorker = params => { return axios.get(`${base}/worker/edit`, { params: params }) }
 
@@ -23,7 +36,8 @@ export const reqAddWorker = params => { return axios.get(`${base}/worker/add`, {
 export const reqDelWorker = params => { return axios.get(`${base}/worker/delete`, { params: params }) }
 
 export const reqBatchDelWorker = params => { return axios.get(`${base}/worker/batchdelete`, { params: params }) }
-//主机管理相关结束
+//涓绘満绠＄悊鐩稿叧缁撴潫
+
 export const reqGetBookListPage = params => { return axios.get(`${base}/book/list`, { params: params }) }
 
 export const reqDeleteBook = params => { return axios.get(`${base}/book/delete`, { params: params }) }
