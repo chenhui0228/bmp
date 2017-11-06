@@ -20,7 +20,7 @@
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
-            <el-input v-model="filters.hostname" placeholder="主机名" style="min-width: 240px;"></el-input>
+            <el-input v-model="filters.ip" placeholder="IP地址" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getWorker">查询</el-button>
@@ -38,18 +38,19 @@
           <template slot-scope="props">
             <el-form label-position="left" inline class="demo-table-expand">
               <el-form-item label="[主机描述]">
+                <br />
                 <span>{{ props.row.description }}</span>
               </el-form-item>
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="workername" label="主机名"sortable>
+        <el-table-column prop="name" label="主机名"sortable>
         </el-table-column>
         <el-table-column prop="ip" label="IP地址" sortable>
         </el-table-column>
-        <el-table-column prop="user" label="用户" sortable>
+        <el-table-column prop="port" label="端口号">
         </el-table-column>
-        <el-table-column prop="workertype" label="类型" sortable>
+        <el-table-column prop="owner" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -81,24 +82,25 @@
       <!--编辑框 -->
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="workername" label="主机名">
-            <el-input v-model="editForm.workername" auto-complete="off"></el-input>
+          <el-form-item prop="name" label="主机名">
+            <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="user" label="用户">
-            <el-input v-model="editForm.user" auto-complete="off"></el-input>
+          <el-form-item prop="owner" label="用户">
+            <el-input v-model="editForm.owner" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="workertype" label="类型">
-            <el-select v-model="editForm.workertype" placeholder="请选择主机类型" clearable>
-              <el-option
-                v-for="item in options"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value">
-              </el-option>
-            </el-select>
+          <el-form-item prop="port" label="端口号">
+            <el-input v-model="editForm.port" auto-complete="off"></el-input>
+            <!--<el-select v-model="editForm.port" placeholder="请选择主机类型" clearable>-->
+              <!--<el-option-->
+                <!--v-for="item in options"-->
+                <!--:key="item.value"-->
+                <!--:label="item.label"-->
+                <!--:value="item.value">-->
+              <!--</el-option>-->
+            <!--</el-select>-->
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
@@ -113,17 +115,17 @@
       <!--新建框-->
       <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="addForm">
-          <el-form-item prop="workername" label="主机名">
-            <el-input v-model="addForm.workername" auto-complete="off"></el-input>
+          <el-form-item prop="name" label="主机名">
+            <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="addForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="user" label="用户">
-            <el-input v-model="addForm.user" auto-complete="off"></el-input>
+          <el-form-item prop="owner" label="用户">
+            <el-input v-model="addForm.owner" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="workertype" label="类型">
-            <el-select v-model="addForm.workertype" placeholder="请选择主机类型" clearable>
+          <el-form-item prop="port" label="端口号">
+            <el-select v-model="addForm.port" placeholder="请选择主机类型" clearable>
               <el-option
                 v-for="item in options"
                 :key="item.value"
@@ -189,17 +191,17 @@
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         editFormRules: {
-          workername: [
+          name: [
             {required: true, message: '请输入主机名', trigger: 'blur'}
           ],
           ip: [
             {required: true, validator: validateIp, trigger: 'blur'}
           ],
-          user: [
+          owner: [
             {required: true, message: '请输入角色', trigger: 'blur'}
           ],
-          workertype: [
-            {required: true, message: '请选择类型'}
+          port: [
+            {required: true, message: '请输入'}
           ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
@@ -207,10 +209,10 @@
         },
         editForm: {
           id: 0,
-          workername: '',
+          name: '',
           ip: '',
-          user: '',
-          workertype: '',
+          owner: '',
+          port: '',
           description: ''
         },
 
@@ -218,10 +220,10 @@
         addFormVisible: false,
         addLoading: false,
         addForm: {
-          workername: '',
+          name: '',
           ip: '',
-          user: '',
-          workertype: '',
+          owner: '',
+          port: '',
           description: ''
         },
       }
@@ -294,10 +296,10 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
-          workername: '',
+          name: '',
           ip: '',
-          user: '',
-          workertype: '',
+          owner: '',
+          port: '',
           description: ''
         };
       },
