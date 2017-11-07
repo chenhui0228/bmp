@@ -119,6 +119,41 @@ web_ip = 10.10.10.11.8080
 
 然后按照前面安装pip方法为python2.7安装pip
 
+#### Nginx 配置参考#####
+
+```text
+server {
+	listen      6060;
+        server_name sf;
+
+        return 301 https://$host$request_uri;
+    }
+
+
+
+server {
+        listen  443 ssl default_server;
+        server_name  sf;
+        ssl_certificate           /home/cert.crt;
+        ssl_certificate_key       /home/cert.key;
+
+        ssl on;
+        ssl_session_cache  builtin:1000  shared:SSL:10m;
+        ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+        ssl_prefer_server_ciphers on;
+
+	location / {
+            proxy_pass_request_headers on;
+            proxy_set_header     HTTP_AUTHORIZATION $http_authorization;
+            proxy_set_header    Host $host;
+            proxy_pass             http://backupserver;
+        }
+
+}
+
+```
+
 #### WEB Server ####
 
 server配置文件：
@@ -126,7 +161,7 @@ server配置文件：
 ```text
 [global]
 #访问端口，默认为80
-server.socket_port: 80		
+server.socket_port: 9090		
 server.socket_host: '0.0.0.0'
 
 [database]
