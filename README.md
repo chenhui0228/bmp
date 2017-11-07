@@ -130,11 +130,15 @@ server.socket_port: 80
 server.socket_host: '0.0.0.0'
 
 [database]
-#数据库驱动，这里使用sqlite
-driver = 'sqlite'
-#数据库实例为pro.db, 初次运行后会在web下创建pro.db文件，保存了所有数据
-path = os.path.join(os.getcwd(), "pro.db")
+driver = 'mysql'
+user = 'backup'
+password = '123456'
+host = '10.202.127.11'
+database = 'test'
 
+[Token]
+iss = 'SFBACKUP'
+exp = 3600
 
 [/]
 tools.sessions.on: True
