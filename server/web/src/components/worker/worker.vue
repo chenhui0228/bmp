@@ -151,8 +151,15 @@
 
 <script>
   import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqBatchDelWorker, reqDelWorker} from '../../api/api';
-
+  import {bus} from '../../bus.js'
   export default {
+    created(){
+      bus.$on('setUserName', (text) => {
+        console.log("text");
+        console.log(text);
+        this.sysUserName = text;
+      })
+    },
     data() {
       var validateIp = (rule, value, callback) => {
         var ip = /^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}$/
@@ -163,6 +170,7 @@
         }
       };
       return {
+        sysUserName: '',
         filters: {
           ip: ''
         },
@@ -242,9 +250,10 @@
       //获取用户列表
       getWorker: function () {
         let para = {
-          page: this.page,
-          pagesize: this.per_page,
-          ip: this.filters.ip
+          user: this.sysUserName,
+//          page: this.page,
+//          pagesize: this.per_page,
+//          ip: this.filters.ip
         };
         this.listLoading = true;
         this.isVisible = false;
@@ -374,6 +383,11 @@
 
     },
     mounted() {
+      var accessInfo = sessionStorage.getItem('access-user');
+      if (accessInfo) {
+        accessInfo = JSON.parse(accessInfo);
+        this.sysUserName = accessInfo.username || '';
+      }
       this.getWorker();
     }
   }

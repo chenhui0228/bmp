@@ -10,9 +10,22 @@ axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded
 axios.defaults.headers.put['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
 //请求时的拦截
 axios.interceptors.request.use((config) => {
+  // console.log('config:');
+  // console.log(config);
+  let url = config.url;
   if(config.method  === 'post' || config.method  === 'put'){
     config.data = Qs.stringify(config.data);
   }
+  if (url.indexOf("login") < 0 ){
+    console.log(config.method);
+    let accessInfo = sessionStorage.getItem('access-user');
+    if (accessInfo) {
+      accessInfo = JSON.parse(accessInfo);
+      const token = accessInfo.token || '';
+      config.headers.Authorization = `token Bearer ${token}`
+    }
+  }
+  console.log(config);
   return config;
 },error => {
   alert("error");
