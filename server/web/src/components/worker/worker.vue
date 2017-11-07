@@ -125,14 +125,7 @@
             <el-input v-model="addForm.owner" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="port" label="端口号">
-            <el-select v-model="addForm.port" placeholder="请选择主机类型" clearable>
-              <el-option
-                v-for="item in options"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value">
-              </el-option>
-            </el-select>
+            <el-input v-model="addForm.port" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
@@ -151,15 +144,8 @@
 
 <script>
   import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqBatchDelWorker, reqDelWorker} from '../../api/api';
-  import {bus} from '../../bus.js'
+
   export default {
-    created(){
-      bus.$on('setUserName', (text) => {
-        console.log("text");
-        console.log(text);
-        this.sysUserName = text;
-      })
-    },
     data() {
       var validateIp = (rule, value, callback) => {
         var ip = /^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}$/
@@ -264,7 +250,21 @@
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
-        });
+        }).catch((err) => {
+          this.listLoading = false;
+          if (err.response.status == 401) {
+            this.$message({
+              message: "鉴权失败",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
+        })
       },
 
       //====编辑相关====
@@ -305,6 +305,7 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
+          user: this.sysUserName,
           name: '',
           ip: '',
           owner: '',

@@ -17,12 +17,12 @@ axios.interceptors.request.use((config) => {
     config.data = Qs.stringify(config.data);
   }
   if (url.indexOf("login") < 0 ){
-    console.log(config.method);
+    // console.log(config.method);
     let accessInfo = sessionStorage.getItem('access-user');
     if (accessInfo) {
       accessInfo = JSON.parse(accessInfo);
       const token = accessInfo.token || '';
-      config.headers.Authorization = `token Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`
     }
   }
   console.log(config);
@@ -40,13 +40,13 @@ export const reqGetUserList = params => { return axios.get(`${base}/user/list`, 
 export const reqGetGroupList = params => { return axios.get(`${base}/user/group`, { params: params }) }
 
 //主机管理相关
-export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers?user=bobo`, { params: params }) }
+export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers`, { params: params }) }
 
 export const reqEditWorker = params => { return axios.get(`${base}/worker/edit`, { params: params }) }
 
-export const reqAddWorker = params => { return axios.get(`${base}/worker/add`, { params: params }) }
+export const reqAddWorker = params => { return axios.post(`${base}/backup/workers`, { params: params }) }
 
-export const reqDelWorker = params => { return axios.get(`${base}/worker/delete`, { params: params }) }
+export const reqDelWorker = params => { return axios.delete(`${base}/backup/workers/`, { params: params }) }
 
 export const reqBatchDelWorker = params => { return axios.get(`${base}/worker/batchdelete`, { params: params }) }
 //主机管理相关结束
