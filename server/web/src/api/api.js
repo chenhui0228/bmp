@@ -39,7 +39,17 @@ export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup
 
 export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
 
+//组列表相关API开始
 export const reqGetGroupList = params => { return axios.get(`${base}/backup/groups`, { params: params }) }
+
+export const reqGetGroupDetail = (group_id,params) =>{ return axios.get(`${base}/backup/groups/${group_id}`, { params: params }) }
+
+export const reqEditGroup = (group_id,user,params) => { return axios.put(`${base}/backup/groups/${group_id}`, params, { params: user}) }
+
+export const reqAddGroup = (user,params) => { return axios.post(`${base}/backup/groups`,  params, { params: user}) }
+
+export const reqDelGroup = (group_id,params) => { return axios.delete(`${base}/backup/groups/${group_id}`, { params: params }) }
+//组列表相关API结束
 
 //主机管理相关
 export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers`, { params: params }) }
@@ -49,8 +59,6 @@ export const reqEditWorker = (worker_id,user,params) => { return axios.put(`${ba
 export const reqAddWorker = (user,params) => { return axios.post(`${base}/backup/workers`, params, {params: user}) }
 
 export const reqDelWorker = (worker_id,params) => { return axios.delete(`${base}/backup/workers/${worker_id}`, { params: params }) }
-
-export const reqBatchDelWorker = params => { return axios.get(`${base}/worker/batchdelete`, { params: params }) }
 //主机管理相关结束
 
 export const reqGetBookListPage = params => { return axios.get(`${base}/book/list`, { params: params }) }

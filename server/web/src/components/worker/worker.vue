@@ -143,7 +143,7 @@
 </template>
 
 <script>
-  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqBatchDelWorker, reqDelWorker} from '../../api/api';
+  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqDelWorker} from '../../api/api';
 
   export default {
     data() {
@@ -280,11 +280,11 @@
             this.$confirm('确认提交吗？', '提示', {}).then(() => {
               this.editLoading = true;
               //NProgress.start();
-              let user = {
+              let user_para = {
                 user: this.sysUserName,
               };
               let para = Object.assign({}, this.editForm);
-              reqEditWorker(para.id,user,para).then((res) => {
+              reqEditWorker(para.id,user_para,para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
@@ -294,13 +294,16 @@
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
                 this.getWorker();
+              }).catch(err=>{
+                this.editLoading = false;
+                this.$message({
+                  message: '提交失败：' + err.message,
+                  type: 'error'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getWorker();
               });
-            }).catch(err=>{
-              this.editLoading = false;
-              alert(err.message);
-              this.$refs['editForm'].resetFields();
-              this.editFormVisible = false;
-              this.getWorker();
             });
           }
           else{
@@ -371,9 +374,10 @@
               type: 'success'
             });
             this.getWorker();
+          }).catch((err) => {
+            this.listLoading = false;
+            alert(err.message)
           });
-        }).catch((err) => {
-          alert(err.message)
         });
       },
       //勾选
@@ -389,17 +393,18 @@
           this.listLoading = true;
           //NProgress.start();
           let para = {ids: ids};
-          reqBatchDelWorker(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
-            this.getWorker();
-          });
-        }).catch((err) => {
-          alert(err.message)
+          console.log(para);
+//          reqBatchDelWorker(para).then((res) => {
+//            this.listLoading = false;
+//            //NProgress.done();
+//            this.$message({
+//              message: '删除成功',
+//              type: 'success'
+//            });
+//            this.getWorker();
+//          }).catch((err) => {
+//            alert(err.message)
+//          });
         });
       },
 
