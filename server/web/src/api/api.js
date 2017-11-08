@@ -33,6 +33,8 @@ axios.interceptors.request.use((config) => {
 
 export const requestLogin = params => { return axios.post(`${base}/login`, params).then(res => res) }
 
+export const reqGetUserProfile = params => { return axios.get(`${base}/backup/users`, { params: params }).then(res => res) }
+
 export const reqSaveUserProfile = params => { return axios.post(`${base}/selfinfo/profile`, params).then(res => res.data) }
 
 export const reqGetUserList = params => { return axios.get(`${base}/user/list`, { params: params }) }
