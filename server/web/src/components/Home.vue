@@ -71,6 +71,7 @@
 </template>
 
 <script>
+  import {reqGetUserProfile, reqGetRoleList, reqGetGroupList} from '../api/api';
   import {bus} from '../bus.js'
   export default {
     name: 'home',
@@ -87,6 +88,62 @@
       }
     },
     methods: {
+      getRoles(username){
+        let params = {
+          user: username
+        };
+        reqGetRoleList(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            console.log("无法获取角色列表");
+          } else {
+            //this.roles = data.roles;
+            bus.$emit('roles', data.roles);
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+        });
+      },
+      getGroups(username){
+        let params = {
+          user: username
+        };
+        reqGetGroupList(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            console.log("无法获取组列表");
+          } else {
+            //this.roles = data.roles;
+            bus.$emit('groups', data.groups);
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+        });
+      },
       handleOpen() {
         //console.log('handleopen');
       },
@@ -116,7 +173,11 @@
       var accessInfo = sessionStorage.getItem('access-user');
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
-        this.sysUserName = accessInfo.username || '';
+        this.sysUserName = accessInfo.username;
+        this.getRoles(this.sysUserName);
+        this.getGroups(this.sysUserName);
+      } else {
+        _this.$router.push('/login');
       }
     }
   }

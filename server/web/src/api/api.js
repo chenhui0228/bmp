@@ -35,11 +35,11 @@ export const requestLogin = params => { return axios.post(`${base}/login`, param
 
 export const reqGetUserProfile = params => { return axios.get(`${base}/backup/users`, { params: params }).then(res => res) }
 
-export const reqSaveUserProfile = params => { return axios.post(`${base}/selfinfo/profile`, params).then(res => res.data) }
+export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup/users/${params.id}`, params, {params: {user: params.name}}).then(res => res) }
 
-export const reqGetUserList = params => { return axios.get(`${base}/user/list`, { params: params }) }
+export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
 
-export const reqGetGroupList = params => { return axios.get(`${base}/user/group`, { params: params }) }
+export const reqGetGroupList = params => { return axios.get(`${base}/backup/groups`, { params: params }) }
 
 //主机管理相关
 export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers`, { params: params }) }

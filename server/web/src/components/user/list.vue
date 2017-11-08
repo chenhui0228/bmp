@@ -80,7 +80,7 @@
           name: ''
         },
         loading: false,
-        users: [
+        usersForm: [
         ],
 
       }
@@ -91,16 +91,36 @@
         return row.sex == 1 ? '男' : row.sex == 0 ? '女' : '未知';
       },
       //获取用户列表
-      getUser: function () {
-        let para = {
-          name: this.filters.name
+      getUserProfile(username){
+        let params = {
+          user: username,
+          name: username
         };
-        this.loading = true;
-        //NProgress.start();
-        reqGetUserList(para).then((res) => {
-          this.users = res.data.users;
-          this.loading = false;
-          //NProgress.done();
+        reqGetUserProfile(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            this.$message({
+              message: "未获取到信息",
+              type: 'error'
+            });
+          } else {
+            this.usersForm = data.users;
+            console.log(data);
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
         });
       },
       handleSizeChange(val) {
@@ -112,7 +132,8 @@
       }
     },
     mounted() {
-      this.getUser();
+      var accessInfo = sessionStorage.getItem('access-user');
+      this.getUserProfile(JSON.parse(accessInfo).username);
     }
   }
 

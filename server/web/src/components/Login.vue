@@ -62,6 +62,9 @@
                   username: this.account.username,
                   token: data.token
                 };
+                if (data.superRole != null) {
+                  accessInfo.isSuperAdm = true;
+                };
                 sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
                 this.$router.push({ path: '/' });
               }
