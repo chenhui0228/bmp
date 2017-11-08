@@ -125,14 +125,7 @@
             <el-input v-model="addForm.owner" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="port" label="端口号">
-            <el-select v-model="addForm.port" placeholder="请选择主机类型" clearable>
-              <el-option
-                v-for="item in options"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value">
-              </el-option>
-            </el-select>
+            <el-input v-model="addForm.port" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
@@ -163,6 +156,7 @@
         }
       };
       return {
+        sysUserName: '',
         filters: {
           ip: ''
         },
@@ -242,9 +236,10 @@
       //获取用户列表
       getWorker: function () {
         let para = {
-          page: this.page,
-          pagesize: this.per_page,
-          ip: this.filters.ip
+          user: this.sysUserName,
+//          page: this.page,
+//          pagesize: this.per_page,
+//          ip: this.filters.ip
         };
         this.listLoading = true;
         this.isVisible = false;
@@ -255,7 +250,21 @@
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
-        });
+        }).catch((err) => {
+          this.listLoading = false;
+          if (err.response.status == 401) {
+            this.$message({
+              message: "鉴权失败",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
+        })
       },
 
       //====编辑相关====
@@ -296,6 +305,7 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
+          user: this.sysUserName,
           name: '',
           ip: '',
           owner: '',
@@ -374,6 +384,11 @@
 
     },
     mounted() {
+      var accessInfo = sessionStorage.getItem('access-user');
+      if (accessInfo) {
+        accessInfo = JSON.parse(accessInfo);
+        this.sysUserName = accessInfo.username || '';
+      }
       this.getWorker();
     }
   }

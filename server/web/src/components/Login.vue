@@ -52,12 +52,19 @@
               this.logining = false;
               //NProgress.done();
               let { status, data } = res;
-              var accessInfo = {
-                username: this.account.username,
-                token: data.token
-              };
-              sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
-              this.$router.push({ path: '/' });
+              if (data == null) {
+                this.$message({
+                  message: "登陆异常",
+                  type: 'error'
+                });
+              } else {
+                var accessInfo = {
+                  username: this.account.username,
+                  token: data.token
+                };
+                sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
+                this.$router.push({ path: '/' });
+              }
             },err => {
               this.logining = false;
               if (err.response.status == 401) {
@@ -67,7 +74,7 @@
                 });
               } else {
                 this.$message({
-                  message: "登陆失败",
+                  message: "请求异常",
                   type: 'error'
                 });
               }

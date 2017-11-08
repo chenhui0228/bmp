@@ -40,8 +40,9 @@
 
 <script>
   import {reqSaveUserProfile} from '../../api/api';
+  import {reqGetUserProfile} from '../../api/api';
   import {bus} from '../../bus.js'
-
+  import export2Excel from '../../common/export2Excel'
   export default {
     data() {
       return {
@@ -88,11 +89,45 @@
             return false;
           }
         });*/
+      },
+      getUserProfile(user){
+        reqGetUserProfile(user).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            this.$message({
+              message: "未获取到信息",
+              type: 'error'
+            });
+          } else {
+              export2Excel.export2Excel(data.users, "test", "user");
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+        });
       }
     },
     mounted() {
-      var user = sessionStorage.getItem('access-user');
-      if (user) {
+      var accessInfo = sessionStorage.getItem('access-user');
+      var username = JSON.parse(accessInfo).username;
+      console.log(username);
+      let user = {
+        user: username
+      };
+      this.getUserProfile(user)
+
+      /*if (user) {
         user = JSON.parse(user);
         this.form.name = user.name;
         this.form.role = user.role;
@@ -100,7 +135,7 @@
         if (this.form.role == 0) {
           this.isSuperAdm = false;
         }
-      }
+      }*/
     }
   }
 </script>
