@@ -60,7 +60,7 @@
         <div class="grid-content bg-purple-light">
           <el-col :span="24" class="content-wrapper">
             <transition name="fade" mode="out-in">
-              <router-view></router-view>
+              <router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles" @transferGroups="refreshGroups"></router-view>
             </transition>
           </el-col>
         </div>
@@ -76,18 +76,26 @@
   export default {
     name: 'home',
     created(){
-      bus.$on('setUserName', (text) => {
-        this.sysUserName = text;
-      })
+      //bus.$on('setUserName', (text) => {
+      //  this.sysUserName = text;
+      //})
     },
     data () {
       return {
         sysUserName: '',
         sysUserAvatar: '',
         collapsed: false,
+        roles:[],
+        groups:[]
       }
     },
     methods: {
+      refreshRoles(roles){
+        this.roles = roles;
+      },
+      refreshGroups(groups){
+        this.groups = groups;
+      },
       getRoles(username){
         let params = {
           user: username
@@ -97,8 +105,8 @@
           if (data == null) {
             console.log("无法获取角色列表");
           } else {
-            //this.roles = data.roles;
-            bus.$emit('roles', data.roles);
+            this.roles = data.roles;
+            //bus.$emit('roles', data.roles);
           }
         },err => {
           if (err.response.status == 401) {
@@ -125,8 +133,8 @@
           if (data == null) {
             console.log("无法获取组列表");
           } else {
-            //this.roles = data.roles;
-            bus.$emit('groups', data.groups);
+            this.groups = data.groups;
+            //bus.$emit('groups', data.groups);
           }
         },err => {
           if (err.response.status == 401) {

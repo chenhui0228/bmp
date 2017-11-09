@@ -20,7 +20,7 @@
             <el-input v-model="filters.name" placeholder="姓名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getUser">查询</el-button>
+            <el-button type="primary" @click="">查询</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -31,20 +31,20 @@
         <!--</el-table-column>-->
         <el-table-column prop="name" label="用户名" width="240" sortable>
         </el-table-column>
-        <el-table-column prop="role" label="角色" width="180" sortable>
-          <!--<template scope="scope">-->
-
-          <!--</template>-->
+        <el-table-column prop="role_id" label="角色" width="180" :formatter="roleId2Name">
         </el-table-column>
-        <el-table-column prop="group" label="属组" width="240" sortable>
+        <el-table-column prop="group_id" label="属组" width="240" :formatter="groupId2Name">
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="240" sortable>
+          <template scope="scope">
+            <span>{{ scope.row.created_at | timeStamp2datetime }}</span>
+          </template>
         </el-table-column>
         <el-table-column label="操作">
           <template scope="scope">
             <el-button type="text" icon="information" @click=""></el-button>
-            <el-button v-if="!gdeleted" type="text" icon="edit" @click="handleEdit(scope.$index, scope.row.task)"></el-button>
-            <el-button v-if="!gdeleted" type="text" icon="delete" style="color: red" @click="confimDeleteMsgbox('handleDelete',scope.$index, scope.row.task, scope._self.confimTaskDeleteMsg)"></el-button>
+            <el-button v-if="" type="text" icon="edit" @click=""></el-button>
+            <el-button v-if="" type="text" icon="delete" style="color: red" @click=""></el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -52,18 +52,18 @@
     </el-row>
     <el-row class="warp">
     <el-col :span="24" class="warp-main">
-      <div class="tab-pagination" v-show="!tabLoading">
-        <el-pagination
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          :current-page="1"
-          :page-sizes="[10, 15, 20, 30]"
-          :page-size="6"
-          layout="total, sizes, prev, pager, next, jumper"
-          total="100"
-          style="float: right;">
-        </el-pagination>
-      </div>
+      <!--<div class="tab-pagination" v-show="!tabLoading">-->
+        <!--<el-pagination-->
+          <!--@size-change="handleSizeChange"-->
+          <!--@current-change="handleCurrentChange"-->
+          <!--:current-page="1"-->
+          <!--:page-sizes="[10, 15, 20, 30]"-->
+          <!--:page-size="6"-->
+          <!--layout="total, sizes, prev, pager, next, jumper"-->
+          <!--total="100"-->
+          <!--style="float: right;">-->
+        <!--</el-pagination>-->
+      <!--</div>-->
     </el-col>
     </el-row>
 
@@ -71,21 +71,44 @@
 </template>
 
 <script>
-  import { reqGetUserList } from '../../api/api';
-
+  import {reqSaveUserProfile, reqGetUserProfile, reqGetRoleList, reqGetGroupList, reqUpdateUserProfile} from '../../api/api'
+  import {util} from '../../common/util'
   export default {
+    props: ["roles", "groups"],
     data() {
       return {
         filters: {
           name: ''
         },
         loading: false,
-        usersForm: [
-        ],
+        users: [],
+        usersForm: {},
 
       }
     },
     methods: {
+      roleId2Name(row, column, cellValue){
+        var index;
+        var tmpValue = "未知";
+        for (index in this.roles){
+          if (this.roles[index].id == cellValue) {
+            tmpValue = this.roles[index].name;
+            break;
+          }
+        }
+        return tmpValue;
+      },
+      groupId2Name(row, column, cellValue){
+        var index;
+        var tmpValue = "未知";
+        for (index in this.groups){
+          if (this.groups[index].id == cellValue) {
+            tmpValue = this.groups[index].name;
+            break;
+          }
+        }
+        return tmpValue;
+      },
       //性别显示转换
       formatSex: function (row, column) {
         return row.sex == 1 ? '男' : row.sex == 0 ? '女' : '未知';
@@ -94,7 +117,6 @@
       getUserProfile(username){
         let params = {
           user: username,
-          name: username
         };
         reqGetUserProfile(params).then(res => {
           let { status, data } = res;
@@ -104,7 +126,7 @@
               type: 'error'
             });
           } else {
-            this.usersForm = data.users;
+            this.users = data.users;
             console.log(data);
           }
         },err => {

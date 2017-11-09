@@ -31,10 +31,11 @@
 </template>
 
 <script>
-  import {reqSaveUserProfile, reqGetUserProfile, reqGetRoleList, reqUpdateUserProfile} from '../../api/api';
+  import {reqSaveUserProfile, reqGetUserProfile, reqGetRoleList, reqGetGroupList, reqUpdateUserProfile} from '../../api/api';
   import {bus} from '../../bus.js'
   import export2Excel from '../../common/export2Excel'
   export default {
+    props: ["roles", "groups"],
     data() {
       return {
         form: {
@@ -49,8 +50,8 @@
           group_id: '',
           created_at: ''
         },
-        roles: [],
-        groups: [],
+        //roles: [],
+        //groups: [],
         isSuperAdm: false,
         rules: {
 
@@ -144,7 +145,6 @@
             });
           } else {
             this.userForm = data.users[0];
-            console.log(data);
           }
         },err => {
           if (err.response.status == 401) {

@@ -22,6 +22,7 @@ export default {
   formatDate: {
 
     format: function (date, pattern) {
+      new Date(date);
       pattern = pattern || DEFAULT_PATTERN
       return pattern.replace(SIGN_REGEXP, function ($0) {
         switch ($0.charAt(0)) {
