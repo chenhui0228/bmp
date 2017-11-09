@@ -179,6 +179,8 @@
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
+        edit_index: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -235,10 +237,11 @@
       },
       //获取用户列表
       getWorker: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          page: this.page,
-//          pagesize: this.per_page,
+          limit: this.per_page,
+          offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
@@ -254,7 +257,7 @@
           this.listLoading = false;
           if (err.response.status == 401) {
             this.$message({
-              message: "鉴权失败",
+              message: "请重新登录",
               type: 'error'
             });
             this.$router.push({ path: '/login' });
@@ -270,6 +273,7 @@
       //====编辑相关====
       //显示编辑界面
       showEditDialog: function (index, row) {
+        this.edit_index = index;
         this.editFormVisible = true;
         this.editForm = Object.assign({}, row);
       },
@@ -297,7 +301,7 @@
               }).catch(err=>{
                 this.editLoading = false;
                 this.$message({
-                  message: '提交失败：' + err.message,
+                  message: '提交失败：',
                   type: 'error'
                 });
                 this.$refs['editForm'].resetFields();
@@ -376,7 +380,10 @@
             this.getWorker();
           }).catch((err) => {
             this.listLoading = false;
-            alert(err.message)
+            this.$message({
+              message: '删除失败',
+              type: 'error'
+            });
           });
         });
       },

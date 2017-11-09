@@ -112,6 +112,7 @@
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -167,10 +168,11 @@
       },
       //获取用户列表
       getGroup: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          page: this.page,
-//          pagesize: this.per_page,
+          limit: this.per_page,
+          offset: this.offset,
 //          name: this.filters.name
         };
         this.listLoading = true;
@@ -182,6 +184,20 @@
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
+        }).catch(err=>{
+          this.listLoading = false;
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
         });
       },
 
@@ -280,8 +296,8 @@
         this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {id: row.id};
-          reqDelGroup(para).then((res) => {
+          let para = {user: this.sysUserName};
+          reqDelGroup(row.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
@@ -290,7 +306,12 @@
             });
             this.getGroup();
           });
-        }).catch(() => {
+        }).catch((err) => {
+          this.listLoading = false;
+          this.$message({
+            message: '删除失败',
+            type: 'error'
+          });
         });
       },
       //勾选

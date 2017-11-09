@@ -259,6 +259,20 @@
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
+        }).catch(err=>{
+          this.listLoading = false;
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
         });
       },
 
