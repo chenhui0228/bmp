@@ -32,13 +32,15 @@ import logging.handlers as handlers
 from message import Message
 from singletask import SingleTask
 from workerpool import WorkerPool
+from work import Work
+
 
 
 class Daemon:
-    def __init__( self, pidfile, Message, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
+    def __init__( self, pidfile, Message, mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
         # self.logger = logging.getLogger(__name__)
-
+        self.log=mylogger
         self.message = Message
         self.stdin = stdin
         self.stdout = stdout
@@ -51,7 +53,7 @@ class Daemon:
         self.timer_id = 0
         self.json_f = "/data/work/test.json"
         self.q = ""
-        self.tp_size = 1  # 线程池大小
+        self.tp_size = 5 # 线程池大小
         self.reload_interval = 30
         self.info_l = ""
         self.glusterlist = ['10.202.125.83']
@@ -78,8 +80,7 @@ class Daemon:
         except OSError, e:
             sys.stderr.write('fork #1 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
-            # self.logger.error('fork #1 failed: %d (%s)\n' %
-            #                  (e.errno, e.strerror))
+            self.log.logger.error('fork #1 failed: %d (%s)\n' %(e.errno, e.strerror))
             sys.exit(1)
 
         os.chdir("/")  # 修改工作目录
@@ -93,8 +94,7 @@ class Daemon:
         except OSError, e:
             sys.stderr.write('fork #2 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
-            # self.logger.error('fork #2 failed: %d (%s)\n' %
-            #                  (e.errno, e.strerror))
+            self.log.logger.error('fork #2 failed: %d (%s)\n' %(e.errno, e.strerror))
             sys.exit(1)
 
             # 重定向文件描述符
@@ -112,7 +112,7 @@ class Daemon:
         pid = str(os.getpid())
         # print "pid is:",pid
         file(self.pidfile, 'w+').write('%s\n' % pid)
-        # self.logger.debug("pid file write succeed")
+        self.log.logger.debug("pid file write succeed")
 
     def delpid( self ):
         os.remove(self.pidfile)
@@ -129,14 +129,13 @@ class Daemon:
 
         if pid:
             message = 'pidfile %s already exist. Daemon already running!\n'
-            # self.logger.error(
-            #    'pidfile %s already exist. Daemon already running!\n' % self.pidfile)
+            self.log.logger.error('pidfile %s already exist. Daemon already running!\n' % self.pidfile)
             sys.stderr.write(message % self.pidfile)
             sys.stderr.flush()
             sys.exit(1)
 
             # 启动监控
-
+        self.log.logger.info('client start now')
         # self._daemonize()
         self._run()
 
@@ -153,8 +152,7 @@ class Daemon:
 
         if not pid:  # 重启不报错
             message = 'pidfile %s does not exist. Daemon not running!\n'
-            # self.logger.error(
-            #     'pidfile %s does not exist. Daemon not running!\n' % (self.pidfile))
+            self.log.logger.error('pidfile %s does not exist. Daemon not running!\n' % (self.pidfile))
             sys.stderr.write(message % self.pidfile)
             return
 
@@ -187,20 +185,21 @@ class Daemon:
                 self.schd_task(date)
                 time.sleep(2)
 
+    def send(self,sub,id,value):
+        data="{'type':'update','data':{'sub'=%s,'id':'%s',%s:'%s'}}"%(sub,id,value)
+        self.message.send(data)
+
+
     def _timer_func( self ):
         # print "timer running at:",datetime.now()
-        # get json file
-        # check json if need to backup
-
-
         self.timer_id = self.timer_id + 1
-
         """
         没过5秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
         """
         if self.listen_thread.isAlive():
             pass
         else:
+            self.log.logger.warning('listen thread is dead ,restart it now')
             self.listen_thread = threading.Thread(target=self.listen)
             self.listen_thread.setDaemon(True)
             self.listen_thread.start()
@@ -208,21 +207,17 @@ class Daemon:
         for t in self.tp:
             if t.isAlive():
                 continue
+            self.log.logger.warning('there is a workpool is dead,restart it now')
             self.tp.remove(t)
 
             # self.logger.warning(
-            #   "thread id %s is dead, going to restart!!!" % (t.getName()))
-            newthread = WorkerPool(self.q, t.getName(), self.confip)
+            newthread = WorkerPool(self.q, t.getName(), self.confip,self.log)
             self.tp.append(newthread)
             newthread.setDaemon(True)
             newthread.start()
 
-        # update scheduler job
         self.t = Timer(self.timer_interval, self._timer_func)
         self.t.start()
-        # cur_t = time.strftime("%H:%M:%S")
-        # if cur_t == "00:00:00":
-        #   self.do_reset_job_timer("date")
 
     """
       读取到的所有的配置信息以task 为单位，用list 存储，
@@ -232,50 +227,98 @@ class Daemon:
     """
 
     def do_now( self, data ):
-        pass
+        now = datetime.now()
+        dict = data['data']
+        dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        if data['type']=='backup':
+            self.log.logger.info('create a new direct backup work')
+            dict['op'] = "write"
+        elif data['type']=='dump':
+            self.log.logger.info('create a new direct dump work')
+            dict['op']='dump'
+        elif data['type']=='recover':
+            self.log.logger.info('create a new direct recover work')
+            dict['op']='recover'
+        dict['ip'] = self.glusterlist
+        dict['threadId']='5'
+        work=Work(dict,self.log)
+        t = threading.Thread(target=work.start)
+        t.start()
+
 
     def schd_task( self, data ):
+        dict = data['data']
         if data['type'] == 'backup':  # 创建新任务
-            if data['op_code'] == 'direct':
+            if dict['run_sub'] == 'direct':
                 print "do backup use direct"
-                pass
-            elif data['op_code'] == 'queue':
+                self.do_now(data)
+            elif dict['run_sub'] == 'queue':
                 print "do backup use queue"
-                dict = data['data']
-                ms = dict['uuid']
-                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip)
+                dict['op'] = "write"
+                dict['op_code'] = 'direct'
+                ms = dict['id']
+                self.log.logger.info('create a new queue backup work,the id of it is %s' %ms)
+                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip,self.log)
                 new_task.start()
                 self.task_list[ms] = new_task
                 self.task_sum = self.task_sum + 1
                 pass
         elif data['type'] == 'revise':
             print "do revise"
-            dict = data['data']
-            ms = dict['uuid']
-            self.task_list[ms].updateconf(dict)
+            self.log.logger.info('change a work,the id of it is %s'%dict['id'])
+            ms = dict['id']
+            if self.task_list.has_key(ms):
+                self.task_list[ms].updateconf(dict)
+            else:
+                self.log.logger.error('No any work which id is %s' % ms)
+                self.send('alarm',ms,'No any work which id is %s' % ms)
+
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
+            self.do_now(data)
             pass
         elif data['type'] == 'suspend':  # 暂停
             print "do suspend"
-            dict = data['data']
-            ms = dict['uuid']
-            self.task_list[ms].add_suspendlist(ms)
+            self.log.logger.info('suspend a work,the id of it is %s' % dict['id'])
+            ms = dict['id']
+            if self.task_list.has_key(ms):
+                self.task_list[ms].add_suspendlist(ms)
+            else:
+                self.log.logger.error('No any work which id is %s' % ms)
+                self.send('alarm',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
             print "do delete"
-            dict = data['data']
-            ms = dict['uuid']
-            self.task_list[ms].do_remove_job()
-            del self.task_list[ms]
-            self.task_sum = self.task_sum - 1
+            self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
+            ms = dict['id']
+            if self.task_list.has_key(ms):
+                self.task_list[ms].do_remove_job()
+                del self.task_list[ms]
+                self.task_sum = self.task_sum - 1
+            else:
+                self.log.logger.error('No any work which id is %s'%ms)
+                self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'restart':  # 重启备份任务
             print "do restart"
-            dict = data['data']
-            ms = dict['uuid']
-            self.task_list[ms].del_suspendlist(ms)
+            self.log.logger.info('restart a work,the id of it is %s' % dict['id'])
+            ms = dict['id']
+            if self.task_list.has_key(ms):
+                self.task_list[ms].del_suspendlist(ms)
+            else:
+                self.log.logger.error('No any work which id is %s' % ms)
+                self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
-            print "do dump"
-            pass
+            if dict['run_sub'] == 'queue':
+                print "do dump in queue"
+                dict['op'] = "dump"
+                ms = dict['id']
+                self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
+                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip,self.log)
+                new_task.start()
+                self.task_list[ms] = new_task
+                self.task_sum = self.task_sum +1
+            elif dict['run_sub'] == 'direct':
+                print "do dump in direct"
+                self.do_now(data)
         elif data['type'] == 'update':
             oneline = data['data']
             if oneline['sub'] == 'log':
@@ -298,8 +341,6 @@ class Daemon:
                 self.glusterlist = oneline['gluster_config']
         elif data['type'] == 'initialize':  # 初始化
             print "do update initialze"
-            pass
-
     """
     守护进程主体：
     启动timer，此timer 主要更新备份周期的功能
@@ -307,44 +348,25 @@ class Daemon:
     """
 
     def _run( self ):
-        fp = open('/zyt/test', 'a')
-        fp.write('_run')
-        fp.close()
         """ run your fun"""
-        # self.logger.info("****run backup service***")
-        # global sock_info
         now = datetime.now()
-        # sys config:
         self.hostname = socket.gethostname()
-        # self.local_ip = socket.gethostbyname(self.hostname)
         print "run in :", self.hostname
-        # self.logger.info("run in:%s" % (self.hostname))
         os.system("ulimit -n " + "65535")
         # start timer:
         print "to start timer:"
-        # self.logger.debug("to start timer:")
+        self.log.logger.debug("to start timer:")
         self.t = Timer(self.timer_interval, self._timer_func)
-        # self.t.start()
-        # sock_info['start_time'] = str(now)
         print "load config info"
-        # self.logger.debug("load config info")
-        log = logging.getLogger('apscheduler.executors.default')
-        log.setLevel(logging.INFO)  # DEBUG
-        fmt = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-        h = logging.StreamHandler()
-        h.setFormatter(fmt)
-        log.addHandler(h)
         print " run job scheduler"
-        # self.logger.debug('run job scheduler')
+        self.log.logger.debug('run job scheduler')
         self.scheduler = BackgroundScheduler()
-        # threading pool init:
-
         print "to start tp:"
-        #  self.logger.debug("To start threading pool:")
+        self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
         self.tp = []
         for i in range(self.tp_size):
-            t = WorkerPool(self.q, i, self.confip)
+            t = WorkerPool(self.q, i, self.confip,self.log)
             self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
@@ -354,12 +376,14 @@ class Daemon:
         self.listen_thread.start()
         self.t.start()
 
+        hostname = str(socket.gethostname())
+        ip = socket.gethostbyname(hostname)
+        port = str(24007)
+        data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'port': '%s'}}" % (ip, hostname, port)
+        self.message.send(data)
+
         self.scheduler.start()
-        # self.dump_status()
         print "start threadpool over"
-        # self.logger.debug("start threadpool over")
-        # while True:
-        #    pass
-        # except (KeyboardInterrupt, SystemExit):
+        self.log.logger.debug("start threadpool over")
         """
         """
