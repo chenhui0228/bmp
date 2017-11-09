@@ -12,6 +12,8 @@ from log import MyLogging
 import logging
 import math
 import logging.handlers as handlers
+import ConfigParser
+
 
 
 version = "1.0.0"
@@ -94,10 +96,15 @@ class UDPServer(BaseRequestHandler):
 class Message:
     def __init__(self, ms_type):
         global q
+        cp = ConfigParser.ConfigParser()
+        cp.read('client.conf')
+        server_ip = cp.get('server', 'ip')
+        server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
         #mylogger = MyLogging()
         self.local_ip = get_ip2('eth0')
-        self.port = 1025
+        self.port = int(server_port)
+        self.send_ip=server_ip
         self.recv_state = "stop"
         self.send_status = "stop"
         self.ms_type = ms_type
@@ -106,13 +113,13 @@ class Message:
         self.tcpclient = ''
         self.server_thread = []
         self.q = q
-        #self.log =MyLogging().logger()
+        #self.log =mylogger
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
         return self.q.get()
 
-    def start_server(self):
+    def start_server(self):   # 监听
         ADDR = (self.local_ip, self.port)
         #self.log.logger.info('start TCP listen server')
         # init server:
@@ -150,7 +157,7 @@ class Message:
                     return e
             else:
                 print "error:data or address not exist ?"
-                #elf.log.logger.error("error:data or address not exist!")
+                #self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
             print "error:data or address not exist ?"
@@ -189,9 +196,18 @@ class Message:
             return "error:data or address not exist!"
         return 0
 
-
-    def send(self, info):
+    def issued(self,info):    # server发给client
         if self.ms_type == "tcp":
+            ret=self.tcpsend(info)
+        if self.ms_type == "udp":
+            ret=self.udpsend(info)
+        return ret
+
+    def send(self, data):       # client发给server
+        if self.ms_type == "tcp":
+            info={}
+            info['data']=str(data)
+            info['addr']=(self.send_ip,self.port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)

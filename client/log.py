@@ -77,20 +77,14 @@ class MyLogging(object):
     """this class use to define some
      functions for our own to use"""
 
-    def __init__(self, logger_name=__name__):
-        cp=ConfigParser.ConfigParser()
-        cp.read('client.conf')
-        log_level=cp.get('client','log_level')
-        log_file_name = cp.get('client', 'log_filename')
+    def __init__(self, log_level, log_file_name, logger_name=__name__):
         self.level = int(log_level)
         self.log_file_name = log_file_name
 
         self._logger = logging.getLogger(logger_name)
         self._logger.setLevel(self.level)
-        self._formatter = logging.Formatter('[%(asctime)s] [%(threadName)s.%(funcName)s] *%(levelname)s*: %(message)s')
-        self._ch=logging.FileHandler(self.log_file_name)
-        self._ch.setFormatter(self._formatter)
-        self._logger.addHandler(self._ch)
+        self._formatter = logging.Formatter(
+            '[%(asctime)s] [%(threadName)s.%(funcName)s] *%(levelname)s*: %(message)s')
 
         # logging.basicConfig(
         # level=self.level, format='[%(asctime)s] [%(name)s] [%(levelname)s]:
