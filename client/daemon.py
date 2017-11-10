@@ -249,8 +249,8 @@ class Daemon:
 
 
     def schd_task( self, data ):
-        dict = data['data']
         if data['type'] == 'backup':  # 创建新任务
+            dict = data['data']
             if dict['run_sub'] == 'direct':
                 #print "do backup use direct"
                 self.do_now(data)
@@ -267,6 +267,7 @@ class Daemon:
                 pass
         elif data['type'] == 'revise':
             print "do revise"
+            dict = data['data']
             self.log.logger.info('change a work,the id of it is %s'%dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -281,6 +282,7 @@ class Daemon:
             pass
         elif data['type'] == 'suspend':  # 暂停
             #print "do suspend"
+            dict = data['data']
             self.log.logger.info('suspend a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -290,6 +292,7 @@ class Daemon:
                 self.send('alarm',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
             #print "do delete"
+            dict = data['data']
             self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -301,6 +304,7 @@ class Daemon:
                 self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'restart':  # 重启备份任务
             #print "do restart"
+            dict = data['data']
             self.log.logger.info('restart a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -309,6 +313,7 @@ class Daemon:
                 self.log.logger.error('No any work which id is %s' % ms)
                 self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
+            dict = data['data']
             if dict['run_sub'] == 'queue':
                # print "do dump in queue"
                 dict['op'] = "dump"
