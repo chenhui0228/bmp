@@ -62,23 +62,21 @@ if __name__ == '__main__':
         os.mkdir(log_file_dir)
     log_file_name=log_file_dir+'client.log'
     mylogger = MyLogging(log_level,log_file_name)   # 初始化log
-    ms=Message("tcp")
-    ms.start_server()
     ip = ''
     cip = ''
     if not os.path.exists('/var/run/bak/'):
         os.mkdir('/var/run/bak/')
     if 'start' == sys.argv[1]:
         #print cip
-        daemon = Daemon('/var/run/bak/watch_process.pid',  ms,  mylogger, ip, cip)
+        daemon = Daemon('/var/run/bak/watch_process.pid',  mylogger, ip, cip)
         daemon.start()
     elif  'restart' == sys.argv[1]:
 
-        daemon = Daemon('/var/run/bak/watch_process.pid',  ms, mylogger, ip, cip)
+        daemon = Daemon('/var/run/bak/watch_process.pid', mylogger, ip, cip)
         daemon.restart()
     elif 'stop' == sys.argv[1]:
 
-        daemon = Daemon('/var/run/bak/watch_process.pid', ms,  mylogger, ip, cip,)
+        daemon = Daemon('/var/run/bak/watch_process.pid',  mylogger, ip, cip,)
         time.sleep(0.2)
         daemon.stop()
         sys.exit(1)

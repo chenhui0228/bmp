@@ -35,7 +35,7 @@ from message import Message
 import tempfile
 from  log import MyLogging
 import ConfigParser
-
+import warnings
 
 
 class Work():
@@ -49,22 +49,25 @@ class Work():
         ms = Message("tcp")
         self.message=ms
         self.sendpro=0
-        print "to init arglist"
+        #print "to init arglist"
         self.wait_start = datetime.strptime(arglist['wait_start'], "%Y-%m-%d %H:%M:%S")  # 开始等待
         self.arglist = arglist
-        print "work arglist is:", self.arglist, " time at:", datetime.now()
-        self.log.logger.debug('work arglist is ' + str(self.arglist))
+        #print "work arglist is:", self.arglist, " time at:", datetime.now()
+        #self.log.logger.info("work arglist is:", self.Z, " time at:", datetime.now())
+        #self.log.logger.debug('work arglist is ' + str(self.arglist))
         # self.max_size = 4194304  # 4M
         if self.arglist is None:
-            print "arg is NULL ?"
+            #print "arg is NULL ?"
             self.log.logger.warning('arg is NULL!')
-            self.send("arg is NULL ?")
+            self.send("alarm","arg is NULL ?")
             return
         return
 
     def send(self,sub,value):
-        data="{'type':'update','data':{'sub'=%s,'id':'%s',%s:'%s'}}"%(sub,self.arglist['id'],sub,value)
-        self.message.send(data)
+        data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error(ret)
 
     def do_mount(self):
         n=len(self.arglist['ip'])
@@ -75,13 +78,16 @@ class Work():
         while n>0:
             self.glusterip=self.arglist['ip'][n-1]
             try:
-                cmd = ("mount.glusterfs %s:/%s %s" % (self.glusterip, self.vol, self.mount_dir))
-                ret = os.system(cmd)
-                print "do mount succeed"
-                self.log.logger.info("do mount succeed")
-                return ret
+                cmd = ("mount.glusterfs %s:/%s %s 2>/dev/null" % (self.glusterip, self.vol, self.mount_dir))
+                try:
+                    ret = os.system(cmd)
+                    #print "do mount succeed"
+                    self.log.logger.info("do mount succeed")
+                    return ret
+                except:
+                    pass
             except Exception,e:
-                print ("do mount failed %s"%e)
+                #print ("do mount failed %s"%e)
                 self.send('log',"do mount failed %s"%e)
                 self.log.logger.warning("do mount failed")
             n=n-1
@@ -95,11 +101,11 @@ class Work():
             try:
                 cmd = ("mkdir -p %s" % dir)
                 ret = os.system(cmd)
-                print "do mkidr succeed"
+               # print "do mkidr succeed"
                 self.log.logger.info("do mkdir succeed")
                 return ret
             except Exception,e:
-                print ("do mkidr failed %s"%e)
+               # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
                 self.send('log',"do mkidr failed %s"%e)
                 return -1
@@ -109,12 +115,12 @@ class Work():
 
     def do_work(self,pd, vd):
         ret=0
-        print "do work"
+        #print "do work"
         if os.path.isdir(pd):
-            print "1\n"
+            #print "1\n"
             filelist=os.listdir(pd)
             if len(filelist) == 0:
-                print pd
+                #print pd
                 return
             for filename in filelist:
 
@@ -123,14 +129,14 @@ class Work():
                 except Exception,e:
                     self.log.logger.error(e)
 
-                print filepath + '\n'
+                #print filepath + '\n'
 
                 if os.path.isdir(filepath):
                     ret=self.do_write_dir(filepath,vd,filename)
                 else:
                     ret=self.do_write_file(filepath,vd)
         else:
-            print "0\n"
+            #print "0\n"
             ret=self.do_write_file(pd,vd)
         return ret
 
@@ -141,7 +147,7 @@ class Work():
         write_old = 0
         write_now = 0
         cmd = ('rsync -avlP %s %s' % (pd, vd))
-        print cmd
+       #print cmd
         try:
             fp = tempfile.TemporaryFile(mode='w+t')
             process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE)
@@ -156,7 +162,7 @@ class Work():
                         write_old = write_now
                         write_now = int(list[0])
                         write_all = write_all + (write_now - write_old)
-                        print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
+                        #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
                         pro=(int((write_all * 100) / self.proctotal))
                         if pro-self.sendpro>=5:
                             self.send('progress',str(pro))
@@ -174,18 +180,18 @@ class Work():
                             self.send('progress',str(pro))
                             self.sendpro=pro
                     else:
-                        print "size is not same"
+                        #print "size is not same"
                         return -1
                     break
             fp.close()
             error = process.stderr.read()
             if not error == '':
-                print 'error info:%s' % error
+                #print 'error info:%s' % error
                 self.log.logger.error("cmd %s work failed"%cmd)
                 self.send('log',"cmd %s work failed"%cmd)
                 return -1
-            print write_all
-            print 'finished'
+           # print write_all
+           # print 'finished'
             self.log.logger.info("cmd %s work finished"%cmd)
         except Exception,e:
             self.log.logger.error("cmd %s work failed %s"%(cmd,e))
@@ -208,11 +214,11 @@ class Work():
         try:
             cmd = ('umount %s' % (self.mount_dir))
             ret = os.system(cmd)
-            print "do close succeed"
+           # print "do close succeed"
             self.log.logger.info("do close succeed")
             return ret
         except Exception,e:
-            print e
+           # print e
             self.log.logger.error("do close failed %s"%e)
             self.send('log',"do close failed %s"%e)
             return -1
@@ -235,7 +241,7 @@ class Work():
         start_time=datetime.strptime(dict['start_date'], "%Y-%m-%d %H:%M:%S")
         if start_time>old_time:
             return 0
-        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] + "_" + old_time.strftime(
+        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] +"_"+self.arglist['id']+ "_" + old_time.strftime(
                 '%Y%m%d%H%M') + "/"
         if os.path.exists('%s/%s'%(self.mount_dir, self.oldvfile)):
             try:
@@ -243,7 +249,7 @@ class Work():
                 self.log.logger.info("delete %s succeed"%self.oldvfile)
                 return 0
             except Exception,e:
-                print "delete failed"
+                #print "delete failed"
                 self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
                 self.send('alarm',"delete %s failed %s" % (self.oldvfile,e))
                 return -1
@@ -251,13 +257,14 @@ class Work():
     def start(self):
         self.op=self.arglist['op']
         self.send('state', 'start')
+        warnings.filterwarnings('ignore')
         if self.op == 'write':
             if self.arglist.has_key('destination _ip'):
                 self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
             self.proctotal = self.get_file_size(self.pfile)
-            print self.proctotal
-            self.vfile = self.arglist['destination_address'] + self.arglist['name'] + "_" + self.wait_start.strftime(
+            #print self.proctotal
+            self.vfile = self.arglist['destination_address'] + self.arglist['name']+"_"+self.arglist['id'] + "_" + self.wait_start.strftime(
                 '%Y%m%d%H%M') + "/"  # 添加时间戳
             self.mount_dir = "/mnt/del/%s" % self.arglist['threadId']
             self.vol = self.arglist['destination_vol']
@@ -265,26 +272,27 @@ class Work():
 
             ret = self.do_mount()
             if ret != 0:
-                print "mount failed"
+                #print "mount failed"
                 self.send('state', 'failed')
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
-                print "mkdir failed"
+                #print "mkdir failed"
                 self.send('state', 'failed')
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
-                print "work failed"
+                #print "work failed"
                 self.send('state', 'failed')
                 return
             ret = self.do_delete()
             if ret != 0:
-                print "delete failed"
+               # print "delete failed"
+                self.log.logger.error("delete failed")
             ret = self.do_close()
-            print "end do_cloes"
+            #print "end do_cloes"
             if ret != 0:
                 time.sleep(2)
                 self.do_close()
@@ -307,7 +315,7 @@ class Work():
                 self.send('state', 'failed')
                 return
             ret = self.do_close()
-            print "end do_cloes"
+            #print "end do_cloes"
             if ret != 0:
                 time.sleep(2)
                 self.do_close()
@@ -320,14 +328,15 @@ class Work():
             self.mount_dir = "/mnt/del/%s" % self.arglist['threadId']
             self.vol = self.arglist['source_vol']
             self.vfile = self.arglist['destination_address']
-            self.pfile = self.arglist['source_address'] + "/" + self.arglist['name'] + '_'+\
+            self.pfile = self.arglist['source_address'] + "/" + self.arglist['name'] + '_'+self.arglist['id']+'_'+\
                          self.arglist['backup_time']
             ret = self.do_mount()
             if ret != 0:
                 self.send('state', 'failed')
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
-            ret = self.do_mkdir(self.vfile+'/'+self.arglist['name'] + '_'+self.arglist['backup_time'])
+            ret = self.do_mkdir(self.vfile+'/'+self.arglist['name'] + '_'+self.arglist['id']+'_'+\
+                         self.arglist['backup_time'])
             if ret != 0:
                 self.do_close()
                 self.send('state', 'failed')
@@ -344,6 +353,7 @@ class Work():
                 self.do_close()
                 self.send('state', 'failed')
                 return
-            print "end do_cloes"
+            #print "end do_cloes"
         self.send('state','success')
+        self.log.logger.info("the work %s is success"%self.arglist['name'])
         return

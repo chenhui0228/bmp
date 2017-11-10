@@ -46,7 +46,7 @@ class WorkerPool(threading.Thread):
         self.message=ms
         self.queue = workq
         self.thread_stop = False
-        print "tp to init ", i
+       # print "tp to init ", i
         #  self.logger.debug('tp to init: ' + str(i))
         self.work_id = 0
         self.name = str(i)
@@ -66,8 +66,8 @@ class WorkerPool(threading.Thread):
         # dicts['op'] = params['ip']
         for k, v in params.iteritems():
             dicts[k] = v
-        print "jsonDicts is:", dicts
-        #  self.logger.debug('jsonDicts is:' + str(dicts))
+        #print "jsonDicts is:", dicts
+        self.log.logger.debug('jsonDicts is:' + str(dicts))
         return dicts
 
     """
@@ -75,11 +75,8 @@ class WorkerPool(threading.Thread):
 
     """
 
-    def get_task_id(self):
-        if self.arglist.has_key('task_id'):
-            return self.arglist['task_id']
-        else:
-            return -1
+    def get_threadID(self):
+        return  self.threadID
 
 
     """
@@ -105,11 +102,11 @@ class WorkerPool(threading.Thread):
                     task = self.queue.get(block=True, timeout=20)  # 接收消息
 
                 except:
-                    print "get queue timerout!!!!!!!!!!!!"
+                    #print "get queue timerout!!!!!!!!!!!!"
                     self.log.logger.error("get queue timerout!!!!!!!!!!!!")
                     continue
 
-            print "task recv:%s ,task No:%d" % (task[0], task[1])
+            #print "task recv:%s ,task No:%d" % (task[0], task[1])
             self.log.logger.info("task recv:%s ,task No:%d" % (task[0], task[1]))
 
             """
@@ -118,8 +115,8 @@ class WorkerPool(threading.Thread):
             """
             if True:
                 task_d = eval(task[0])
-                print "bay bay", task
-                print "task_d is:", task_d
+                #print "bay bay", task
+                #print "task_d is:", task_d
                 self.arglist = self.jsonDicts(task_d)
             if self.arglist is None:
                 continue
@@ -133,11 +130,11 @@ class WorkerPool(threading.Thread):
 
             if not self.work:
                 return -1
-            print "todo work", self.threadID
+            
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
             res = self.queue.qsize()  # 判断消息队列大小
             if res > 0:
-                print("ahua!There are still %d tasks to do" % (res))
+                #print("ahua!There are still %d tasks to do" % (res))
                 self.log.logger.warning("There are still %d tasks to do" % (res))

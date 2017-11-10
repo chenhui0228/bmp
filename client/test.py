@@ -72,6 +72,14 @@ def suspend(ms,addr):
     info['addr']=addr
     ms.issued(info)
 
+def showtask(ms,addr):
+    data ="{'type':'show'}"
+    info={}
+    info['data']=data
+    info['addr']=addr
+    ms.issued(info)
+
+
 def delete(ms,addr):
     data ="{'type':'delete','data':{'id':'12312'} }"
     info={}

@@ -81,7 +81,7 @@ class SingleTask():
         self.st['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         self.st['ip'] = self.gluster
         if not self.st['id'] in self.suspendlist:
-            print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
+            #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             self.queue.put([str(self.st), 2], block=True, timeout=None)
@@ -105,7 +105,7 @@ class SingleTask():
         如果当前时间大于开始时间：
         则应该根据备份计算出下一次备份的时间
         """
-        print "**********************set start time:", time.asctime(time.localtime(time.time())), " name is:", self.name
+        #print "**********************set start time:", time.asctime(time.localtime(time.time())), " name is:", self.name
         self.log.logger.info("Set start time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
         cronconf = self.st['cron']
         self.job = self.schd.add_job(self.do_insert_job, 'cron', year=cronconf['year'], month=cronconf['month'],

@@ -37,7 +37,7 @@ from work import Work
 
 
 class Daemon:
-    def __init__( self, pidfile, Message, mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
+    def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
         # self.logger = logging.getLogger(__name__)
         self.log=mylogger
@@ -75,12 +75,13 @@ class Daemon:
             pid = os.fork()  # 第一次fork，生成子进程，脱离父进程
             if pid > 0:
                 print "backup work start in backend!"
-                # self.logger.info("backup work start in backend!")
+                self.log.logger.info("backup work start in backend!")
                 sys.exit(0)  # 退出主进程
         except OSError, e:
             sys.stderr.write('fork #1 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
-            self.log.logger.error('fork #1 failed: %d (%s)\n' %(e.errno, e.strerror))
+            self.log.logger.error('fork #1 failed: %d (%s)\n' %
+                              (e.errno, e.strerror))
             sys.exit(1)
 
         os.chdir("/")  # 修改工作目录
@@ -94,7 +95,8 @@ class Daemon:
         except OSError, e:
             sys.stderr.write('fork #2 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
-            self.log.logger.error('fork #2 failed: %d (%s)\n' %(e.errno, e.strerror))
+            self.log.logger.error('fork #2 failed: %d (%s)\n' %
+                              (e.errno, e.strerror))
             sys.exit(1)
 
             # 重定向文件描述符
@@ -136,14 +138,14 @@ class Daemon:
 
             # 启动监控
         self.log.logger.info('client start now')
-        # self._daemonize()
+        self._daemonize()
         self._run()
 
     def stop( self ):
         # 从pid文件中获取pid
 
         try:
-            self.message.closeall()
+           # self.message.closeall()
             pf = file(self.pidfile, 'r')
             pid = int(pf.read().strip())
             pf.close()
@@ -167,7 +169,7 @@ class Daemon:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                print str(err)
+                #print str(err)
                 sys.exit(1)
 
     def restart( self ):
@@ -178,16 +180,19 @@ class Daemon:
         while True:
             if not self.message.q.empty():
                 msg = self.message.get_queue()
-                print msg
+                #print msg
                 msg_data = msg.split(":", 1)[1]
-                print msg_data
+                #print msg_data
+                self.log.logger.info("get msg is that %s"%msg_data)
                 date = eval(msg_data)
                 self.schd_task(date)
-                time.sleep(2)
+            time.sleep(1)
 
     def send(self,sub,id,value):
-        data="{'type':'update','data':{'sub'='%s','id':'%s',%s:'%s'}}"%(sub,id,value)
-        self.message.send(data)
+        data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,id,sub,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error(ret)
 
 
     def _timer_func( self ):
@@ -240,20 +245,17 @@ class Daemon:
             self.log.logger.info('create a new direct recover work')
             dict['op']='recover'
         dict['ip'] = self.glusterlist
-        dict['threadId']='5'
-        work=Work(dict,self.log)
-        t = threading.Thread(target=work.start)
-        t.start()
+        self.qq.put([str(dict), 2], block=True, timeout=None)
 
 
     def schd_task( self, data ):
         dict = data['data']
         if data['type'] == 'backup':  # 创建新任务
             if dict['run_sub'] == 'direct':
-                print "do backup use direct"
+                #print "do backup use direct"
                 self.do_now(data)
             elif dict['run_sub'] == 'queue':
-                print "do backup use queue"
+                #print "do backup use queue"
                 dict['op'] = "write"
                 dict['op_code'] = 'direct'
                 ms = dict['id']
@@ -278,7 +280,7 @@ class Daemon:
             self.do_now(data)
             pass
         elif data['type'] == 'suspend':  # 暂停
-            print "do suspend"
+            #print "do suspend"
             self.log.logger.info('suspend a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -287,7 +289,7 @@ class Daemon:
                 self.log.logger.error('No any work which id is %s' % ms)
                 self.send('alarm',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
-            print "do delete"
+            #print "do delete"
             self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -298,7 +300,7 @@ class Daemon:
                 self.log.logger.error('No any work which id is %s'%ms)
                 self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'restart':  # 重启备份任务
-            print "do restart"
+            #print "do restart"
             self.log.logger.info('restart a work,the id of it is %s' % dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
@@ -308,7 +310,7 @@ class Daemon:
                 self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
             if dict['run_sub'] == 'queue':
-                print "do dump in queue"
+               # print "do dump in queue"
                 dict['op'] = "dump"
                 ms = dict['id']
                 self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
@@ -317,30 +319,14 @@ class Daemon:
                 self.task_list[ms] = new_task
                 self.task_sum = self.task_sum +1
             elif dict['run_sub'] == 'direct':
-                print "do dump in direct"
+                #print "do dump in direct"
                 self.do_now(data)
-        elif data['type'] == 'update':
-            oneline = data['data']
-            if oneline['sub'] == 'log':
-                print "dp update log"
-                pass
-            elif oneline['sub'] == 'progress':
-                print "do update progress"
-                pass
-            elif oneline['sub'] == 'alarm':
-                print "do update alarm"
-                pass
-            elif oneline['sub'] == 'result':
-                print "do update result"
-                pass
-            elif oneline['sub'] == 'state':
-                print "do update state"
-                pass
-            elif oneline['sub'] == 'gluster_config':
-                print "do update gluster_config"
-                self.glusterlist = oneline['gluster_config']
-        elif data['type'] == 'initialize':  # 初始化
-            print "do update initialze"
+        elif data['type'] == 'show':
+            for onetask in self.task_list:
+                print onetask
+        else:
+            self.log.logger.error("get some messages which is to server")
+
     """
     守护进程主体：
     启动timer，此timer 主要更新备份周期的功能
@@ -351,26 +337,32 @@ class Daemon:
         """ run your fun"""
         now = datetime.now()
         self.hostname = socket.gethostname()
-        print "run in :", self.hostname
+        #print "run in :", self.hostname
         os.system("ulimit -n " + "65535")
         # start timer:
-        print "to start timer:"
+        #print "to start timer:"
         self.log.logger.debug("to start timer:")
         self.t = Timer(self.timer_interval, self._timer_func)
-        print "load config info"
-        print " run job scheduler"
+        #print "load config info"
+        #print " run job scheduler"
         self.log.logger.debug('run job scheduler')
         self.scheduler = BackgroundScheduler()
-        print "to start tp:"
+        #print "to start tp:"
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
+        self.qq=Queue.Queue()
         self.tp = []
         for i in range(self.tp_size):
             t = WorkerPool(self.q, i, self.confip,self.log)
             self.tp.append(t)
+        self.drictway= WorkerPool(self.qq, 5, self.confip,self.log)
+        self.tp.append(self.drictway)
         for t in self.tp:
             t.setDaemon(True)
             t.start()
+        self.log.logger.debug("To start  listen:")
+        self.message = Message("tcp")
+        self.message.start_server()
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
@@ -380,10 +372,12 @@ class Daemon:
         ip = socket.gethostbyname(hostname)
         port = str(24007)
         data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'port': '%s'}}" % (ip, hostname, port)
-        self.message.send(data)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error(ret)
 
         self.scheduler.start()
-        print "start threadpool over"
+        #print "start threadpool over"
         self.log.logger.debug("start threadpool over")
         """
         """

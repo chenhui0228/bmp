@@ -73,7 +73,7 @@ class TCPServer(BaseRequestHandler):
                 # self.request.sendall('server response!')
                 do_put(response)
                 self.request.sendto(response, self.client_address)
-                print "address=", address, "recv data:", data
+                #print "address=", address, "recv data:", data
                 self.finish()
 
 
@@ -85,7 +85,7 @@ class UDPServer(BaseRequestHandler):
             # data = self.request.recv(4096)
             data = self.request[0]
             if len(data) > 0:
-                print "address=", address, "recv data:", data
+                #print "address=", address, "recv data:", data
                 cur_thread = threading.current_thread()
                 response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
@@ -97,7 +97,7 @@ class Message:
     def __init__(self, ms_type):
         global q
         cp = ConfigParser.ConfigParser()
-        cp.read('client.conf')
+        cp.read('/zyt/clinet/client.conf')
         server_ip = cp.get('server', 'ip')
         server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
@@ -156,11 +156,11 @@ class Message:
                     #self.log.logger.error('UDP send failed %s'%e)
                     return e
             else:
-                print "error:data or address not exist ?"
+                #print "error:data or address not exist ?"
                 #self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
-            print "error:data or address not exist ?"
+            #print "error:data or address not exist ?"
             #self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
@@ -170,28 +170,28 @@ class Message:
             return
         ms = ''
         address = ''
-        print 'use TCP send %s'%str(info)
+        #print 'use TCP send %s'%str(info)
         #self.log.logger.info('use TCP send %s'%str(info))
         if info.has_key('data'):
             ms = info['data']
             if info.has_key('addr'):
-                print info
+                #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.sendto(ms, info['addr'])
                     server_reply = self.tcpclient.recv(1024)
-                    print server_reply
+                    #print server_reply
                     self.tcpclient.close()
                 except Exception, e:
                     #self.log.logger.error('UDP send failed %s' % e)
                     return e
             else:
-                print "error:data or address not exist ?"
+                #print "error:data or address not exist ?"
                 #self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
-            print "error:data or address not exist ?"
+            #print "error:data or address not exist ?"
             #self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
