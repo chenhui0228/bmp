@@ -21,6 +21,13 @@
       </el-breadcrumb>
     </el-col>
 
+    <el-col :span="24" style="margin-top:5px;margin-bottom: 10px">
+      <el-tabs value="backup" @tab-click="handleClick">
+        <el-tab-pane label="备份任务" name="backup"></el-tab-pane>
+        <el-tab-pane label="恢复任务" name="recover"></el-tab-pane>
+      </el-tabs>
+    </el-col>
+
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
@@ -34,13 +41,13 @@
             <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getWorker">查询</el-button>
+            <el-button type="primary" @click="getTasks">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
 
       <!--列表-->
-      <el-table :data="workers" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="tasks" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
         <!--<el-table-column type="index" width="60">-->
@@ -49,33 +56,33 @@
           <template slot-scope="props">
             <el-form label-position="left" inline class="table-expand">
               <el-form-item label="任务名">
-                <span>{{ props.row.name }}</span>
+                <span>{{ props.row.task.name }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
-                <span>{{ props.row.create_at }}</span>
+                <span>{{ props.row.task.create_at }}</span>
               </el-form-item>
               <el-form-item label="更新时间">
-                <span>{{ props.row.updated_at }}</span>
+                <span>{{ props.row.task.updated_at }}</span>
               </el-form-item>
               <el-form-item label="开始时间">
-                <span>{{ props.row.start_time }}</span>
+                <span>{{ props.row.task.start_time }}</span>
               </el-form-item>
               <el-form-item label="源地址">
-                <span>{{ props.row.source }}</span>
+                <span>{{ props.row.task.source }}</span>
               </el-form-item>
               <el-form-item label="目的地址">
-                <span>{{ props.row.destination }}</span>
+                <span>{{ props.row.task.destination }}</span>
               </el-form-item>
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="任务名"sortable>
+        <el-table-column prop="task.name" label="任务名"sortable>
         </el-table-column>
-        <el-table-column prop="source" label="源地址">
+        <el-table-column prop="task.source" label="源地址">
         </el-table-column>
-        <el-table-column prop="destination" label="目标地址">
+        <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="start_time" label="开始时间" sortable>
+        <el-table-column prop="task.start_time" label="开始时间" v-if="isVisible" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -91,14 +98,27 @@
         </el-table-column>
       </el-table>
 
+      <!--工具条-->
+      <el-col :span="24" class="toolbar" style="margin-top: 5px;">
+        <el-pagination
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :page-sizes="[10, 15, 20, 30]"
+          :page-size="per_page"
+          :current-page="page"
+          :total="total" style="float:right;margin-right: 5px">
+        </el-pagination>
+      </el-col>
+
       <!--编辑框 -->
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="name" label="主机名">
+          <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="date" placeholder="选择日期" v-model="editForm.start_time"></el-date-picker>
+            <el-date-picker type="datetime" placeholder="选择日期" v-model="editForm.start_time"></el-date-picker>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
@@ -119,11 +139,11 @@
       <!--新建框-->
       <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="name" label="主机名">
+          <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="date" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
+            <el-date-picker type="datetime" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
@@ -145,25 +165,10 @@
   </el-row>
 </template>
 <script>
-  import { reqGetWorkerList} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask} from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
-    created(){
-      bus.$on('setUserName', (text) => {
-        console.log("text");
-        console.log(text);
-        this.sysUserName = text;
-      })
-    },
     data() {
-      var validateIp = (rule, value, callback) => {
-        var ip = /^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}$/
-        if (!ip.test(value)) {
-          callback(new Error('输入IP格式不正确，请重新输入！'));
-        }else{
-          callback();
-        }
-      };
       return {
         sysUserName: '',
         filters: {
@@ -184,7 +189,7 @@
         }],
         listLoading: false,
         isVisible:true,
-        workers:[],
+        tasks:[],
         total: 0,
         page: 1,
         per_page: 10,
@@ -196,9 +201,6 @@
         editFormRules: {
           name: [
             {required: true, message: '请输入主机名', trigger: 'blur'}
-          ],
-          ip: [
-            {required: true, validator: validateIp, trigger: 'blur'}
           ],
           owner: [
             {required: true, message: '请输入角色', trigger: 'blur'}
@@ -232,18 +234,27 @@
       }
     },
     methods: {
+      handleClick(tag) {
+        if(tag.index === '1') {
+          this.isVisible = false;
+          console.log(this.isVisible)
+        }else{
+          this.isVisible = true;
+          console.log(this.isVisible)
+        }
+      },
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        this.getWorker();
+        this.getTasks();
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        this.getWorker();
+        this.getTasks();
       },
       //获取用户列表
-      getWorker: function () {
+      getTasks: function () {
         let para = {
           user: this.sysUserName,
 //          page: this.page,
@@ -253,9 +264,9 @@
         this.listLoading = true;
         this.isVisible = false;
         //NProgress.start();
-        reqGetWorkerList(para).then((res) => {
+        reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
-          this.workers = res.data.workers;
+          this.tasks = res.data.tasks;
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
@@ -299,7 +310,7 @@
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
-                this.getWorker();
+                this.getTasks();
               });
             });
           }
@@ -337,7 +348,7 @@
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
-              this.getWorker();
+              this.getTasks();
             });
           }
           else{
@@ -359,7 +370,7 @@
               message: '删除成功',
               type: 'success'
             });
-            this.getWorker();
+            this.getTasks();
           });
         }).catch(() => {
         });
@@ -384,7 +395,7 @@
               message: '删除成功',
               type: 'success'
             });
-            this.getWorker();
+            this.getTasks();
           });
         }).catch(() => {
 
@@ -398,7 +409,7 @@
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username || '';
       }
-      this.getWorker();
+      this.getTasks();
     }
   }
 </script>
