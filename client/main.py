@@ -59,7 +59,7 @@ if __name__ == '__main__':
     work_dir=cp.get('client', 'work_dir')
     create_dir(work_dir)
     if not os.path.exists(log_file_dir):
-        os.mkdir(log_file_dir)
+        os.makedirs(log_file_dir)
     log_file_name=log_file_dir+'client.log'
     mylogger = MyLogging(log_level,log_file_name)   # 初始化log
     ip = ''

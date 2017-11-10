@@ -31,10 +31,10 @@ if __name__ == '__main__':
     cp.read('create.conf')
     addrl=cp.get('work','ip')
     addr=(addrl,1025)
-    data="{'type':'backup','data':{'id':'12312','name':'%s','user':'zyt'," \
+    data="{'type':'backup','data':{'id':'%s','name':'%s','user':'zyt'," \
          "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
          "'destination_vol':'%s','duration':'%s','run_sub':'queue','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-         "'second':'%s','start_date':'%s'}}}"%(cp.get('work','name'),cp.get('work','ip'),cp.get('work','source'),cp.get('work','destination').split(':')[0],cp.get('work','destination').split(':')[1],cp.get('work','duration'),cp.get('work','year'),cp.get('work','month'),cp.get('work','day'),cp.get('work','week'),cp.get('work','day_of_week'),cp.get('work','hour'),cp.get('work','minute'),cp.get('work','second'),cp.get('work','start_date'))
+         "'second':'%s','start_date':'%s'}}}"%(cp.get('work','id'),cp.get('work','name'),cp.get('work','ip'),cp.get('work','source'),cp.get('work','destination').split(':')[0],cp.get('work','destination').split(':')[1],cp.get('work','duration'),cp.get('work','year'),cp.get('work','month'),cp.get('work','day'),cp.get('work','week'),cp.get('work','day_of_week'),cp.get('work','hour'),cp.get('work','minute'),cp.get('work','second'),cp.get('work','start_date'))
     info={}
     info['data']=data
     info['addr']=addr
