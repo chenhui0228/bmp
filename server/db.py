@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*
+
 from db.sqlalchemy import models
 from db.sqlalchemy import api as db_api
 
@@ -95,14 +97,37 @@ def t7(db):
 def t8():
     from threading import Timer
 
+
+
+def user_create_test(db):
+    user = {'name':'lucy', 'password':'123456'}
+    db.create_user(user)
+
+def role_create_test(db):
+    role = {
+        'name':'admin',
+        'description': u'管理员'.encode('utf-8')
+    }
+    db.role_create(role)
+
 if __name__ == '__main__':
 
-    db = db_api.get_db(type='sqlite', path='sqlite:///test.db')
+
+    conf = {
+        'driver':'mysql',
+        'user': 'backup',
+        'password': '123456',
+        'host': '10.202.127.11',
+        'database': 'test',
+    }
+    db = db_api.get_database(conf)
     #t2(db)
     #t3(db)
     #t1(db)
     #t5(db)
-    t6(db)
+    #t6(db)
     #t7(db)
+    #user_create_test(db)
+    role_create_test(db)
 
 

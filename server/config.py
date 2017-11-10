@@ -502,6 +502,10 @@ def attributes(full_attribute_name):
     # Return a reference to the attribute.
     return attr
 
+
+SUPERROLE = "superrole"
+
+
 if __name__ == '__main__':
     cfg = Config()
     cfg.update('server2.conf')

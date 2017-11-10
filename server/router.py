@@ -214,17 +214,26 @@ class UserController(Controller):
         users , total=  self.db.get_users(**action_args)
         result = list()
         for p in users:
-            result.append(p.to_dict())
+            u = p.to_dict()
+            u['role'] = p.role.name if p.role else ''
+            result.append(u)
         return {'total': total, 'users': result}
 
     @json_out
     def detail(self, action_args):
-        self.index(action_args)
+        users , total = self.db.get_users(**action_args)
+        result = list()
+        for p in users:
+            result.append(p.to_dict())
+        return {'total': total, 'users': result}
 
     @json_out
     def show(self, action_args):
         id = action_args.get('id')
         user = self.db.get_user(id)
+        role = user.role
+        result = user.to_dict()
+        result['role'] = role.name if role else ''
         return {'user': user.to_dict()}
 
     def create(self, action_args):
@@ -306,6 +315,68 @@ class ReportController(Controller):
     def tasks(self, action_args):
         return action_args
 
+
+class RoleController(Controller):
+    @json_out
+    def index(self, action_args):
+        roles , total=  self.db.role_list(**action_args)
+        result = list()
+        for role in roles:
+            result.append(role.to_dict())
+        return {'total': total, 'roles': result}
+
+    @json_out
+    def show(self, action_args):
+        id = action_args.get('id')
+        role = self.db.role_get(id)
+        return {'role':role.to_dict()}
+
+    def create(self, action_args):
+        role = self.db.role_create(action_args)
+        return {'role': role.to_dict()}
+
+    def update(self, action_args):
+        role = self.db.role_update(action_args)
+        return {'role': role.to_dict()}
+
+    def delete(self, action_args):
+        id = action_args.get('id')
+        return self.db.role_delete(id)
+
+
+class GroupController(Controller):
+    @json_out
+    def index(self, action_args):
+        groups , total=  self.db.group_list(**action_args)
+        result = list()
+        for group in groups:
+            result.append(group.to_dict())
+        return {'total': total, 'groups': result}
+
+
+    @json_out
+    def show(self, action_args):
+        id = action_args.get('id')
+        group = self.db.group_get(id)
+        return {'group': group.to_dict()}
+
+    def create(self, action_args):
+        group = self.db.group_create(action_args)
+        return {'group': group.to_dict()}
+
+
+    def update(self, action_args):
+        group = self.db.group_update(action_args)
+        return {'group': group.to_dict()}
+
+    def delete(self, action_args):
+        id = action_args.get('id')
+        return self.db.group_delete(id)
+
+class OpLogController(Controller):
+    def index(self, action_args):
+        pass
+
 class BackupMapper(Mapper):
     def resource(self, member_name, collection_name, **kwargs):
         kwargs['path_prefix'] = 'backup'
@@ -326,6 +397,10 @@ class APIRouter(object):
         self.resources['users'] = Resource(UserController(self.conf))
         self.resources['backupstates'] = Resource(BackupStateController(self.conf))
         self.resources['reports'] = Resource(ReportController(self.conf))
+        self.resources['roles'] = Resource(RoleController(self.conf))
+        self.resources['groups'] = Resource(GroupController(self.conf))
+        self.resources['oplogs'] = Resource(OpLogController(self.conf))
+
         self.mapper.resource('task','tasks',
                              controller=self.resources['tasks'],
                              collection={'detail': 'GET'})
@@ -351,6 +426,18 @@ class APIRouter(object):
                              member={'generate': 'GET'},
                              collection={'tasks': 'GET'}
                              )
+
+        self.mapper.resource('role', 'roles',
+                             controller=self.resources['roles'],
+                             collection={'detail': 'GET'})
+
+        self.mapper.resource('group', 'groups',
+                             controller=self.resources['groups'],
+                             collection={'detail': 'GET'})
+
+        self.mapper.resource('oplog', 'oplogs',
+                             controller=self.resources['oplogs'])
+
 
     def dispatch(self, req):
         environ = req.wsgi_environ
