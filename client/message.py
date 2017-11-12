@@ -23,22 +23,6 @@ local_ip = socket.gethostbyname(socket.gethostname())
 q = Queue.Queue()
 
 
-class keystone:
-    def __init__(self):
-        print "keystone service init"
-
-    def start(self):
-        print "keystone serveice start"
-
-
-class Quota:
-    def __init__(self):
-        print "Quota load"
-
-    def load(self):
-        print ""
-
-
 def do_put(info):
     global q
     q.put(info)

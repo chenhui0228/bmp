@@ -49,8 +49,6 @@ def create_dir(path):
                 except:
                     pass
 
-
-
 if __name__ == '__main__':
     cp = ConfigParser.ConfigParser()
     cp.read('client.conf')

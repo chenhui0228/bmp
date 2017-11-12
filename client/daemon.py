@@ -41,7 +41,7 @@ class Daemon:
                   stderr='/dev/stderr' ):
         # self.logger = logging.getLogger(__name__)
         self.log=mylogger
-        self.message = Message
+        con = threading.Condition()
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -67,6 +67,7 @@ class Daemon:
         self.worktable_id = 0
         self.statetable_id = ""
         self.tp = []
+
         # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
 
     def _daemonize( self ):
@@ -130,11 +131,12 @@ class Daemon:
             pid = None
 
         if pid:
-            message = 'pidfile %s already exist. Daemon already running!\n'
-            self.log.logger.error('pidfile %s already exist. Daemon already running!\n' % self.pidfile)
-            sys.stderr.write(message % self.pidfile)
-            sys.stderr.flush()
-            sys.exit(1)
+            if os.path.exists('/proc/%s'%pid):
+                message = 'pidfile %s already exist. Daemon already running!\n'
+                self.log.logger.error('pidfile %s already exist. Daemon already running!\n' % self.pidfile)
+                sys.stderr.write(message % self.pidfile)
+                sys.stderr.flush()
+                sys.exit(1)
 
             # 启动监控
         self.log.logger.info('client start now')
@@ -178,15 +180,15 @@ class Daemon:
 
     def listen( self ):
         while True:
-            if not self.message.q.empty():
-                msg = self.message.get_queue()
-                #print msg
-                msg_data = msg.split(":", 1)[1]
-                #print msg_data
-                self.log.logger.info("get msg is that %s"%msg_data)
-                date = eval(msg_data)
-                self.schd_task(date)
-            time.sleep(1)
+                if not self.message.q.empty():
+                    msg = self.message.get_queue()
+                    #print msg
+                    msg_data = msg.split(":", 1)[1]
+                    #print msg_data
+                    self.log.logger.info("get msg is that %s"%msg_data)
+                    date = eval(msg_data)
+                    self.schd_task(date)
+                time.sleep(1)
 
     def send(self,sub,id,value):
         data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,id,sub,value)
