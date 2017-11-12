@@ -21,11 +21,17 @@ up_time = datetime.now()
 local_host = socket.gethostname
 local_ip = socket.gethostbyname(socket.gethostname())
 q = Queue.Queue()
+con=threading.Condition()
 
 
 def do_put(info):
     global q
+    global con
     q.put(info)
+    con.acquire()
+    con.notify()
+    con.release()
+
 
 
 class Performance:
@@ -104,6 +110,8 @@ class Message:
         return self.q.get()
 
     def start_server(self):   # 监听
+        global con
+        self.con=con
         ADDR = (self.local_ip, self.port)
         #self.log.logger.info('start TCP listen server')
         # init server:
