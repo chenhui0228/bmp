@@ -50,7 +50,7 @@
         </el-table-column>
         <el-table-column prop="port" label="端口号">
         </el-table-column>
-        <el-table-column prop="owner" label="用户" sortable>
+        <el-table-column prop="user.name" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -89,7 +89,7 @@
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="owner" label="用户">
-            <el-input v-model="editForm.owner" auto-complete="off"></el-input>
+            <el-input v-model="editForm.user.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="port" label="端口号">
             <el-input v-model="editForm.port" auto-complete="off"></el-input>
@@ -209,7 +209,8 @@
           ip: '',
           owner: '',
           port: '',
-          description: ''
+          description: '',
+          user: ''
         },
 
         //新增数据相关

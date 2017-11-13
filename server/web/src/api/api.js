@@ -52,7 +52,7 @@ export const reqDelGroup = (group_id,params) => { return axios.delete(`${base}/b
 //组列表相关API结束
 
 //主机管理相关
-export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers`, { params: params }) }
+export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers/detail`, { params: params }) }
 
 export const reqEditWorker = (worker_id,user,params) => { return axios.put(`${base}/backup/workers/${worker_id}`,params,{params: user}) }
 
