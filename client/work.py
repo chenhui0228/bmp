@@ -261,7 +261,7 @@ class Work():
         self.op=self.arglist['op']
         self.send('state', 'start')
         warnings.filterwarnings('ignore')
-        if self.op == 'write':
+        if self.op == 'backup':
             if self.arglist.has_key('destination _ip'):
                 self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
@@ -356,6 +356,9 @@ class Work():
                 self.do_close()
                 self.send('state', 'failed')
                 return
+        else:
+            self.send('state', 'failed')
+            return
             #print "end do_cloes"
         self.send('state','success')
         self.log.logger.info("the work %s is success"%self.arglist['name'])

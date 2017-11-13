@@ -233,29 +233,29 @@ class Daemon:
     """
 
     def do_date( self, data ):
-        now = datetime.now()
         dict = data['data']
         ms=dict['id']
-        dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         if data['type']=='backup':
             self.log.logger.info('create a new direct backup work')
-            dict['op'] = "write"
+            dict['op'] = "backup"
         elif data['type']=='dump':
             self.log.logger.info('create a new direct dump work')
             dict['op']='dump'
         elif data['type']=='recover':
             self.log.logger.info('create a new direct recover work')
             dict['op']='recover'
-        dict['ip'] = self.glusterlist
         new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
         new_task.start('date')
+        self.task_list[ms] = new_task
+        self.task_sum = self.task_sum + 1
+
 
     def do_cron(self,data):
         dict = data['data']
         ms = dict['id']
         if data['type']=='backup':
             self.log.logger.info('create a new queue backup work,the id of it is %s' % ms)
-            dict['op'] = "write"
+            dict['op'] = "backup"
         elif data['type']=='dump':
             self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
             dict['op']='dump'
@@ -276,6 +276,13 @@ class Daemon:
             elif dict['run_sub'] == 'cron':
                 #print "do backup use queue"
                 self.do_cron(data)
+            elif dict['run_sub'] == 'immediately':
+                dict = data['data']
+                dict['op'] = "backup"
+                dict['ip'] = self.glusterlist
+                now = datetime.now()
+                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
+                self.qq.put([str(dict), 2], block=True, timeout=None)
         elif data['type'] == 'revise':
             print "do revise"
             dict = data['data']
@@ -289,8 +296,16 @@ class Daemon:
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
-            self.do_date(data)
-            pass
+            if dict['run_sub']=='date':
+                self.do_date(data)
+            elif dict['run_sub'] =='immediately':
+                dict = data['data']
+                dict['op'] = "recover"
+                dict['ip'] = self.glusterlist
+                now = datetime.now()
+                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
+                self.qq.put([str(dict), 2], block=True, timeout=None)
+
         elif data['type'] == 'suspend':  # 暂停
             #print "do suspend"
             dict = data['data']
@@ -331,6 +346,13 @@ class Daemon:
             elif dict['run_sub'] == 'date':
                 #print "do dump in direct"
                 self.do_date(data)
+            elif dict['run_sub'] == 'immediately':
+                dict = data['data']
+                dict['op'] = "dump"
+                dict['ip'] = self.glusterlist
+                now = datetime.now()
+                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
+                self.qq.put([str(dict), 2], block=True, timeout=None)
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
@@ -360,10 +382,13 @@ class Daemon:
         #print "to start tp:"
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
+        self.qq = Queue.Queue(self.qdpth)
         self.tp = []
         for i in range(self.tp_size):
             t = WorkerPool(self.q, i, self.confip,self.log)
             self.tp.append(t)
+        im_d = WorkerPool(self.qq, self.tp_size, self.confip, self.log)
+        self.tp.append(im_d)
         for t in self.tp:
             t.setDaemon(True)
             t.start()
