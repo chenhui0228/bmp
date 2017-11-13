@@ -35,7 +35,7 @@ def d_backup(ms,addr):
     ms.issued(info)
 
 def d_dump(ms,addr):
-    data ="{'type':'dump','data':{'id':'12321','script':'ls'," \
+    data ="{'type':'dump','data':{'id':'12321','script':'/tmp/test.sh'," \
          "'source_ip':'10.202.125.83','source_address':'/data/dump/','destination_address': '/qwe/'," \
          "'destination_vol':'rp','run_sub':'date','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
