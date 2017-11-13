@@ -72,11 +72,13 @@ export const reqDelVolume = (volume_id,params) => { return axios.delete(`${base}
 //卷管理相关结束
 
 //任务管理相关
-export const reqGetTaskList = params => { return axios.get(`${base}/backup/tasks/detail`, { params: params }) }
+export const reqGetTaskList = params => { return axios.get(`${base}/backup/tasks/detail`, { params: params }) };
 
-export const reqEditTask = (task_id,user,params) => { return axios.put(`${base}/backup/tasks/${task_id}`,params,{params: user}) }
+export const reqEditTask = (task_id,user,params) => { return axios.put(`${base}/backup/tasks/${task_id}`,params,{params: user}) };
 
-export const reqAddTask = (user,params) => { return axios.post(`${base}/backup/tasks`, params, {params: user}) }
+export const reqAddTask = (user,params) => { return axios.post(`${base}/backup/tasks`, params, {params: user}) };
 
-export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/backup/tasks/${task_id}`, { params: params }) }
+export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/backup/tasks/${task_id}`, { params: params }) };
+
+export const reqTaskAction = (task_id, params) => { return axios.post(`${base}/tasks/${task_id}/action`, { params: params}) };
 //任务管理相关结束

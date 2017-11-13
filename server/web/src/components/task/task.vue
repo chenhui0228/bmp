@@ -9,7 +9,7 @@
   .table-expand .el-form-item {
     margin-right: 0;
     margin-bottom: 0;
-    width: 50%;
+    width: 46%;
   }
 </style>
 <template>
@@ -59,13 +59,13 @@
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
-                <span>{{ props.row.task.create_at }}</span>
+                <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="更新时间">
                 <span>{{ props.row.task.updated_at }}</span>
               </el-form-item>
-              <el-form-item label="开始时间">
-                <span>{{ props.row.task.start_time }}</span>
+              <el-form-item label="任务策略">
+                <span>{{ props.row.task.policy_id }}</span>
               </el-form-item>
               <el-form-item label="源地址">
                 <span>{{ props.row.task.source }}</span>
@@ -82,17 +82,19 @@
         </el-table-column>
         <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="task.start_time" label="开始时间" v-if="isVisible" sortable>
+        <el-table-column prop="task.policy_id" label="任务策略" v-if="isVisible" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
         <el-table-column label="操作" width="200">
           <template slot-scope="scope">
-            <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
-              <i class="iconfont icon-modiffy"></i>
+            <el-button type="text" icon="information" @click="showEditDialog(scope.$index,scope.row)">
             </el-button>
-            <el-button type="danger" @click="delGroup(scope.$index,scope.row)" size="small">
-              <i class="iconfont icon-delete"></i>
+            <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
+              <!--<i class="iconfont icon-modiffy"></i>-->
+            </el-button>
+            <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
+              <!--<i class="iconfont icon-delete"></i>-->
             </el-button>
           </template>
         </el-table-column>
@@ -117,8 +119,8 @@
           <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="datetime" placeholder="选择日期" v-model="editForm.start_time"></el-date-picker>
+          <el-form-item prop="policy_id" label="任务策略">
+            <el-input v-model="editForm.policy_id" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
@@ -137,7 +139,7 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
@@ -156,7 +158,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -165,7 +167,7 @@
   </el-row>
 </template>
 <script>
-  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction} from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
     data() {
@@ -174,25 +176,13 @@
         filters: {
           name: ''
         },
-        options:[{
-          value: '1',
-          label: '1'
-        },{
-          value: '2',
-          label: '2'
-        },{
-          value: '3',
-          label: '3'
-        },{
-          value: '4',
-          label: '4'
-        }],
         listLoading: false,
         isVisible:true,
         tasks:[],
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -215,9 +205,9 @@
         editForm: {
           id: 0,
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
+          source: '',
+          destination: '',
+          policy: '',
           description: ''
         },
 
@@ -226,9 +216,9 @@
         addLoading: false,
         addForm: {
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
+          source: '',
+          destination: '',
+          policy: '',
           description: ''
         },
       }
@@ -255,10 +245,11 @@
       },
       //获取用户列表
       getTasks: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          page: this.page,
-//          pagesize: this.per_page,
+          limit: this.per_page,
+          offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
@@ -291,7 +282,7 @@
       //显示编辑界面
       showEditDialog: function (index, row) {
         this.editFormVisible = true;
-        this.editForm = Object.assign({}, row);
+        this.editForm = Object.assign({}, row.task);
       },
       //编辑
       editSubmit: function () {
@@ -300,13 +291,25 @@
             this.$confirm('确认提交吗？', '提示', {}).then(() => {
               this.editLoading = true;
               //NProgress.start();
+              let user_para = {
+                user: this.sysUserName,
+              };
               let para = Object.assign({}, this.editForm);
-              reqEditWorker(para).then((res) => {
+              reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
-                  message: '提交成功',
+                  message: '修改成功',
                   type: 'success'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getTasks();
+              }).catch(err=>{
+                this.editLoading = false;
+                this.$message({
+                  message: '修改失败：',
+                  type: 'error'
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
@@ -333,13 +336,18 @@
           description: ''
         };
       },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
             let para = Object.assign({}, this.addForm);
-            reqAddWorker(para).then((res) => {
+            reqAddTask(para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
@@ -358,12 +366,12 @@
       },
       //====删除相关====
       //单个删除
-      delGroup: function (index, row) {
+      delTask: function (index, row) {
         this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {id: row.id};
-          reqDelWorker(para).then((res) => {
+          let para = {user: this.sysUserName};
+          reqDelTask(row.task.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
@@ -373,6 +381,11 @@
             this.getTasks();
           });
         }).catch(() => {
+          this.listLoading = false;
+          this.$message({
+            message: '删除失败',
+            type: 'error'
+          });
         });
       },
       //勾选
@@ -381,25 +394,25 @@
       },
       //批量删除
       batchDelete: function () {
-        var ids = this.sels.map(item => item.id).toString();
-        this.$confirm('确认删除选中记录吗？', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.listLoading = true;
-          //NProgress.start();
-          let para = {ids: ids};
-          reqBatchDelWorker(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
-            this.getTasks();
-          });
-        }).catch(() => {
-
-        });
+//        var ids = this.sels.map(item => item.id).toString();
+//        this.$confirm('确认删除选中记录吗？', '提示', {
+//          type: 'warning'
+//        }).then(() => {
+//          this.listLoading = true;
+//          //NProgress.start();
+//          let para = {ids: ids};
+//          reqBatchDelWorker(para).then((res) => {
+//            this.listLoading = false;
+//            //NProgress.done();
+//            this.$message({
+//              message: '删除成功',
+//              type: 'success'
+//            });
+//            this.getTasks();
+//          });
+//        }).catch(() => {
+//
+//        });
       },
 
     },
