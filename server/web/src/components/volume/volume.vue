@@ -10,10 +10,10 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.volumeName" placeholder="卷名" style="min-width: 240px;"></el-input>
@@ -81,7 +81,7 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="addFormRules" ref="addForm">
           <el-form-item prop="volumeName" label="组名">
             <el-input v-model="addForm.volumeName" auto-complete="off"></el-input>
@@ -94,7 +94,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -193,8 +193,19 @@
           this.isVisible = true;
           //NProgress.done();
         }).catch(err=>{
-          alert(err.message);
-          this.listLoading = false;
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.listLoading = false;
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
         });
       },
 
@@ -219,15 +230,21 @@
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
-                  message: '提交成功',
+                  message: '修改成功',
                   type: 'success'
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
                 this.getVolume();
               }).catch(err=>{
-                alert("添加失败");
-                console.log(err)
+                this.editLoading = false;
+                this.$message({
+                  message: '修改失败：',
+                  type: 'error'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getWorker();
               });
             });
           }
@@ -247,6 +264,11 @@
           description: ''
         };
       },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
@@ -260,15 +282,21 @@
               this.addLoading = false;
               //NProgress.done();
               this.$message({
-                message: '提交成功',
+                message: '添加成功',
                 type: 'success'
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getVolume();
             }).catch(err=>{
-              alert("添加失败");
-              console.log(err)
+              this.addLoading = false;
+              this.$message({
+                message: '添加失败',
+                type: 'error'
+              });
+              this.$refs['addForm'].resetFields();
+              this.addFormVisible = false;
+              this.getWorker();
             });
           }
           else{

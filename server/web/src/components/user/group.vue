@@ -1,3 +1,26 @@
+<style>
+  .text {
+    font-size: 14px;
+  }
+
+  .item {
+    margin-bottom: 18px;
+  }
+
+  .clearfix:before,
+  .clearfix:after {
+    display: table;
+    content: "";
+  }
+  .clearfix:after {
+    clear: both
+  }
+
+  .box-card {
+    margin-top: 10px;
+    width: 450px;
+  }
+</style>
 <template>
   <el-row class="warp">
     <el-col :span="24" class="warp-breadcrum">
@@ -78,7 +101,7 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="addFormRules" ref="addForm">
           <el-form-item prop="name" label="组名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
@@ -88,19 +111,43 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
 
     </el-col>
+    <el-col :span="10"></el-col>
+    <el-col :span="24">
+      <div v-for="(group, index) in groups" style="float:left; margin-right: 10px">
+        <el-card class="box-card">
+          <div slot="header">
+            <span>{{ group.name }}</span>
+            <div style="float:right">
+              <el-button size="small" @click="showEditDialog(index, group)">
+                <i class="iconfont icon-modiffy"></i>
+              </el-button>
+              <el-button type="danger" @click="delGroup(index, group)" size="small">
+                <i class="iconfont icon-delete"></i>
+              </el-button>
+            </div>
+          </div>
+          <div >
+            {{ group.description }}
+          </div>
+        </el-card>
+      </div>
+    </el-col>
+
   </el-row>
 </template>
 
 <script>
   import { reqGetGroupList, reqEditGroup, reqAddGroup, reqDelGroup} from '../../api/api';
+  import ElCol from "element-ui/packages/col/src/col";
 
   export default {
+    components: {ElCol},
     data() {
       return {
         filters: {
@@ -141,9 +188,6 @@
         addFormRules: {
           name: [
             {required: true, message: '请输入组名', trigger: 'blur'}
-          ],
-          role: [
-            {required: true, message: '请输入角色', trigger: 'blur'}
           ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
@@ -229,13 +273,14 @@
                 this.editFormVisible = false;
                 this.getGroup();
               }).catch(err=>{
-                this.addLoading = false;
+                this.editLoading = false;
                 this.$message({
-                  message: '添加失败：' + err.message,
+                  message: '修改失败',
                   type: 'error'
                 });
-                this.$refs['addForm'].resetFields();
-                this.addFormVisible = false;
+                console.log(err.message);
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
                 this.getGroup();
               });
             });
@@ -254,6 +299,11 @@
           name: '',
           description: ''
         };
+      },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
       },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
@@ -352,7 +402,3 @@
     }
   }
 </script>
-
-<style scoped>
-
-</style>
