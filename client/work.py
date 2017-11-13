@@ -308,12 +308,12 @@ class Work():
             self.mount_dir =  self.arglist['source_address']
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address']
-            cmd=self.arglist['script']
+            path=self.arglist['script']
             ret = self.do_mount()
             if ret != 0:
                 self.send('state', 'failed')
                 return
-            ret=os.system(cmd)
+            ret=os.system(path)
             if ret!=0:
                 self.do_close()
                 self.send('state', 'failed')
