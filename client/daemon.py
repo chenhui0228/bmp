@@ -44,7 +44,6 @@ class Daemon:
         log_level = cp.get('client', 'log_level')
         log_file_dir = cp.get('client', 'log_file_dir')
         self.log=mylogger
-        con = threading.Condition()
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -54,7 +53,8 @@ class Daemon:
         # print "pid file:",self.pidfile
         self.timer_id = 0
         self.q = ""
-        self.tp_size = int(cp.get('client', 'tp_size')) # 线程池大小
+        self.uc_size = int(cp.get('client', 'usually_concurrent')) # 线程池大小
+        self.ic_size = int(cp.get('client', 'immediately_concurrent'))
         self.reload_interval = int(cp.get('client', 'reload_interval'))
         self.info_l = ""
         self.glusterlist = ['10.202.125.83']
@@ -190,7 +190,7 @@ class Daemon:
                 self.message.con.release()
 
     def send(self,sub,id,value):
-        data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,id,sub,value)
+        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,id,sub,value)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)
@@ -283,16 +283,21 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-        elif data['type'] == 'revise':
+        elif data['type'] == "update":
             print "do revise"
             dict = data['data']
             self.log.logger.info('change a work,the id of it is %s'%dict['id'])
             ms = dict['id']
             if self.task_list.has_key(ms):
-                self.task_list[ms].updateconf(dict)
+                try:
+                    self.task_list[ms].updateconf(dict)
+                    self.send('result',ms,'success')
+                except:
+                    self.send('result', ms, 'failed')
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('alarm',ms,'No any work which id is %s' % ms)
+                self.send('result', ms, 'failed')
+                self.send('log',ms,'No any work which id is %s' % ms)
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
@@ -383,12 +388,12 @@ class Daemon:
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
-        self.tp = []
-        for i in range(self.tp_size):
+        for i in range(self.uc_size):
             t = WorkerPool(self.q, i, self.confip,self.log)
             self.tp.append(t)
-        im_d = WorkerPool(self.qq, self.tp_size, self.confip, self.log)
-        self.tp.append(im_d)
+        for i in range(self.uc_size,self.uc_size+self.ic_size):
+            t = WorkerPool(self.qq, i, self.confip, self.log)
+            self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
             t.start()

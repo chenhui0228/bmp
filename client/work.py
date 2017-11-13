@@ -67,7 +67,7 @@ class Work():
         return
 
     def send(self,sub,value):
-        data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
+        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)
@@ -167,12 +167,13 @@ class Work():
                         write_all = write_all + (write_now - write_old)
                         #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
                         pro=(int((write_all * 100) / self.proctotal))
-                        if pro-self.sendpro>=5:
+                        if pro-self.sendpro>=2:
                             self.send('progress',str(pro))
                             self.sendpro=pro
                     else:
                         write_old = 0
                         write_now = 0
+                    time.sleep(1)
                 if process.poll() == 0:
                     list=pd.split('/')
                     new_file=os.path.join(vd,list[-1])
