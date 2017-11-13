@@ -28,13 +28,4 @@ class Server:
     def to_db(self,msg):
         pass
 
-    def listen( self ):
-        while True:
-            if not self.message.q.empty():
-                msg = self.message.get_queue()
-                #print msg
-                msg_data = msg.split(":", 1)[1]
-                date = eval(msg_data)
-                self.to_db(date)
-            time.sleep(1)
 

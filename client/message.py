@@ -87,7 +87,7 @@ class Message:
     def __init__(self, ms_type):
         global q
         cp = ConfigParser.ConfigParser()
-        cp.read('/zyt/clinet/client.conf')
+        cp.read('/etc/SFbackup/client.conf')
         server_ip = cp.get('server', 'ip')
         server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname

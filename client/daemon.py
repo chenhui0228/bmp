@@ -3,7 +3,6 @@
 from SocketServer import BaseRequestHandler, ThreadingTCPServer, ThreadingUDPServer
 from message import Message, Performance
 import socket  # 套接字
-from gluster import gfapi
 import sys
 import os
 import atexit
@@ -33,39 +32,35 @@ from message import Message
 from singletask import SingleTask
 from workerpool import WorkerPool
 from work import Work
-
+import ConfigParser
 
 
 class Daemon:
     def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
         # self.logger = logging.getLogger(__name__)
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        log_level = cp.get('client', 'log_level')
+        log_file_dir = cp.get('client', 'log_file_dir')
         self.log=mylogger
         con = threading.Condition()
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.pidfile = pidfile
-        self.await = 2
-        self.timer_interval = 2
-        self.qdpth = 50
+        self.timer_interval = int(cp.get('client', 'timer_interval'))
+        self.qdpth = int(cp.get('client', 'qdpth'))
         # print "pid file:",self.pidfile
         self.timer_id = 0
-        self.json_f = "/data/work/test.json"
         self.q = ""
-        self.tp_size = 5 # 线程池大小
-        self.reload_interval = 30
+        self.tp_size = int(cp.get('client', 'tp_size')) # 线程池大小
+        self.reload_interval = int(cp.get('client', 'reload_interval'))
         self.info_l = ""
         self.glusterlist = ['10.202.125.83']
         self.confip = '10.202.125.83:80'
-        self.max_task_id = 0  # 当前最大任务id
-        self.task_sum = 0  # 当前最大任务数
-        # 本机IP
-        self.local_ip = ""
+        self.task_sum = 0  # 当前任务数
         self.task_list = {}
-        self.do_list = {}
-        self.worktable_id = 0
-        self.statetable_id = ""
         self.tp = []
 
         # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
@@ -205,7 +200,7 @@ class Daemon:
         # print "timer running at:",datetime.now()
         self.timer_id = self.timer_id + 1
         """
-        没过5秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
+        没过2秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
         """
         if self.listen_thread.isAlive():
             pass
@@ -237,9 +232,10 @@ class Daemon:
 
     """
 
-    def do_now( self, data ):
+    def do_date( self, data ):
         now = datetime.now()
         dict = data['data']
+        ms=dict['id']
         dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         if data['type']=='backup':
             self.log.logger.info('create a new direct backup work')
@@ -251,26 +247,35 @@ class Daemon:
             self.log.logger.info('create a new direct recover work')
             dict['op']='recover'
         dict['ip'] = self.glusterlist
-        self.qq.put([str(dict), 2], block=True, timeout=None)
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+        new_task.start('date')
 
+    def do_cron(self,data):
+        dict = data['data']
+        ms = dict['id']
+        if data['type']=='backup':
+            self.log.logger.info('create a new queue backup work,the id of it is %s' % ms)
+            dict['op'] = "write"
+        elif data['type']=='dump':
+            self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
+            dict['op']='dump'
+        elif data['type']=='recover':
+            self.log.logger.info('create a new queue recover work')
+            dict['op']='recover'
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+        new_task.start('cron')
+        self.task_list[ms] = new_task
+        self.task_sum = self.task_sum + 1
 
     def schd_task( self, data ):
         if data['type'] == 'backup':  # 创建新任务
             dict = data['data']
-            if dict['run_sub'] == 'direct':
+            if dict['run_sub'] == 'date':
                 #print "do backup use direct"
-                self.do_now(data)
-            elif dict['run_sub'] == 'queue':
+                self.do_date(data)
+            elif dict['run_sub'] == 'cron':
                 #print "do backup use queue"
-                dict['op'] = "write"
-                dict['op_code'] = 'direct'
-                ms = dict['id']
-                self.log.logger.info('create a new queue backup work,the id of it is %s' %ms)
-                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip,self.log)
-                new_task.start()
-                self.task_list[ms] = new_task
-                self.task_sum = self.task_sum + 1
-                pass
+                self.do_cron(data)
         elif data['type'] == 'revise':
             print "do revise"
             dict = data['data']
@@ -284,7 +289,7 @@ class Daemon:
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
-            self.do_now(data)
+            self.do_date(data)
             pass
         elif data['type'] == 'suspend':  # 暂停
             #print "do suspend"
@@ -320,18 +325,12 @@ class Daemon:
                 self.send('alarm', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
-            if dict['run_sub'] == 'queue':
+            if dict['run_sub'] == 'cron':
                # print "do dump in queue"
-                dict['op'] = "dump"
-                ms = dict['id']
-                self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
-                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip,self.log)
-                new_task.start()
-                self.task_list[ms] = new_task
-                self.task_sum = self.task_sum +1
-            elif dict['run_sub'] == 'direct':
+               self.do_cron(data)
+            elif dict['run_sub'] == 'date':
                 #print "do dump in direct"
-                self.do_now(data)
+                self.do_date(data)
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
@@ -361,13 +360,10 @@ class Daemon:
         #print "to start tp:"
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
-        self.qq=Queue.Queue()
         self.tp = []
         for i in range(self.tp_size):
             t = WorkerPool(self.q, i, self.confip,self.log)
             self.tp.append(t)
-        self.drictway= WorkerPool(self.qq, 5, self.confip,self.log)
-        self.tp.append(self.drictway)
         for t in self.tp:
             t.setDaemon(True)
             t.start()
