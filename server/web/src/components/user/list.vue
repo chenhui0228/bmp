@@ -31,7 +31,8 @@
         <!--</el-table-column>-->
         <el-table-column prop="name" label="用户名" width="240" sortable>
         </el-table-column>
-        <el-table-column prop="role_id" label="角色" width="180" :formatter="roleId2Name">
+        <el-table-column prop="role" label="角色" width="180">
+          <!--<el-table-column prop="role_id" label="角色" width="180" :formatter="roleId2Name">-->
         </el-table-column>
         <el-table-column prop="group_id" label="属组" width="240" :formatter="groupId2Name">
         </el-table-column>

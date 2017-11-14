@@ -39,6 +39,10 @@ export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup
 
 export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
 
+//policy
+export const reqGetPolicyList = params => { return axios.get(`${base}/backup/policies`, { params: params }) }
+
+
 //组列表相关API开始
 export const reqGetGroupList = params => { return axios.get(`${base}/backup/groups`, { params: params }) }
 
