@@ -36,10 +36,15 @@
         <!--</el-table-column>-->
         <el-table-column type="expand">
           <template slot-scope="props">
-            <el-form label-position="left" inline class="demo-table-expand">
+            <el-form label-position="left" inline class="table-expand">
               <el-form-item label="[主机描述]">
-                <br />
                 <span>{{ props.row.description }}</span>
+              </el-form-item>
+              <el-form-item label="[启动时间]">
+                <span>{{ props.row.start_at | timeStamp2datetime }}</span>
+              </el-form-item>
+              <el-form-item label="[软件版本号]">
+                <span>{{ props.row.version }}</span>
               </el-form-item>
             </el-form>
           </template>
@@ -48,7 +53,7 @@
         </el-table-column>
         <el-table-column prop="ip" label="IP地址" sortable>
         </el-table-column>
-        <el-table-column prop="port" label="端口号">
+        <el-table-column prop="status" label="状态">
         </el-table-column>
         <el-table-column prop="user.name" label="用户" sortable>
         </el-table-column>
@@ -88,20 +93,6 @@
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="owner" label="用户">
-            <el-input v-model="editForm.user.name" auto-complete="off"></el-input>
-          </el-form-item>
-          <el-form-item prop="port" label="端口号">
-            <el-input v-model="editForm.port" auto-complete="off"></el-input>
-            <!--<el-select v-model="editForm.port" placeholder="请选择主机类型" clearable>-->
-              <!--<el-option-->
-                <!--v-for="item in options"-->
-                <!--:key="item.value"-->
-                <!--:label="item.label"-->
-                <!--:value="item.value">-->
-              <!--</el-option>-->
-            <!--</el-select>-->
-          </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -121,12 +112,9 @@
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="addForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="owner" label="用户">
-            <el-input v-model="addForm.owner" auto-complete="off"></el-input>
-          </el-form-item>
-          <el-form-item prop="port" label="端口号">
-            <el-input v-model="addForm.port" auto-complete="off"></el-input>
-          </el-form-item>
+          <!--<el-form-item prop="owner" label="用户">-->
+            <!--<el-input v-model="addForm.owner" auto-complete="off"></el-input>-->
+          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -160,19 +148,6 @@
         filters: {
           ip: ''
         },
-        options:[{
-          value: '1',
-          label: '1'
-        },{
-          value: '2',
-          label: '2'
-        },{
-          value: '3',
-          label: '3'
-        },{
-          value: '4',
-          label: '4'
-        }],
         listLoading: false,
         isVisible:true,
         workers:[],
@@ -193,12 +168,6 @@
           ip: [
             {required: true, validator: validateIp, trigger: 'blur'}
           ],
-          owner: [
-            {required: true, message: '请输入用户', trigger: 'blur'}
-          ],
-          port: [
-            {required: true, message: '请输入端口号'}
-          ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
           ]
@@ -207,8 +176,6 @@
           id: 0,
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: '',
           user: ''
         },
@@ -219,8 +186,6 @@
         addForm: {
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: ''
         },
       }
@@ -325,8 +290,6 @@
         this.addForm = {
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: ''
         };
       },
@@ -433,3 +396,18 @@
     }
   }
 </script>
+
+<style>
+  .table-expand {
+    font-size: 0;
+  }
+  .table-expand label {
+    width: 90px;
+    color: #99a9bf;
+  }
+  .table-expand .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 46%;
+  }
+</style>

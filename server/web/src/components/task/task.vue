@@ -58,14 +58,20 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
+              <el-form-item label="任务描述">
+                <span>{{ props.row.task.description }}</span>
+              </el-form-item>
               <el-form-item label="创建时间">
                 <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="更新时间">
-                <span>{{ props.row.task.updated_at }}</span>
+                <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="任务策略">
-                <span>{{ props.row.task.policy_id }}</span>
+                <span>{{ props.row.policy.name }}</span>
+              </el-form-item>
+              <el-form-item label="作业机">
+                <span>{{ props.row.worker.name }}</span>
               </el-form-item>
               <el-form-item label="源地址">
                 <span>{{ props.row.task.source }}</span>
@@ -82,7 +88,7 @@
         </el-table-column>
         <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="task.policy_id" label="任务策略" v-if="isVisible" sortable>
+        <el-table-column prop="policy.name" label="任务策略" v-if="isVisible" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -119,17 +125,47 @@
           <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="policy_id" label="任务策略">
-            <el-input v-model="editForm.policy_id" auto-complete="off"></el-input>
+          <el-form-item prop="policy" label="任务策略">
+            <el-select v-model="editForm.policy_id" clearable placeholder="请选择">
+              <el-option
+                v-for="policy in policies"
+                :key="policy.id"
+                :label="policy.name"
+                :value="policy.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="editForm.worker_id" clearable placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="volume" label="卷">
+            <el-select v-model="editForm.volume_id" clearable placeholder="请选择" @change="handleChange">
+              <el-option
+                v-for="volume in volumes"
+                :key="volume.id"
+                :label="volume.name"
+                :value="volume.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item prop="destination" label="目标地址">
             <el-input v-model="editForm.destination" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="script_path" label="脚本地址">
+            <el-input v-model="editForm.script_path" auto-complete="off"></el-input>
+          </el-form-item>
           <el-form-item prop="description" label="描述">
-            <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
+            <el-input type="textarea" v-model="editForm.description" :rows="2"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
@@ -140,21 +176,51 @@
 
       <!--新建框-->
       <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
-        <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="editForm">
+        <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="addForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="datetime" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
+          <el-form-item prop="policy" label="任务策略">
+            <el-select v-model="addForm.policy_id" clearable placeholder="请选择">
+              <el-option
+                v-for="policy in policies"
+                :key="policy.id"
+                :label="policy.name"
+                :value="policy.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="addForm.worker_id" clearable placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="volume" label="卷">
+            <el-select v-model="addForm.volume" clearable placeholder="请选择" @change="handleChange">
+              <el-option
+                v-for="volume in volumes"
+                :key="volume.id"
+                :label="volume.name"
+                :value="volume.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item prop="destination" label="目标地址">
             <el-input v-model="addForm.destination" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="script_path" label="脚本地址">
+            <el-input v-model="addForm.script_path" auto-complete="off"></el-input>
+          </el-form-item>
           <el-form-item prop="description" label="描述">
-            <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
+            <el-input type="textarea" v-model="addForm.description" :rows="2"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
@@ -167,7 +233,7 @@
   </el-row>
 </template>
 <script>
-  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList, reqGetWorkerList, reqGetPolicyList} from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
     data() {
@@ -183,54 +249,61 @@
         page: 1,
         per_page: 10,
         offset: 0,
+        task_type: 'backup',
         sels: [], //列表选中列
+        workers:[],
+        volumes:[],
+        policies:[],
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         editFormRules: {
-          name: [
-            {required: true, message: '请输入主机名', trigger: 'blur'}
-          ],
-          owner: [
-            {required: true, message: '请输入角色', trigger: 'blur'}
-          ],
-          port: [
-            {required: true, message: '请输入'}
-          ],
-          description: [
-            {required: true, message: '请输入描述', trigger: 'blur'}
-          ]
+//          name: [
+//            {required: true, message: '请输入主机名', trigger: 'blur'}
+//          ],
+//          owner: [
+//            {required: true, message: '请输入角色', trigger: 'blur'}
+//          ],
+//          port: [
+//            {required: true, message: '请输入'}
+//          ],
+//          description: [
+//            {required: true, message: '请输入描述', trigger: 'blur'}
+//          ]
         },
         editForm: {
           id: 0,
           name: '',
+          policy_id: '',
+          worker_id: '',
           source: '',
           destination: '',
-          policy: '',
-          description: ''
+          description: '',
         },
 
         //新增数据相关
         addFormVisible: false,
         addLoading: false,
         addForm: {
-          name: '',
-          source: '',
-          destination: '',
-          policy: '',
-          description: ''
+//          name: '',
+//          source: '',
+//          destination: '',
+//          policy_id: '',
+//          description: '',
+//          worker_id: '',
+//          volume: '',
         },
       }
     },
     methods: {
       handleClick(tag) {
         if(tag.index === '1') {
+          this.task_type = 'recover';
           this.isVisible = false;
-          console.log(this.isVisible)
         }else{
+          this.task_type = 'backup';
           this.isVisible = true;
-          console.log(this.isVisible)
         }
       },
       handleCurrentChange(val) {
@@ -279,10 +352,28 @@
       },
 
       //====编辑相关====
+      //处理显示
+      //TODO:关闭编辑框后，列表显示不正常的问题
+      beforeShow: function (row) {
+        let source = row.task.source;
+        let destination = row.task.destination;
+        source = source.match(/\/\/(\S*)/)[1];
+        let volumeName = destination.match(/\/\/(\S*)\//)[1];
+        destination = destination.match(/\/(\S*)/)[1];
+        let volume = {};
+        volume = this.volumes.find((volume)=>{
+          return volume.name === volumeName;
+        });
+        row.task.volume_id = volume.id;
+        row.task.source = source;
+        row.task.destination = destination;
+      },
       //显示编辑界面
       showEditDialog: function (index, row) {
         this.editFormVisible = true;
+        this.beforeShow(row);
         this.editForm = Object.assign({}, row.task);
+        console.log(this.editForm);
       },
       //编辑
       editSubmit: function () {
@@ -295,6 +386,10 @@
                 user: this.sysUserName,
               };
               let para = Object.assign({}, this.editForm);
+              if(para.type === "backup"){
+                para.source = 'file://' + para.source;
+                para.destination = 'glusterfs:/' + para.destination;
+              }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
@@ -328,35 +423,69 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
-          user: this.sysUserName,
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
-          description: ''
+          policy_id: '',
+          worker_id: '',
+          source: '',
+          destination: '',
+          description: '',
         };
       },
       //取消提交
       cancelAdd: function () {
         this.addFormVisible = false;
-        this.$refs['addForm'].resetFields();
+//        this.$refs['addForm'].resetFields();
       },
+      handleChange: function (value) {
+//        console.log(value)
+        if(typeof(value) !== "undefined"){
+//          console.log(value);
+          this.addForm.destination = '';
+          let volume = {};
+          volume = this.volumes.find((volume)=>{
+            return volume.id === value;
+          });
+          this.addForm.destination = '/' + this.addForm.destination + volume.name + '/';
+        }
+      },
+
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
+            let user = {
+              user: this.sysUserName,
+            };
             let para = Object.assign({}, this.addForm);
-            reqAddTask(para).then((res) => {
+            para.type = this.task_type;
+
+            if(para.type === "backup"){
+              para.source = 'file://' + para.source;
+              para.destination = 'glusterfs:/' + para.destination;
+            }
+//            console.log("!!!####!!!");
+//            console.log(para);
+
+            reqAddTask(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
-                message: '提交成功',
+                message: '添加成功',
                 type: 'success'
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getTasks();
+            }).catch(err=>{
+              this.addLoading = false;
+              this.$message({
+                message: '添加失败',
+                type: 'error'
+              });
+              console.log(err.message)
+              this.$refs['addForm'].resetFields();
+              this.addFormVisible = false;
             });
           }
           else{
@@ -422,6 +551,18 @@
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username || '';
       }
+      let para = {
+        user: this.sysUserName
+      };
+      reqGetWorkerList(para).then(res=>{
+        this.workers = res.data.workers;
+      });
+      reqGetVolumeList(para).then(res=>{
+        this.volumes = res.data.volumes;
+      });
+      reqGetPolicyList(para).then(res=>{
+        this.policies = res.data.policies;
+      });
       this.getTasks();
     }
   }
