@@ -7,7 +7,6 @@
     </el-col>
 
 
-
   </el-row>
 </template>
 <style>
@@ -42,6 +41,7 @@
   .chart-container .el-col {
     padding: 30px 20px;
   }
+
 </style>
 
 <script>
@@ -58,4 +58,5 @@
 
     }
   }
+
 </script>

@@ -13,10 +13,10 @@ axios.interceptors.request.use((config) => {
   // console.log('config:');
   // console.log(config);
   let url = config.url;
-  if(config.method  === 'post' || config.method  === 'put'){
+  if (config.method === 'post' || config.method === 'put') {
     config.data = Qs.stringify(config.data);
   }
-  if (url.indexOf("login") < 0 ){
+  if (url.indexOf("login") < 0) {
     // console.log(config.method);
     let accessInfo = sessionStorage.getItem('access-user');
     if (accessInfo) {
@@ -27,7 +27,7 @@ axios.interceptors.request.use((config) => {
   }
   // console.log(config);
   return config;
-},error => {
+}, error => {
   alert("error");
 });
 
@@ -40,8 +40,15 @@ export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup
 export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
 
 //policy
-export const reqGetPolicyList = params => { return axios.get(`${base}/backup/policies/detail`, { params: params }) }
-export const reqPostPolicyList = (params, data) => { return axios.post(`${base}/backup/policies`, data, { params: params }) }
+export const reqGetPolicyList = params => {
+  return axios.get(`${base}/backup/policies/detail`, {params: params})
+}
+export const reqPostPolicy = (params, data) => {
+  return axios.post(`${base}/backup/policies`, data, {params: params})
+}
+export const reqPutPolicy = (params, data) => {
+  return axios.put(`${base}/backup/policies/${data.id}`, data, {params: params})
+}
 
 
 //组列表相关API开始

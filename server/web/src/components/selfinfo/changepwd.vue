@@ -12,7 +12,7 @@
         <el-form-item label="新密码" prop="newPwd">
           <el-input type="password" v-model="form.newPwd"></el-input>
         </el-form-item>
-        <el-form-item  label="确认新密码" prop="confirmPwd">
+        <el-form-item label="确认新密码" prop="confirmPwd">
           <el-input type="password" v-model="form.confirmPwd"></el-input>
         </el-form-item>
         <el-form-item>
@@ -138,4 +138,5 @@
       console.log(this.user);
     }
   }
+
 </script>

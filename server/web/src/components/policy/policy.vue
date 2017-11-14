@@ -52,7 +52,7 @@
           <el-table-column label="操作">
             <template scope="scope">
               <el-button type="text" icon="information" @click=""></el-button>
-              <el-button v-if="" type="text" icon="edit" @click=""></el-button>
+              <el-button v-if="" type="text" icon="edit" @click="editPolicy(scope.$index, scope.row)"></el-button>
               <el-button v-if="" type="text" icon="delete" style="color: red" @click=""></el-button>
             </template>
           </el-table-column>
@@ -75,7 +75,7 @@
         </div>
       </el-col>
     </el-row>
-    <el-dialog title="新建策略" v-model="dialogNewPolicyVisible">
+    <el-dialog :title="dialogPolicyTitle" :visible.sync="dialogPolicyVisible" :close-on-click-modal="!dialogPolicyVisible" @close="cancelPolicyDialog">
       <el-form :model="policyBaseForm" :rules="policyRules" ref="policyBaseForm">
         <el-form-item prop="name" label="策略名" :label-width="formLabelWidth">
           <el-input v-model="policyBaseForm.name" auto-complete="off"></el-input>
@@ -140,13 +140,13 @@
                       :label-width="formLabelWidth">
           <template>
             <el-checkbox-group v-model="policyRecurringForm.recurring_options_week">
-              <el-checkbox label="1">周一</el-checkbox>
-              <el-checkbox label="2">周二</el-checkbox>
-              <el-checkbox label="3">周三</el-checkbox>
-              <el-checkbox label="4">周四</el-checkbox>
-              <el-checkbox label="5">周五</el-checkbox>
-              <el-checkbox label="6">周六</el-checkbox>
-              <el-checkbox label="7">周日</el-checkbox>
+              <el-checkbox label=1>周一</el-checkbox>
+              <el-checkbox label=2>周二</el-checkbox>
+              <el-checkbox label=4>周三</el-checkbox>
+              <el-checkbox label=8>周四</el-checkbox>
+              <el-checkbox label=16>周五</el-checkbox>
+              <el-checkbox label=32>周六</el-checkbox>
+              <el-checkbox label=64>周日</el-checkbox>
             </el-checkbox-group>
           </template>
         </el-form-item>
@@ -167,17 +167,16 @@
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="dialogNewPolicyVisible = false">取 消</el-button>
+        <el-button @click="cancelPolicyDialog">取 消</el-button>
         <el-button type="primary"
-                   @click="savePolicy('policyBaseForm','policyTimeForm','policyRecurringForm','policyProtectionForm')">确
-          定
+                   @click="savePolicy('policyBaseForm','policyTimeForm','policyRecurringForm','policyProtectionForm')">确定
         </el-button>
       </div>
     </el-dialog>
   </el-row>
 </template>
 <script>
-  import {reqGetPolicyList, reqPostPolicyList} from '../../api/api'
+  import {reqGetPolicyList, reqPostPolicy, reqPutPolicy} from '../../api/api'
   import {util} from '../../common/util'
   export default{
     props: ["roles", "groups"],
@@ -256,8 +255,10 @@
         policy:{},
         dialogNewPolicyVisible: false,
         dialogEditPolicyVisible: false,
+        dialogPolicyVisible: false,
         formCheckErrorMsgForStarTime: true,
         checkStarTimeError: false,
+        dialogPolicyTitle: '',
         formLabelWidth: '120px',
         pickerOptionsForDate: {
           disabledDate(time) {
@@ -294,6 +295,12 @@
     watch:{
       //policyTimeForm.start_now: function(o, n){
       //}
+      dialogNewPolicyVisible: function(val, oldVal) {
+        this.dialogPolicyVisible = val || this.dialogEditPolicyVisible;
+      },
+      dialogEditPolicyVisible: function(val, oldVal) {
+        this.dialogPolicyVisible = val || this.dialogNewPolicyVisible;
+      },
     },
     methods: {
       changeFormCheckErrorMsgForStarTime(){
@@ -340,30 +347,93 @@
           this.total_rows = res.data.total;
           this.filter.page = this.filter.page;
           this.filter.per_page = this.filter.per_page;
-          console.log(res);
         },err => {
-          console.log(err);
+          if (err.response.status == 401) {
+            this.openMsg('请重新登陆', 'error');
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else {
+            console.log(err);
+          }
         });
       },
       newPolicy(){
         this.dialogNewPolicyVisible = true;
         this.initialPolicyForms();
+        this.dialogPolicyTitle = '新建策略';
+      },
+      editPolicy(index, row){
+        this.dialogEditPolicyVisible = true;
+        this.dialogPolicyTitle = '修改策略';
+        this.policy = row;
+        this.policyBaseForm.name = row.name;
+        this.policyBaseForm.description = row.description;
+        this.policyTimeForm.delay = false;
+        this.policyTimeForm.start_date = new Date(row.start_time*1000);
+        this.policyTimeForm.start_time = new Date(row.start_time*1000);
+        this.policyRecurringForm.recurring = row.recurring;
+        this.policyRecurringForm.recurring_options_every = row.recurring_options_every;
+        if (row.recurring_options_week !== null && row.recurring_options_week !== "" && row.recurring_options_week != 0) {
+          this.policyRecurringForm.recurring_options_week = [];
+          if (typeof(row.recurring_options_week) !== "number") {
+            row.recurring_options_week = parseInt(row.recurring_options_week);
+          }
+          var weeks = [1, 2, 4, 8, 16, 32, 64];
+          for (var i in weeks) {
+            if ((row.recurring_options_week & weeks[i]) == weeks[i]){
+              this.policyRecurringForm.recurring_options_week.push(weeks[i].toString())
+            }
+          }
+        }
+        this.policyProtectionForm.protectionType = '1';
+        this.policyProtectionForm.protection = row.protection;
       },
       savePolicy(policyBaseForm, policyTimeForm, policyRecurringForm, policyProtectionForm){
-        console.log(this.policyTimeForm, this.policyRecurringForm, this.policyProtectionForm)
-        this.$refs[policyBaseForm].validate((valid) => {
-          this.$refs[policyTimeForm].validate((valid) => {
-            this.mergePolicyForm();
-            let params = {
-              user: this.sysUserName,
-            };
-            reqPostPolicyList(params, this.policy).then(res => {
-              this.openMsg('新增作业机成功', 'success');
-              this.dialogNewPolicyVisible = false;
+        this.$refs[policyBaseForm].validate((valid1) => {
+          this.$refs[policyTimeForm].validate((valid2) => {
+            if (valid1 && valid2) {
+              this.mergePolicyForm();
+              let params = {
+                user: this.sysUserName,
+              };
+              if (this.dialogNewPolicyVisible){
+                reqPostPolicy(params, this.policy).then(res => {
+                  this.openMsg(this.dialogPolicyTitle+'成功', 'success');
+                },err => {
+                  if (err.response.status == 401) {
+                    this.openMsg('请重新登陆', 'error');
+                    sessionStorage.removeItem('access-user');
+                    this.$router.push({ path: '/' });
+                  } else {
+                    this.openMsg(this.dialogPolicyTitle+'失败', 'error');
+                  }
+                });
+              }
+              if (this.dialogEditPolicyVisible){
+                reqPutPolicy(params, this.policy).then(res => {
+                  this.openMsg(this.dialogPolicyTitle+'成功', 'success');
+                },err => {
+                  if (err.response.status == 401) {
+                    this.openMsg('请重新登陆', 'error');
+                    sessionStorage.removeItem('access-user');
+                    this.$router.push({ path: '/' });
+                  } else {
+                    this.openMsg(this.dialogPolicyTitle+'失败', 'error');
+                  }
+                });
+              }
+              this.cancelPolicyDialog();
               this.getPolicys(this.sysUserName);
-            });
+            }else{
+              this.openMsg('信息输入不正确，请检查格式！', 'error')
+            }
           });
         });
+      },
+      cancelPolicyDialog(){
+        this.dialogNewPolicyVisible = false;
+        this.dialogEditPolicyVisible = false;
+        this.dialogPolicyVisible = false;
       },
       mergePolicyForm(){
         this.policy.name = this.policyBaseForm.name;
@@ -372,10 +442,17 @@
         if (this.policyRecurringForm.recurring != 'once'){
           this.policy.recurring_options_every = this.policyRecurringForm.recurring_options_every;
         }
+        this.policy.recurring_options_week = 0;
         if (this.policyRecurringForm.recurring == 'weekly'){
-          this.policy.recurring_options_week = this.policyRecurringForm.recurring_options_week;
+          console.log(this.policyRecurringForm.recurring_options_week);
+          var i;
+          for (i in this.policyRecurringForm.recurring_options_week) {
+            this.policy.recurring_options_week = parseInt(this.policy.recurring_options_week) +
+            parseInt(this.policyRecurringForm.recurring_options_week[i]);
+          }
+          //this.policy.recurring_options_week = this.policyRecurringForm.recurring_options_week;
         }
-        if (this.policyTimeForm.start_date !== "" ){
+        if (this.policyTimeForm.start_date !== "" &&  this.policyTimeForm.start_date !== undefined && this.policyTimeForm.start_date !== null){
           var dateStr = this.policyTimeForm.start_date.toDateString();
           var timeStr = this.policyTimeForm.start_time.toTimeString();
           this.policy.start_time = new Date(dateStr + ' ' + timeStr).getTime()/1000;
