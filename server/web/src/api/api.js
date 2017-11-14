@@ -40,7 +40,8 @@ export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup
 export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
 
 //policy
-export const reqGetPolicyList = params => { return axios.get(`${base}/backup/policies`, { params: params }) }
+export const reqGetPolicyList = params => { return axios.get(`${base}/backup/policies/detail`, { params: params }) }
+export const reqPostPolicyList = (params, data) => { return axios.post(`${base}/backup/policies`, data, { params: params }) }
 
 
 //组列表相关API开始

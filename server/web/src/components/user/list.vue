@@ -11,7 +11,7 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <div class="toolbar" style="float:left;margin-left: 10px;">
-        <el-button type="primary" @click="">新建</el-button>
+        <el-button type="primary" @click="newUser">新建</el-button>
         <el-button type="primary" @click="">批量删除</el-button>
       </div>
       <div class="toolbar" style="float:right;">
@@ -84,7 +84,8 @@
         loading: false,
         users: [],
         usersForm: {},
-
+        dialogNewUserVisible: false,
+        dialogEditUserVisible: false,
       }
     },
     methods: {
@@ -145,6 +146,10 @@
             });
           }
         });
+      },
+      //新建用户
+      newUser() {
+
       },
       handleSizeChange(val) {
         console.log(`每页 ${val} 条`);
