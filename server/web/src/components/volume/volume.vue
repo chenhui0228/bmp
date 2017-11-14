@@ -10,10 +10,10 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.volumeName" placeholder="卷名" style="min-width: 240px;"></el-input>
@@ -32,8 +32,8 @@
         </el-table-column>
         <el-table-column prop="volumeName" label="卷名"  sortable>
         </el-table-column>
-        <el-table-column prop="worker" label="所属主机" sortable>
-        </el-table-column>
+        <!--<el-table-column prop="worker" label="所属主机" sortable>-->
+        <!--</el-table-column>-->
         <el-table-column prop="description" label="描述">
         </el-table-column>
         <el-table-column label="操作" width="250">
@@ -67,9 +67,9 @@
           <el-form-item prop="volumeName" label="卷名">
             <el-input v-model="editForm.volumeName" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="worker" label="所属主机">
-            <el-input v-model="editForm.worker" auto-complete="off"></el-input>
-          </el-form-item>
+          <!--<el-form-item prop="worker" label="所属主机">-->
+            <!--<el-input v-model="editForm.worker" auto-complete="off"></el-input>-->
+          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -81,20 +81,20 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="addFormRules" ref="addForm">
           <el-form-item prop="volumeName" label="组名">
             <el-input v-model="addForm.volumeName" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="worker" label="所属主机">
-            <el-input v-model="addForm.worker" auto-complete="off"></el-input>
-          </el-form-item>
+          <!--<el-form-item prop="worker" label="所属主机">-->
+            <!--<el-input v-model="addForm.worker" auto-complete="off"></el-input>-->
+          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -104,7 +104,7 @@
 </template>
 
 <script>
-  import { reqGetWorkerList, reqEditGroup, reqAddGroup, reqDelGroup, reqBatchDelGroup} from '../../api/api';
+  import { reqGetVolumeList, reqEditVolume, reqAddVolume, reqDelVolume} from '../../api/api';
 
   export default {
     data() {
@@ -118,6 +118,7 @@
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -175,20 +176,36 @@
       },
       //获取用户列表
       getVolume: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
-          page: this.page,
-          pagesize: this.per_page,
-          volumeName: this.filters.volumeName
+          user: this.sysUserName,
+          limit: this.per_page,
+          offset: this.offset,
+//          ip: this.filters.ip
         };
         this.listLoading = true;
         this.isVisible = false;
         //NProgress.start();
-        reqGetWorkerList(para).then((res) => {
+        reqGetVolumeList(para).then((res) => {
           this.total = res.data.total;
           this.volumes = res.data.groups;
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
+        }).catch(err=>{
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            this.$router.push({ path: '/login' });
+          }else{
+            this.listLoading = false;
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
         });
       },
 
@@ -205,17 +222,29 @@
             this.$confirm('确认提交吗？', '提示', {}).then(() => {
               this.editLoading = true;
               //NProgress.start();
+              let user_para = {
+                user: this.sysUserName,
+              };
               let para = Object.assign({}, this.editForm);
-              reqEditGroup(para).then((res) => {
+              reqEditVolume(para.id,user_para,para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
-                  message: '提交成功',
+                  message: '修改成功',
                   type: 'success'
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
                 this.getVolume();
+              }).catch(err=>{
+                this.editLoading = false;
+                this.$message({
+                  message: '修改失败：',
+                  type: 'error'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getWorker();
               });
             });
           }
@@ -235,22 +264,39 @@
           description: ''
         };
       },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
+            let user = {
+              user: this.sysUserName,
+            };
             let para = Object.assign({}, this.addForm);
-            reqAddGroup(para).then((res) => {
+            reqAddVolume(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
-                message: '提交成功',
+                message: '添加成功',
                 type: 'success'
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getVolume();
+            }).catch(err=>{
+              this.addLoading = false;
+              this.$message({
+                message: '添加失败',
+                type: 'error'
+              });
+              this.$refs['addForm'].resetFields();
+              this.addFormVisible = false;
+              this.getWorker();
             });
           }
           else{
@@ -265,7 +311,7 @@
           this.listLoading = true;
           //NProgress.start();
           let para = {id: row.id};
-          reqDelGroup(para).then((res) => {
+          reqDelVolume(para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
@@ -283,29 +329,34 @@
       },
       //批量删除
       batchDelete: function () {
-        var ids = this.sels.map(item => item.id).toString();
-        this.$confirm('确认删除选中记录吗？', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.listLoading = true;
-          //NProgress.start();
-          let para = {ids: ids};
-          reqBatchDelGroup(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
-            this.getVolume();
-          });
-        }).catch(() => {
-
-        });
+//        var ids = this.sels.map(item => item.id).toString();
+//        this.$confirm('确认删除选中记录吗？', '提示', {
+//          type: 'warning'
+//        }).then(() => {
+//          this.listLoading = true;
+//          //NProgress.start();
+//          let para = {ids: ids};
+//          reqBatchDelGroup(para).then((res) => {
+//            this.listLoading = false;
+//            //NProgress.done();
+//            this.$message({
+//              message: '删除成功',
+//              type: 'success'
+//            });
+//            this.getVolume();
+//          });
+//        }).catch(() => {
+//
+//        });
       },
 
     },
     mounted() {
+      var accessInfo = sessionStorage.getItem('access-user');
+      if (accessInfo) {
+        accessInfo = JSON.parse(accessInfo);
+        this.sysUserName = accessInfo.username || '';
+      }
       this.getVolume();
     }
   }

@@ -1,0 +1,22 @@
+main.py是程序的入口，初始化daemon和log
+
+daemon.py的是守护线程，初始化workerpool，把message收到的信息进行处理，并下发
+
+message.py是通信模块，负责接收和发送消息
+
+log.py是日志模块，设置日志的样式
+
+singletask.py的工作是调度周期性的任务，包括对这些任务的暂停，恢复，修改删除
+
+workerpool.py的工作是从singletask里接收工作信息，建立work类的工作实例，为线程池里的各个线程分配任务
+
+work.py的工作是执行dump，backup，recover任务
+
+test.py是测试时的server端
+
+server.py是服务器模块，目前recover和更新数据库的部分未写，其他待测
+
+测试前需要把client.conf放到/etc/SFbackup目录中
+
+测试时先在客户端执行python main.py start,再在服务器端执行python test.py，服务器就能把命令发送的客户端，test.py中有各个命令的调用函数，执行就好（可能部分需要修改）
+

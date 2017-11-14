@@ -62,6 +62,10 @@
                   username: this.account.username,
                   token: data.token
                 };
+                //if (data.role != null) {
+                //  accessInfo.isSuperAdm = true;
+                //};
+                accessInfo.role = data.role;
                 sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
                 this.$router.push({ path: '/' });
               }
@@ -90,11 +94,13 @@
   }
 
 
+
 </script>
 <style>
   body{
     background: #DFE9FB;
   }
+
 
 </style>
 <style lang="scss" scoped>

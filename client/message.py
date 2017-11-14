@@ -12,6 +12,8 @@ from log import MyLogging
 import logging
 import math
 import logging.handlers as handlers
+import ConfigParser
+
 
 
 version = "1.0.0"
@@ -19,27 +21,17 @@ up_time = datetime.now()
 local_host = socket.gethostname
 local_ip = socket.gethostbyname(socket.gethostname())
 q = Queue.Queue()
-
-
-class keystone:
-    def __init__(self):
-        print "keystone service init"
-
-    def start(self):
-        print "keystone serveice start"
-
-
-class Quota:
-    def __init__(self):
-        print "Quota load"
-
-    def load(self):
-        print ""
+con=threading.Condition()
 
 
 def do_put(info):
     global q
+    global con
     q.put(info)
+    con.acquire()
+    con.notify()
+    con.release()
+
 
 
 class Performance:
@@ -71,7 +63,7 @@ class TCPServer(BaseRequestHandler):
                 # self.request.sendall('server response!')
                 do_put(response)
                 self.request.sendto(response, self.client_address)
-                print "address=", address, "recv data:", data
+                #print "address=", address, "recv data:", data
                 self.finish()
 
 
@@ -83,7 +75,7 @@ class UDPServer(BaseRequestHandler):
             # data = self.request.recv(4096)
             data = self.request[0]
             if len(data) > 0:
-                print "address=", address, "recv data:", data
+                #print "address=", address, "recv data:", data
                 cur_thread = threading.current_thread()
                 response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
@@ -94,10 +86,15 @@ class UDPServer(BaseRequestHandler):
 class Message:
     def __init__(self, ms_type):
         global q
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        server_ip = cp.get('server', 'ip')
+        server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
         #mylogger = MyLogging()
         self.local_ip = get_ip2('eth0')
-        self.port = 1025
+        self.port = int(server_port)
+        self.send_ip=server_ip
         self.recv_state = "stop"
         self.send_status = "stop"
         self.ms_type = ms_type
@@ -106,13 +103,15 @@ class Message:
         self.tcpclient = ''
         self.server_thread = []
         self.q = q
-        #self.log =MyLogging().logger()
+        #self.log =mylogger
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
         return self.q.get()
 
-    def start_server(self):
+    def start_server(self):   # 监听
+        global con
+        self.con=con
         ADDR = (self.local_ip, self.port)
         #self.log.logger.info('start TCP listen server')
         # init server:
@@ -149,11 +148,11 @@ class Message:
                     #self.log.logger.error('UDP send failed %s'%e)
                     return e
             else:
-                print "error:data or address not exist ?"
-                #elf.log.logger.error("error:data or address not exist!")
+                #print "error:data or address not exist ?"
+                #self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
-            print "error:data or address not exist ?"
+            #print "error:data or address not exist ?"
             #self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
@@ -163,35 +162,44 @@ class Message:
             return
         ms = ''
         address = ''
-        print 'use TCP send %s'%str(info)
+        #print 'use TCP send %s'%str(info)
         #self.log.logger.info('use TCP send %s'%str(info))
         if info.has_key('data'):
             ms = info['data']
             if info.has_key('addr'):
-                print info
+                #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.sendto(ms, info['addr'])
                     server_reply = self.tcpclient.recv(1024)
-                    print server_reply
+                    #print server_reply
                     self.tcpclient.close()
                 except Exception, e:
                     #self.log.logger.error('UDP send failed %s' % e)
                     return e
             else:
-                print "error:data or address not exist ?"
+                #print "error:data or address not exist ?"
                 #self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
-            print "error:data or address not exist ?"
+            #print "error:data or address not exist ?"
             #self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
 
-
-    def send(self, info):
+    def issued(self,info):    # server发给client
         if self.ms_type == "tcp":
+            ret=self.tcpsend(info)
+        if self.ms_type == "udp":
+            ret=self.udpsend(info)
+        return ret
+
+    def send(self, data):       # client发给server
+        if self.ms_type == "tcp":
+            info={}
+            info['data']=str(data)
+            info['addr']=(self.send_ip,self.port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)

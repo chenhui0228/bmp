@@ -8,7 +8,7 @@ write_all=0
 write_old=0
 write_now=0
 #f = os.popen("rsync -avlP /usr/include /mnt/sdb 2>&1")
-cmd="rsync -avlP /zyt/test /data/"
+cmd="rsync -avlP /zyt/bigbig.txt /zyt/"
 fp=open('/tmp/1','w+')
 process = subprocess.Popen(cmd, shell=True,stdout = fp)
 while True:

@@ -50,7 +50,7 @@
         </el-table-column>
         <el-table-column prop="port" label="端口号">
         </el-table-column>
-        <el-table-column prop="owner" label="用户" sortable>
+        <el-table-column prop="user.name" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -59,7 +59,7 @@
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
             </el-button>
-            <el-button type="danger" @click="delGroup(scope.$index,scope.row)" size="small">
+            <el-button type="danger" @click="delWorker(scope.$index,scope.row)" size="small">
               <i class="iconfont icon-delete"></i>
             </el-button>
           </template>
@@ -89,7 +89,7 @@
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="owner" label="用户">
-            <el-input v-model="editForm.owner" auto-complete="off"></el-input>
+            <el-input v-model="editForm.user.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="port" label="端口号">
             <el-input v-model="editForm.port" auto-complete="off"></el-input>
@@ -113,7 +113,7 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="addForm">
           <el-form-item prop="name" label="主机名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
@@ -132,7 +132,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd()">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -143,7 +143,7 @@
 </template>
 
 <script>
-  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqBatchDelWorker, reqDelWorker} from '../../api/api';
+  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqDelWorker} from '../../api/api';
 
   export default {
     data() {
@@ -179,6 +179,8 @@
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
+        edit_index: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -192,10 +194,10 @@
             {required: true, validator: validateIp, trigger: 'blur'}
           ],
           owner: [
-            {required: true, message: '请输入角色', trigger: 'blur'}
+            {required: true, message: '请输入用户', trigger: 'blur'}
           ],
           port: [
-            {required: true, message: '请输入'}
+            {required: true, message: '请输入端口号'}
           ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
@@ -207,7 +209,8 @@
           ip: '',
           owner: '',
           port: '',
-          description: ''
+          description: '',
+          user: ''
         },
 
         //新增数据相关
@@ -235,10 +238,11 @@
       },
       //获取用户列表
       getWorker: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          page: this.page,
-//          pagesize: this.per_page,
+          limit: this.per_page,
+          offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
@@ -254,7 +258,7 @@
           this.listLoading = false;
           if (err.response.status == 401) {
             this.$message({
-              message: "鉴权失败",
+              message: "请重新登录",
               type: 'error'
             });
             this.$router.push({ path: '/login' });
@@ -270,6 +274,8 @@
       //====编辑相关====
       //显示编辑界面
       showEditDialog: function (index, row) {
+        console.log(row);
+        this.edit_index = index;
         this.editFormVisible = true;
         this.editForm = Object.assign({}, row);
       },
@@ -280,13 +286,25 @@
             this.$confirm('确认提交吗？', '提示', {}).then(() => {
               this.editLoading = true;
               //NProgress.start();
+              let user_para = {
+                user: this.sysUserName,
+              };
               let para = Object.assign({}, this.editForm);
-              reqEditWorker(para).then((res) => {
+              reqEditWorker(para.id,user_para,para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
                   message: '提交成功',
                   type: 'success'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getWorker();
+              }).catch(err=>{
+                this.editLoading = false;
+                this.$message({
+                  message: '提交失败：',
+                  type: 'error'
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
@@ -305,7 +323,6 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
-          user: this.sysUserName,
           name: '',
           ip: '',
           owner: '',
@@ -313,18 +330,35 @@
           description: ''
         };
       },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
+            let user = {
+              user: this.sysUserName,
+            };
             let para = Object.assign({}, this.addForm);
-            reqAddWorker(para).then((res) => {
+            reqAddWorker(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
                 message: '提交成功',
                 type: 'success'
+              });
+              this.$refs['addForm'].resetFields();
+              this.addFormVisible = false;
+              this.getWorker();
+            }).catch(err=>{
+              this.addLoading = false;
+              this.$message({
+                message: '添加失败：' + err.message,
+                type: 'error'
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
@@ -338,12 +372,12 @@
       },
       //====删除相关====
       //单个删除
-      delGroup: function (index, row) {
+      delWorker: function (index, row) {
         this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {id: row.id};
-          reqDelWorker(para).then((res) => {
+          let para = {user: this.sysUserName};
+          reqDelWorker(row.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
@@ -351,8 +385,13 @@
               type: 'success'
             });
             this.getWorker();
+          }).catch((err) => {
+            this.listLoading = false;
+            this.$message({
+              message: '删除失败',
+              type: 'error'
+            });
           });
-        }).catch(() => {
         });
       },
       //勾选
@@ -368,17 +407,18 @@
           this.listLoading = true;
           //NProgress.start();
           let para = {ids: ids};
-          reqBatchDelWorker(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
-            this.getWorker();
-          });
-        }).catch(() => {
-
+          console.log(para);
+//          reqBatchDelWorker(para).then((res) => {
+//            this.listLoading = false;
+//            //NProgress.done();
+//            this.$message({
+//              message: '删除成功',
+//              type: 'success'
+//            });
+//            this.getWorker();
+//          }).catch((err) => {
+//            alert(err.message)
+//          });
         });
       },
 
