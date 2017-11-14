@@ -16,11 +16,12 @@
           <span class="el-dropdown-link userinfo-inner"><i class="iconfont icon-user"></i> {{sysUserName}}  <i
             class="iconfont icon-down"></i></span>
           <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item>
+            <el-dropdown-item v-if="role != 'superrole'">
               <router-link to="/selfinfo/profile"><span style="color: #555;font-size: 14px;">个人信息</span></router-link>
             </el-dropdown-item>
             <el-dropdown-item>
-              <router-link :to="'/selfinfo/changepwd'"><span style="color: #555;font-size: 14px;">修改密码</span></router-link>
+              <router-link :to="'/selfinfo/changepwd'"><span style="color: #555;font-size: 14px;">修改密码</span>
+              </router-link>
             </el-dropdown-item>
             <el-dropdown-item divided @click.native="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
@@ -39,7 +40,8 @@
         </div>
         <!--导航菜单-->
         <el-menu default-active="0" router :collapse="collapsed">
-          <template v-for="(item,index) in $router.options.routes" v-if="item.menuShow">
+          <template v-for="(item,index) in $router.options.routes"
+                    v-if="item.menuShow && (role == 'superrole' ? item.menuShow : !item.isSuperAdm)">
             <el-submenu v-if="!item.leaf" :index="index+''">
               <template slot="title"><i :class="item.iconCls"></i><span slot="title">{{item.name}}</span></template>
               <el-menu-item v-for="term in item.children" :key="term.path" :index="term.path" v-if="term.menuShow"
@@ -60,7 +62,8 @@
         <div class="grid-content bg-purple-light">
           <el-col :span="24" class="content-wrapper">
             <transition name="fade" mode="out-in">
-              <router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles" @transferGroups="refreshGroups"></router-view>
+              <router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles"
+                           @transferGroups="refreshGroups"></router-view>
             </transition>
           </el-col>
         </div>
@@ -86,7 +89,8 @@
         sysUserAvatar: '',
         collapsed: false,
         roles:[],
-        groups:[]
+        groups:[],
+        role: ''
       }
     },
     methods: {
@@ -182,6 +186,7 @@
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username;
+        this.role = accessInfo.role;
         this.getRoles(this.sysUserName);
         this.getGroups(this.sysUserName);
       } else {
@@ -189,6 +194,7 @@
       }
     }
   }
+
 </script>
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

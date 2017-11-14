@@ -60,20 +60,20 @@
       </el-col>
     </el-row>
     <el-row class="warp">
-      <!--<el-col :span="24" class="warp-main">-->
-      <!--<div class="tab-pagination" v-show="!tabLoading">-->
-      <!--<el-pagination-->
-      <!--@size-change="handleSizeChange"-->
-      <!--@current-change="handleCurrentChange"-->
-      <!--:current-page="1"-->
-      <!--:page-sizes="[10, 15, 20, 30]"-->
-      <!--:page-size="6"-->
-      <!--layout="total, sizes, prev, pager, next, jumper"-->
-      <!--total="100"-->
-      <!--style="float: right;">-->
-      <!--</el-pagination>-->
-      <!--</div>-->
-      <!--</el-col>-->
+      <el-col :span="24" class="warp-main">
+        <div class="tab-pagination" v-show="!loading">
+          <el-pagination
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="filter.page"
+            :page-sizes="[10, 15, 20, 30]"
+            :page-size="filter.per_page"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total_rows"
+            style="float: right; margin-top: 20px">
+          </el-pagination>
+        </div>
+      </el-col>
     </el-row>
     <el-dialog title="新建策略" v-model="dialogNewPolicyVisible">
       <el-form :model="policyBaseForm" :rules="policyRules" ref="policyBaseForm">
@@ -92,13 +92,13 @@
               <template>
                 <el-switch v-model="policyTimeForm.delay" on-text="是" off-text="否"></el-switch>
                 <!--<el-checkbox-group v-model="policyTimeForm.delay">-->
-                  <!--<el-checkbox label="1"></el-checkbox>-->
+                <!--<el-checkbox label="1"></el-checkbox>-->
                 <!--</el-checkbox-group>-->
               </template>
             </el-form-item>
           </el-col>
           <el-col :span="19">
-            <el-form-item :label-width="formLabelWidth" style="margin-left: -120px">
+            <el-form-item :label-width="formLabelWidth" style="margin-left: -100px">
               <template>
                 <el-date-picker
                   v-model="policyTimeForm.start_date"
@@ -110,7 +110,8 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item prop="start_time" label="开始时间" :label-width="formLabelWidth" :show-message="formCheckErrorMsgForStarTime">
+        <el-form-item prop="start_time" label="开始时间" :label-width="formLabelWidth"
+                      :show-message="formCheckErrorMsgForStarTime">
           <template>
             <el-time-picker
               v-model="policyTimeForm.start_time">
@@ -167,7 +168,10 @@
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogNewPolicyVisible = false">取 消</el-button>
-        <el-button type="primary" @click="savePolicy('policyBaseForm','policyTimeForm','policyRecurringForm','policyProtectionForm')">确 定</el-button>
+        <el-button type="primary"
+                   @click="savePolicy('policyBaseForm','policyTimeForm','policyRecurringForm','policyProtectionForm')">确
+          定
+        </el-button>
       </div>
     </el-dialog>
   </el-row>
@@ -260,7 +264,11 @@
             return time.getTime() < Date.now() - 8.64e7;
           }
         },
-
+        filter: {
+          per_page: 10,   //页大小
+          page: 1   //当前页
+        },
+        total_rows: 0,
         policyRules: {
           name: [
             { required: true, message: '请输入策略名称', trigger: 'blur' }
@@ -321,11 +329,17 @@
           });
       },
       getPolicys(username){
+        var page_offset = this.filter.per_page * (this.filter.page - 1);
         let params = {
           user: username,
+          limit: this.filter.per_page,
+          offset: page_offset,
         };
         reqGetPolicyList(params).then(res => {
           this.policies = res.data.policies;
+          this.total_rows = res.data.total;
+          this.filter.page = this.filter.page;
+          this.filter.per_page = this.filter.per_page;
           console.log(res);
         },err => {
           console.log(err);
@@ -382,14 +396,28 @@
             this.policy.protection = -1;
             break;
         };
-      }
+      },
+      //-----分页----
+      handleSizeChange(val) {
+          this.filter.per_page = val;
+          this.getPolicys(this.sysUserName);
+          //console.log(`每页 ${val} 条`);
+      },
+      handleCurrentChange(val) {
+          this.filter.page = val;
+          this.getPolicys(this.sysUserName);
+          //console.log(`当前页: ${val}`);
+      },
     },
     mounted() {
       var accessInfo = sessionStorage.getItem('access-user');
+
       this.sysUserName = JSON.parse(accessInfo).username;
       this.getPolicys(this.sysUserName);
     }
   }
+
+
 
 </script>
 <style scoped lang="scss">

@@ -41,6 +41,7 @@ let router = new Router({
       redirect: '/dashboard',
       leaf: true, // 只有一个节点
       menuShow: true,
+      isSuperAdm: false,
       iconCls: 'iconfont icon-home', // 图标样式class
       children: [
         {path: '/dashboard', component: Dashboard, name: '首页', menuShow: true}
@@ -51,6 +52,7 @@ let router = new Router({
       component: Home,
       name: '任务管理',
       menuShow: true,
+      isSuperAdm: false,
       leaf: true, // 只有一个节点
       iconCls: 'iconfont icon-task', // 图标样式class
       children: [
@@ -62,6 +64,7 @@ let router = new Router({
       component: Home,
       name: '策略管理',
       menuShow: true,
+      isSuperAdm: false,
       leaf: true, // 只有一个节点
       iconCls: 'iconfont icon-policy', // 图标样式class
       children: [
@@ -73,6 +76,7 @@ let router = new Router({
       component: Home,
       name: '主机管理',
       menuShow: true,
+      isSuperAdm: false,
       leaf: true, // 只有一个节点
       iconCls: 'iconfont icon-host', // 图标样式class
       children: [
@@ -84,6 +88,7 @@ let router = new Router({
       component: Home,
       name: '卷管理',
       menuShow: true,
+      isSuperAdm: false,
       leaf: true, // 只有一个节点
       iconCls: 'iconfont icon-volume', // 图标样式class
       children: [
@@ -107,6 +112,7 @@ let router = new Router({
       name: '用户管理',
       menuShow: true,
       iconCls: 'iconfont icon-userMgr',
+      isSuperAdm: true,
       children: [
         // {path: '/user', component: User, name: '用户', menuShow: true},
         {path: '/user/list', component: UserList, name: '用户列表', menuShow: true},
