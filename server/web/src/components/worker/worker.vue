@@ -50,7 +50,7 @@
         </el-table-column>
         <el-table-column prop="port" label="端口号">
         </el-table-column>
-        <el-table-column prop="owner" label="用户" sortable>
+        <el-table-column prop="user.name" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
@@ -89,7 +89,7 @@
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="owner" label="用户">
-            <el-input v-model="editForm.owner" auto-complete="off"></el-input>
+            <el-input v-model="editForm.user.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="port" label="端口号">
             <el-input v-model="editForm.port" auto-complete="off"></el-input>
@@ -113,7 +113,7 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="addForm">
           <el-form-item prop="name" label="主机名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
@@ -132,7 +132,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd()">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -209,7 +209,8 @@
           ip: '',
           owner: '',
           port: '',
-          description: ''
+          description: '',
+          user: ''
         },
 
         //新增数据相关
@@ -273,6 +274,7 @@
       //====编辑相关====
       //显示编辑界面
       showEditDialog: function (index, row) {
+        console.log(row);
         this.edit_index = index;
         this.editFormVisible = true;
         this.editForm = Object.assign({}, row);
@@ -327,6 +329,11 @@
           port: '',
           description: ''
         };
+      },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
       },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {

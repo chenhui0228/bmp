@@ -49,17 +49,18 @@ def create_dir(path):
                 except:
                     pass
 
-
-
 if __name__ == '__main__':
+    if not os.path.exists('/etc/SFbackup/client.conf'):
+        print "conf is lose"
+        sys.exit(1)
     cp = ConfigParser.ConfigParser()
-    cp.read('client.conf')
+    cp.read('/etc/SFbackup/client.conf')
     log_level = cp.get('client', 'log_level')
     log_file_dir = cp.get('client', 'log_file_dir')
-    work_dir=cp.get('client', 'work_dir')
+    work_dir=cp.get('client', 'mount_dir')
     create_dir(work_dir)
     if not os.path.exists(log_file_dir):
-        os.mkdir(log_file_dir)
+        os.makedirs(log_file_dir)
     log_file_name=log_file_dir+'client.log'
     mylogger = MyLogging(log_level,log_file_name)   # 初始化log
     ip = ''

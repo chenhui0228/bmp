@@ -16,7 +16,7 @@ def q_backup(ms,addr):
 
     data="{'type':'backup','data':{'id':'12312','name':'test1','user':'zyt'," \
          "'source_ip':'10.202.125.83','source_address':'/zyt/test100M','destination_address': '/qwe/'," \
-         "'destination_vol':'rp','duration':'1','run_sub':'queue','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'*/5'," \
+         "'destination_vol':'rp','duration':'1','run_sub':'cron','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'*/5'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
     info={}
     info['data']=data
@@ -27,7 +27,7 @@ def d_backup(ms,addr):
 
     data ="{'type':'backup','data':{'id':'12312','name':'test1','user':'zyt'," \
          "'source_ip':'10.202.125.83','source_address':'/zyt/test100M','destination_address': '/qwe/'," \
-         "'destination_vol':'rp','duration':'1','run_sub':'direct','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
+         "'destination_vol':'rp','duration':'1','run_sub':'date','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
     info={}
     info['data']=data
@@ -35,9 +35,9 @@ def d_backup(ms,addr):
     ms.issued(info)
 
 def d_dump(ms,addr):
-    data ="{'type':'dump','data':{'id':'12321','script':'ls'," \
+    data ="{'type':'dump','data':{'id':'12321','script':'/tmp/test.sh'," \
          "'source_ip':'10.202.125.83','source_address':'/data/dump/','destination_address': '/qwe/'," \
-         "'destination_vol':'rp','run_sub':'direct','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
+         "'destination_vol':'rp','run_sub':'date','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
     info={}
     info['data']=data
@@ -47,7 +47,7 @@ def d_dump(ms,addr):
 def q_dump(ms,addr):
     data ="{'type':'dump','data':{'id':'12321','script':'ls'," \
          "'source_ip':'10.202.125.83','source_address':'/data/dump/','destination_address': '/qwe/'," \
-         "'destination_vol':'rp','run_sub':'queue','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
+         "'destination_vol':'rp','run_sub':'cron','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
     info={}
     info['data']=data
@@ -99,7 +99,7 @@ def restart(ms,addr):
 def revise (ms,addr):
     data ="{'type':'backup','data':{'id':'12312','name':'test1','user':'zyt'," \
          "'source_ip':'10.202.125.83','source_address':'/zyt/test100M','destination_address': '/qwe/'," \
-         "'destination_vol':'rp','duration':'1','run_sub':'direct','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
+         "'destination_vol':'rp','duration':'1','run_sub':'date','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
     info={}
     info['data']=data

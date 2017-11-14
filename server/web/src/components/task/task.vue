@@ -9,7 +9,7 @@
   .table-expand .el-form-item {
     margin-right: 0;
     margin-bottom: 0;
-    width: 50%;
+    width: 46%;
   }
 </style>
 <template>
@@ -19,6 +19,13 @@
         <el-breadcrumb-item :to="{ path: '/' }"><b>首页</b></el-breadcrumb-item>
         <el-breadcrumb-item>任务管理</el-breadcrumb-item>
       </el-breadcrumb>
+    </el-col>
+
+    <el-col :span="24" style="margin-top:5px;margin-bottom: 10px">
+      <el-tabs value="backup" @tab-click="handleClick">
+        <el-tab-pane label="备份任务" name="backup"></el-tab-pane>
+        <el-tab-pane label="恢复任务" name="recover"></el-tab-pane>
+      </el-tabs>
     </el-col>
 
     <el-col :span="24" class="warp-main">
@@ -34,13 +41,13 @@
             <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getWorker">查询</el-button>
+            <el-button type="primary" @click="getTasks">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
 
       <!--列表-->
-      <el-table :data="workers" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="tasks" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
         <!--<el-table-column type="index" width="60">-->
@@ -49,56 +56,71 @@
           <template slot-scope="props">
             <el-form label-position="left" inline class="table-expand">
               <el-form-item label="任务名">
-                <span>{{ props.row.name }}</span>
+                <span>{{ props.row.task.name }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
-                <span>{{ props.row.create_at }}</span>
+                <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="更新时间">
-                <span>{{ props.row.updated_at }}</span>
+                <span>{{ props.row.task.updated_at }}</span>
               </el-form-item>
-              <el-form-item label="开始时间">
-                <span>{{ props.row.start_time }}</span>
+              <el-form-item label="任务策略">
+                <span>{{ props.row.task.policy_id }}</span>
               </el-form-item>
               <el-form-item label="源地址">
-                <span>{{ props.row.source }}</span>
+                <span>{{ props.row.task.source }}</span>
               </el-form-item>
               <el-form-item label="目的地址">
-                <span>{{ props.row.destination }}</span>
+                <span>{{ props.row.task.destination }}</span>
               </el-form-item>
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="任务名"sortable>
+        <el-table-column prop="task.name" label="任务名"sortable>
         </el-table-column>
-        <el-table-column prop="source" label="源地址">
+        <el-table-column prop="task.source" label="源地址">
         </el-table-column>
-        <el-table-column prop="destination" label="目标地址">
+        <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="start_time" label="开始时间" sortable>
+        <el-table-column prop="task.policy_id" label="任务策略" v-if="isVisible" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
         <el-table-column label="操作" width="200">
           <template slot-scope="scope">
-            <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
-              <i class="iconfont icon-modiffy"></i>
+            <el-button type="text" icon="information" @click="showEditDialog(scope.$index,scope.row)">
             </el-button>
-            <el-button type="danger" @click="delGroup(scope.$index,scope.row)" size="small">
-              <i class="iconfont icon-delete"></i>
+            <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
+              <!--<i class="iconfont icon-modiffy"></i>-->
+            </el-button>
+            <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
+              <!--<i class="iconfont icon-delete"></i>-->
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
+      <!--工具条-->
+      <el-col :span="24" class="toolbar" style="margin-top: 5px;">
+        <el-pagination
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :page-sizes="[10, 15, 20, 30]"
+          :page-size="per_page"
+          :current-page="page"
+          :total="total" style="float:right;margin-right: 5px">
+        </el-pagination>
+      </el-col>
+
       <!--编辑框 -->
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="name" label="主机名">
+          <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="date" placeholder="选择日期" v-model="editForm.start_time"></el-date-picker>
+          <el-form-item prop="policy_id" label="任务策略">
+            <el-input v-model="editForm.policy_id" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
@@ -117,13 +139,13 @@
       </el-dialog>
 
       <!--新建框-->
-      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false">
+      <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="name" label="主机名">
+          <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="date" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
+            <el-date-picker type="datetime" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
@@ -136,7 +158,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="addFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelAdd">取消</el-button>
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -145,49 +167,22 @@
   </el-row>
 </template>
 <script>
-  import { reqGetWorkerList} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction} from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
-    created(){
-      bus.$on('setUserName', (text) => {
-        console.log("text");
-        console.log(text);
-        this.sysUserName = text;
-      })
-    },
     data() {
-      var validateIp = (rule, value, callback) => {
-        var ip = /^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}$/
-        if (!ip.test(value)) {
-          callback(new Error('输入IP格式不正确，请重新输入！'));
-        }else{
-          callback();
-        }
-      };
       return {
         sysUserName: '',
         filters: {
           name: ''
         },
-        options:[{
-          value: '1',
-          label: '1'
-        },{
-          value: '2',
-          label: '2'
-        },{
-          value: '3',
-          label: '3'
-        },{
-          value: '4',
-          label: '4'
-        }],
         listLoading: false,
         isVisible:true,
-        workers:[],
+        tasks:[],
         total: 0,
         page: 1,
         per_page: 10,
+        offset: 0,
         sels: [], //列表选中列
 
         //编辑相关数据
@@ -196,9 +191,6 @@
         editFormRules: {
           name: [
             {required: true, message: '请输入主机名', trigger: 'blur'}
-          ],
-          ip: [
-            {required: true, validator: validateIp, trigger: 'blur'}
           ],
           owner: [
             {required: true, message: '请输入角色', trigger: 'blur'}
@@ -213,9 +205,9 @@
         editForm: {
           id: 0,
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
+          source: '',
+          destination: '',
+          policy: '',
           description: ''
         },
 
@@ -224,38 +216,48 @@
         addLoading: false,
         addForm: {
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
+          source: '',
+          destination: '',
+          policy: '',
           description: ''
         },
       }
     },
     methods: {
+      handleClick(tag) {
+        if(tag.index === '1') {
+          this.isVisible = false;
+          console.log(this.isVisible)
+        }else{
+          this.isVisible = true;
+          console.log(this.isVisible)
+        }
+      },
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        this.getWorker();
+        this.getTasks();
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        this.getWorker();
+        this.getTasks();
       },
       //获取用户列表
-      getWorker: function () {
+      getTasks: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          page: this.page,
-//          pagesize: this.per_page,
+          limit: this.per_page,
+          offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
         this.isVisible = false;
         //NProgress.start();
-        reqGetWorkerList(para).then((res) => {
+        reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
-          this.workers = res.data.workers;
+          this.tasks = res.data.tasks;
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
@@ -280,7 +282,7 @@
       //显示编辑界面
       showEditDialog: function (index, row) {
         this.editFormVisible = true;
-        this.editForm = Object.assign({}, row);
+        this.editForm = Object.assign({}, row.task);
       },
       //编辑
       editSubmit: function () {
@@ -289,17 +291,29 @@
             this.$confirm('确认提交吗？', '提示', {}).then(() => {
               this.editLoading = true;
               //NProgress.start();
+              let user_para = {
+                user: this.sysUserName,
+              };
               let para = Object.assign({}, this.editForm);
-              reqEditWorker(para).then((res) => {
+              reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
                 this.$message({
-                  message: '提交成功',
+                  message: '修改成功',
                   type: 'success'
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
-                this.getWorker();
+                this.getTasks();
+              }).catch(err=>{
+                this.editLoading = false;
+                this.$message({
+                  message: '修改失败：',
+                  type: 'error'
+                });
+                this.$refs['editForm'].resetFields();
+                this.editFormVisible = false;
+                this.getTasks();
               });
             });
           }
@@ -322,13 +336,18 @@
           description: ''
         };
       },
+      //取消提交
+      cancelAdd: function () {
+        this.addFormVisible = false;
+        this.$refs['addForm'].resetFields();
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
             let para = Object.assign({}, this.addForm);
-            reqAddWorker(para).then((res) => {
+            reqAddTask(para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
@@ -337,7 +356,7 @@
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
-              this.getWorker();
+              this.getTasks();
             });
           }
           else{
@@ -347,21 +366,26 @@
       },
       //====删除相关====
       //单个删除
-      delGroup: function (index, row) {
+      delTask: function (index, row) {
         this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {id: row.id};
-          reqDelWorker(para).then((res) => {
+          let para = {user: this.sysUserName};
+          reqDelTask(row.task.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
               message: '删除成功',
               type: 'success'
             });
-            this.getWorker();
+            this.getTasks();
           });
         }).catch(() => {
+          this.listLoading = false;
+          this.$message({
+            message: '删除失败',
+            type: 'error'
+          });
         });
       },
       //勾选
@@ -370,25 +394,25 @@
       },
       //批量删除
       batchDelete: function () {
-        var ids = this.sels.map(item => item.id).toString();
-        this.$confirm('确认删除选中记录吗？', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.listLoading = true;
-          //NProgress.start();
-          let para = {ids: ids};
-          reqBatchDelWorker(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
-            this.getWorker();
-          });
-        }).catch(() => {
-
-        });
+//        var ids = this.sels.map(item => item.id).toString();
+//        this.$confirm('确认删除选中记录吗？', '提示', {
+//          type: 'warning'
+//        }).then(() => {
+//          this.listLoading = true;
+//          //NProgress.start();
+//          let para = {ids: ids};
+//          reqBatchDelWorker(para).then((res) => {
+//            this.listLoading = false;
+//            //NProgress.done();
+//            this.$message({
+//              message: '删除成功',
+//              type: 'success'
+//            });
+//            this.getTasks();
+//          });
+//        }).catch(() => {
+//
+//        });
       },
 
     },
@@ -398,7 +422,7 @@
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username || '';
       }
-      this.getWorker();
+      this.getTasks();
     }
   }
 </script>

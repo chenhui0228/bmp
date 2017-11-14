@@ -21,27 +21,17 @@ up_time = datetime.now()
 local_host = socket.gethostname
 local_ip = socket.gethostbyname(socket.gethostname())
 q = Queue.Queue()
-
-
-class keystone:
-    def __init__(self):
-        print "keystone service init"
-
-    def start(self):
-        print "keystone serveice start"
-
-
-class Quota:
-    def __init__(self):
-        print "Quota load"
-
-    def load(self):
-        print ""
+con=threading.Condition()
 
 
 def do_put(info):
     global q
+    global con
     q.put(info)
+    con.acquire()
+    con.notify()
+    con.release()
+
 
 
 class Performance:
@@ -97,7 +87,7 @@ class Message:
     def __init__(self, ms_type):
         global q
         cp = ConfigParser.ConfigParser()
-        cp.read('/zyt/clinet/client.conf')
+        cp.read('/etc/SFbackup/client.conf')
         server_ip = cp.get('server', 'ip')
         server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
@@ -120,6 +110,8 @@ class Message:
         return self.q.get()
 
     def start_server(self):   # 监听
+        global con
+        self.con=con
         ADDR = (self.local_ip, self.port)
         #self.log.logger.info('start TCP listen server')
         # init server:

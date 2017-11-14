@@ -52,6 +52,9 @@ class Work():
         #print "to init arglist"
         self.wait_start = datetime.strptime(arglist['wait_start'], "%Y-%m-%d %H:%M:%S")  # 开始等待
         self.arglist = arglist
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        self.mount = cp.get('client', 'mount_dir')
         #print "work arglist is:", self.arglist, " time at:", datetime.now()
         #self.log.logger.info("work arglist is:", self.Z, " time at:", datetime.now())
         #self.log.logger.debug('work arglist is ' + str(self.arglist))
@@ -64,7 +67,7 @@ class Work():
         return
 
     def send(self,sub,value):
-        data="{'type':'update','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
+        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)
@@ -164,12 +167,13 @@ class Work():
                         write_all = write_all + (write_now - write_old)
                         #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
                         pro=(int((write_all * 100) / self.proctotal))
-                        if pro-self.sendpro>=5:
+                        if pro-self.sendpro>=2:
                             self.send('progress',str(pro))
                             self.sendpro=pro
                     else:
                         write_old = 0
                         write_now = 0
+                    time.sleep(1)
                 if process.poll() == 0:
                     list=pd.split('/')
                     new_file=os.path.join(vd,list[-1])
@@ -234,7 +238,7 @@ class Work():
         return size
 
     def do_delete(self):
-        if self.arglist['run_sub'] == 'direct' or self.arglist['duration'] == '-1':
+        if self.arglist['run_sub'] == 'date' or self.arglist['duration'] == '-1':
             return 0
         old_time=self.wait_start-timedelta(days=int(self.arglist['duration']))
         dict=self.arglist['cron']
@@ -258,7 +262,7 @@ class Work():
         self.op=self.arglist['op']
         self.send('state', 'start')
         warnings.filterwarnings('ignore')
-        if self.op == 'write':
+        if self.op == 'backup':
             if self.arglist.has_key('destination _ip'):
                 self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
@@ -266,7 +270,7 @@ class Work():
             #print self.proctotal
             self.vfile = self.arglist['destination_address'] + self.arglist['name']+"_"+self.arglist['id'] + "_" + self.wait_start.strftime(
                 '%Y%m%d%H%M') + "/"  # 添加时间戳
-            self.mount_dir = "/mnt/del/%s" % self.arglist['threadId']
+            self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
 
 
@@ -304,12 +308,12 @@ class Work():
             self.mount_dir =  self.arglist['source_address']
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address']
-            cmd=self.arglist['script']
+            path=self.arglist['script']
             ret = self.do_mount()
             if ret != 0:
                 self.send('state', 'failed')
                 return
-            ret=os.system(cmd)
+            ret=os.system(path)
             if ret!=0:
                 self.do_close()
                 self.send('state', 'failed')
@@ -325,7 +329,7 @@ class Work():
             if self.arglist.has_key('destination _ip'):
                 self.arglist['ip'].append(self.arglist['source_ip'])
 
-            self.mount_dir = "/mnt/del/%s" % self.arglist['threadId']
+            self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
             self.vfile = self.arglist['destination_address']
             self.pfile = self.arglist['source_address'] + "/" + self.arglist['name'] + '_'+self.arglist['id']+'_'+\
@@ -353,6 +357,9 @@ class Work():
                 self.do_close()
                 self.send('state', 'failed')
                 return
+        else:
+            self.send('state', 'failed')
+            return
             #print "end do_cloes"
         self.send('state','success')
         self.log.logger.info("the work %s is success"%self.arglist['name'])
