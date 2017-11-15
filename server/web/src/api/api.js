@@ -49,6 +49,9 @@ export const reqPostPolicy = (params, data) => {
 export const reqPutPolicy = (params, data) => {
   return axios.put(`${base}/backup/policies/${data.id}`, data, {params: params})
 }
+export const reqDelPolicy = (params, id) => {
+  return axios.delete(`${base}/backup/policies/${id}`, {params: params})
+}
 
 
 //组列表相关API开始
