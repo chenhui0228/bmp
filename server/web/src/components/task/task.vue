@@ -74,7 +74,7 @@
                 <span>{{ props.row.policy.name }}</span>
               </el-form-item>
               <el-form-item label="作业机">
-                <span>{{ props.row.worker.name }}</span>
+                <span>{{ props.row.worker.name }}  (IP:{{ props.row.worker.ip }})</span>
               </el-form-item>
               <el-form-item label="源地址">
                 <span>{{ props.row.task.source }}</span>
@@ -148,7 +148,7 @@
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="policy" label="任务策略">
-            <el-select v-model="editForm.policy_id" clearable placeholder="请选择">
+            <el-select v-model="editForm.policy_id" placeholder="请选择">
               <el-option
                 v-for="policy in policies"
                 :key="policy.id"
@@ -158,7 +158,7 @@
             </el-select>
           </el-form-item>
           <el-form-item prop="worker" label="作业机">
-            <el-select v-model="editForm.worker_id" clearable placeholder="请选择">
+            <el-select v-model="editForm.worker_id" placeholder="请选择">
               <el-option
                 v-for="worker in workers"
                 :key="worker.id"
@@ -175,7 +175,7 @@
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="volume" label="卷">
-            <el-select v-model="editForm.volume_id" clearable placeholder="请选择" @change="handleChange">
+            <el-select v-model="editForm.volume_id" placeholder="请选择" @change="handleChange">
               <el-option
                 v-for="volume in volumes"
                 :key="volume.id"
@@ -207,7 +207,7 @@
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="policy" label="任务策略">
-            <el-select v-model="addForm.policy_id" clearable placeholder="请选择">
+            <el-select v-model="addForm.policy_id" placeholder="请选择">
               <el-option
                 v-for="policy in policies"
                 :key="policy.id"
@@ -217,7 +217,7 @@
             </el-select>
           </el-form-item>
           <el-form-item prop="worker" label="作业机">
-            <el-select v-model="addForm.worker_id" clearable placeholder="请选择">
+            <el-select v-model="addForm.worker_id" placeholder="请选择">
               <el-option
                 v-for="worker in workers"
                 :key="worker.id"
@@ -234,7 +234,7 @@
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
           </el-form-item>
           <el-form-item prop="volume" label="卷">
-            <el-select v-model="addForm.volume" clearable placeholder="请选择" @change="handleChange">
+            <el-select v-model="addForm.volume_id" placeholder="请选择" @change="handleChange">
               <el-option
                 v-for="volume in volumes"
                 :key="volume.id"
@@ -332,6 +332,7 @@
         per_page: 10,
         offset: 0,
         task_type: 'backup',
+        volumeName: '',
         sels: [], //列表选中列
         workers:[],
         volumes:[],
@@ -355,7 +356,6 @@
 //          ]
         },
         editForm: {
-          id: 0,
           name: '',
           policy_id: '',
           worker_id: '',
@@ -469,7 +469,8 @@
         let source = row.task.source;
         let destination = row.task.destination;
         source = source.match(/\/\/(\S*)/)[1];
-        let volumeName = destination.match(/\/\/(\S*)\//)[1];
+        let desArr = destination.split('/');
+        let volumeName = desArr[2];
         destination = destination.match(/\/(\S*)/)[1];
         let volume = {};
         volume = this.volumes.find((volume)=>{
@@ -554,18 +555,13 @@
         this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
+        console.log(value);
         if(typeof(value) !== "undefined"){
           let volume = {};
           volume = this.volumes.find((volume)=>{
             return volume.id === value;
           });
-          if(this.addFormVisible){
-            this.addForm.destination = '';
-            this.addForm.destination = '/' + this.addForm.destination + volume.name + '/';
-          }else if(this.editFormVisible) {
-            this.editForm.destination = '';
-            this.editForm.destination = '/' + this.editForm.destination + volume.name + '/';
-          }
+          this.volumeName = volume.name;
         }
       },
 
@@ -578,11 +574,12 @@
               user: this.sysUserName,
             };
             let para = Object.assign({}, this.addForm);
+//            console.log(this.addForm);
             para.type = this.task_type;
 
             if(para.type === "backup"){
-              para.source = 'file://' + para.source;
-              para.destination = 'glusterfs:/' + para.destination;
+              para.source = 'file:/' + para.source;
+              para.destination = 'glusterfs://' + this.volumeName + para.destination;
             }
 //            console.log("!!!####!!!");
 //            console.log(para);
