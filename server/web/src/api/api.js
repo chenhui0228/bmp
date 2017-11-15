@@ -97,3 +97,13 @@ export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/bac
 
 export const reqTaskAction = (task_id, params) => { return axios.post(`${base}/tasks/${task_id}/action`, { params: params}) };
 //任务管理相关结束
+
+//任务状态
+export const reqBackupStates = params => {
+  return axios.get(`${base}/backup/backupstates`, {params: params} )
+};
+
+export const reqBackupStatesDetail = params => {
+  return axios.get(`${base}/backup/backupstates/detail`, {params: params} )
+};
+

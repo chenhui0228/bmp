@@ -34,7 +34,7 @@
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" v-if="isRecoverTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -47,7 +47,10 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="tasks" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="tasks" highlight-current-row
+                v-loading="listLoading"
+                @selection-change="selsChange"
+                @row-dblclick="taskStateDetail"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
         <!--<el-table-column type="index" width="60">-->
@@ -88,20 +91,39 @@
         </el-table-column>
         <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" v-if="isVisible" sortable>
+        <el-table-column prop="policy.name" label="任务策略" sortable>
         </el-table-column>
-        <!--<el-table-column prop="description" label="描述" sortable>-->
-        <!--</el-table-column>-->
+        <el-table-column
+          label="任务进度"
+          width="180rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.state && scope.row.state.state == 'success'" style="color: green">已完成</span>
+            <span v-else-if="scope.row.state && scope.row.state.state == 'start'" style="color: blue">执行中...</span>
+            <span v-else-if="scope.row.state && scope.row.state.state == 'failed'" style="color: red">失败</span>
+            <el-progress v-else-if="scope.row.state" :percentage="parseInt(scope.row.state.state)"></el-progress>
+            <span v-else style="color: #f7c410">未开始</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200">
           <template slot-scope="scope">
-            <el-button type="text" icon="information" @click="showEditDialog(scope.$index,scope.row)">
-            </el-button>
             <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
               <!--<i class="iconfont icon-modiffy"></i>-->
             </el-button>
             <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
               <!--<i class="iconfont icon-delete"></i>-->
             </el-button>
+            <el-tooltip content="立即执行" placement="top">
+              <el-button type="text" icon="information" @click="immediatelyExecute">
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="暂停" placement="top" v-if="!isPause"><!--没暂停就显示暂停按钮-->
+              <el-button type="text" icon="information" @click="toPause(scope.$index,scope.row)">
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="继续" placement="top" v-if="isPause">
+              <el-button type="text" icon="search" @click="toResume(scope.$index,scope.row)">
+              </el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -120,7 +142,7 @@
       </el-col>
 
       <!--编辑框 -->
-      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false" beforeClose="cancelEdit">
+      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false" :beforeClose="cancelEdit">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
@@ -144,6 +166,10 @@
                 :value="worker.id">
               </el-option>
             </el-select>
+            <span v-for="worker in workers"
+                  v-if="editForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
@@ -199,6 +225,10 @@
                 :value="worker.id">
               </el-option>
             </el-select>
+            <span v-for="worker in workers"
+                  v-if="addForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
@@ -229,11 +259,63 @@
         </div>
       </el-dialog>
 
+      <!--任务状态框-->
+      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible">
+        <el-table :data="taskStates"
+                  border
+                  style="margin: auto;">
+          <el-table-column label="开始时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="结束时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.end_time | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="总大小" width="120">
+            <template scope="scope">
+              <span>{{ scope.row.total_size | BytesReadable }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="已备份" width="120">
+            <template scope="scope">
+              <span>{{ scope.row.current_size | BytesReadable }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="更新时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.updated_at | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="任务状态" min-width="180">
+            <template slot-scope="scope">
+              <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
+              <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
+              <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
+              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.state)"></el-progress>
+              <span v-else style="color: #F7AD01">未开始</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="taskStateHandleSizeChange"
+          @current-change="taskStateHandleCurrentChange"
+          :current-page="taskStateFilter.page"
+          :page-sizes="[10, 15]"
+          :page-size="taskStateFilter.per_page"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="taskState_total_rows">
+        </el-pagination>
+      </el-dialog>
+
     </el-col>
   </el-row>
 </template>
 <script>
-  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList, reqGetWorkerList, reqGetPolicyList} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
+    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail } from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
     data() {
@@ -243,7 +325,7 @@
           name: ''
         },
         listLoading: false,
-        isVisible:true,
+        isRecoverTask:true,
         tasks:[],
         total: 0,
         page: 1,
@@ -294,45 +376,75 @@
 //          worker_id: '',
 //          volume: '',
         },
+
+        //任务详情相关数据
+        dialogTaskStateDetailTableVisible: false,
+        currTaskStateTabTitle: '',
+        taskStates: [],
+        currTaskRow: '',
+        taskStateFilter:{
+          page: 0,
+          per_page: 15,
+        },
+        taskState_total_rows: 0,
+        //操作按钮相关数据
+        isPause: false,
       }
     },
     methods: {
       handleClick(tag) {
         if(tag.index === '1') {
           this.task_type = 'recover';
-          this.isVisible = false;
+          this.page = 1;
+          this.per_page = 10;
+          this.offset = 0;
+          this.tasks = '';
+          this.isRecoverTask = false;
+          this.getTasks('recover');
         }else{
           this.task_type = 'backup';
-          this.isVisible = true;
+          this.page = 1;
+          this.per_page = 10;
+          this.offset = 0;
+          this.tasks = '';
+          this.isRecoverTask = true;
+          this.getTasks();
         }
       },
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        this.getTasks();
+        if(this.task_type === 'recover') {
+          this.getTasks('recover');
+        }else {
+          this.getTasks();
+        }
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        this.getTasks();
+        if(this.task_type === 'recover') {
+          this.getTasks('recover');
+        }else {
+          this.getTasks();
+        }
       },
-      //获取用户列表
-      getTasks: function () {
+      //获取任务列表
+      getTasks: function (type='backup') {
         this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
+          type: type,
           limit: this.per_page,
           offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
-        this.isVisible = false;
         //NProgress.start();
         reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
           this.tasks = res.data.tasks;
           this.listLoading = false;
-          this.isVisible = true;
           //NProgress.done();
         }).catch(err=>{
           this.listLoading = false;
@@ -550,6 +662,60 @@
 //        }).catch(() => {
 //
 //        });
+      },
+      //任务状态详情
+      taskStateHandleSizeChange: function (val) {
+        this.taskStateFilter.per_page = val;
+        this.getTaskStates(this.currTaskRow);
+      },
+      taskStateHandleCurrentChange: function (val) {
+        this.taskStateFilter.page = val;
+        this.getTaskStates(this.currTaskRow);
+      },
+      taskStateDetail(row) {
+        this.taskStateFilter.per_page = 10;
+        this.taskStateFilter.page = 1;
+        this.currTaskRow = row.task.id;
+        this.getTaskStates(this.currTaskRow);
+        this.currTaskStateTabTitle = row.task.name;
+      },
+      getTaskStates(task_id){
+        var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);
+
+        let params = {
+          user: this.sysUserName,
+          limit: this.taskStateFilter.per_page,
+          offset: page_offset,
+          task_id: task_id,
+        };
+        reqBackupStates(params).then(res => {
+          this.taskStates = res.data.states;
+          this.dialogTaskStateDetailTableVisible = true;
+          this.taskState_total_rows = res.data.total;
+        },err => {
+          this.$message({
+            message: '获取失败',
+            type: 'error'
+          });
+        })
+          .catch(function(response) {
+            console.log(response);
+          });
+      },
+      //TODO:操作按钮相关方法
+      immediatelyExecute: function () {
+        this.$message({
+          message: '你中计了',
+          type: 'error'
+        })
+      },
+      toPause:function (index, row) {
+        this.isPause = true;
+        console.log(index);
+      },
+      toResume:function (index, row) {
+        this.isPause = false;
+        console.log(index);
       },
 
     },

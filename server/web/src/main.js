@@ -15,7 +15,10 @@ Vue.config.productionTip = false
 Vue.use(ElementUI)
 
 Vue.filter("timeStamp2datetime", function (value) {
-  return Vue.prototype.myDateFormat(new Date(value * 1000), "yyyy-MM-dd hh:mm:ss");
+  if(!value) {
+    return 'N/A';
+  }
+  return Vue.prototype.myDateFormat(new Date(value*1000), "yyyy-MM-dd hh:mm:ss");
 });
 Vue.filter("weeksFormat", function (value) {
   var w = [];
@@ -55,7 +58,14 @@ Vue.filter("weeksFormat", function (value) {
     }
   }
   return str;
-})
+});
+Vue.filter("BytesReadable", function (bytes) {
+  if (bytes === 0) return '0 B';
+  let k = 1024, // or 1024
+    sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+    i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+});
 Vue.prototype.myDateFormat = function (date, fmt) {
   var o = {
     "y+": date.getFullYear(),
