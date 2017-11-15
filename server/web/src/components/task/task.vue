@@ -120,7 +120,7 @@
       </el-col>
 
       <!--编辑框 -->
-      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
+      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false" beforeClose="cancelEdit">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
@@ -169,7 +169,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="editFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelEdit">取消</el-button>
           <el-button type="primary" @click.native="editSubmit" :loading="editLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -353,7 +353,6 @@
 
       //====编辑相关====
       //处理显示
-      //TODO:关闭编辑框后，列表显示不正常的问题
       beforeShow: function (row) {
         let source = row.task.source;
         let destination = row.task.destination;
@@ -367,6 +366,12 @@
         row.task.volume_id = volume.id;
         row.task.source = source;
         row.task.destination = destination;
+      },
+      //取消编辑
+      cancelEdit: function () {
+        this.editFormVisible = false;
+        this.$refs['editForm'].resetFields();
+        this.getTasks();
       },
       //显示编辑界面
       showEditDialog: function (index, row) {
@@ -434,18 +439,21 @@
       //取消提交
       cancelAdd: function () {
         this.addFormVisible = false;
-//        this.$refs['addForm'].resetFields();
+        this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
-//        console.log(value)
         if(typeof(value) !== "undefined"){
-//          console.log(value);
-          this.addForm.destination = '';
           let volume = {};
           volume = this.volumes.find((volume)=>{
             return volume.id === value;
           });
-          this.addForm.destination = '/' + this.addForm.destination + volume.name + '/';
+          if(this.addFormVisible){
+            this.addForm.destination = '';
+            this.addForm.destination = '/' + this.addForm.destination + volume.name + '/';
+          }else if(this.editFormVisible) {
+            this.editForm.destination = '';
+            this.editForm.destination = '/' + this.editForm.destination + volume.name + '/';
+          }
         }
       },
 
