@@ -297,7 +297,7 @@ class Daemon:
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
                 self.send('result', ms, 'failed')
-                self.send('log',ms,'No any work which id is %s' % ms)
+                self.send('message',ms,'No any work which id is %s' % ms)
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
@@ -320,7 +320,7 @@ class Daemon:
                 self.task_list[ms].add_suspendlist(ms)
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('alarm',ms,'No any work which id is %s' % ms)
+                self.send('message',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
             #print "do delete"
             dict = data['data']
@@ -332,7 +332,7 @@ class Daemon:
                 self.task_sum = self.task_sum - 1
             else:
                 self.log.logger.error('No any work which id is %s'%ms)
-                self.send('alarm', ms, 'No any work which id is %s' % ms)
+                self.send('message', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'restart':  # 重启备份任务
             #print "do restart"
             dict = data['data']
@@ -342,7 +342,7 @@ class Daemon:
                 self.task_list[ms].del_suspendlist(ms)
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('alarm', ms, 'No any work which id is %s' % ms)
+                self.send('message', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
             if dict['run_sub'] == 'cron':

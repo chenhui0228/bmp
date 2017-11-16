@@ -92,7 +92,9 @@ class Message:
         server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
         #mylogger = MyLogging()
-        self.local_ip = get_ip2('eth0')
+        hostname = str(socket.gethostname())
+        ip = socket.gethostbyname(hostname)
+        self.local_ip = ip
         self.port = int(server_port)
         self.send_ip=server_ip
         self.recv_state = "stop"
@@ -214,9 +216,6 @@ class Message:
 
 
 # class BackupClient(Message):
-def get_ip2(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
 
 
 '''

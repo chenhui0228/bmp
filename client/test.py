@@ -11,6 +11,7 @@ import logging.handlers as handlers
 import socket # 套接字
 import logging
 import ConfigParser
+from server import Server
 
 def q_backup(ms,addr):
 
@@ -35,7 +36,7 @@ def d_backup(ms,addr):
     ms.issued(info)
 
 def d_dump(ms,addr):
-    data ="{'type':'dump','data':{'id':'12321','script':'/tmp/test.sh'," \
+    data ="{'type':'dump','data':{'id':'12321','script':'ls'," \
          "'source_ip':'10.202.125.83','source_address':'/data/dump/','destination_address': '/qwe/'," \
          "'destination_vol':'rp','run_sub':'date','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
          "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
@@ -108,25 +109,12 @@ def revise (ms,addr):
 
 
 if __name__ == '__main__':
-    cp = ConfigParser.ConfigParser()
-    cp.read('client.conf')
-    log_level = cp.get('client', 'log_level')
-    log_file_dir = cp.get('client', 'log_file_dir')
-
-    if not os.path.exists(log_file_dir):
-        os.mkdir(log_file_dir)
-    if not os.path.exists('/var/run/bak/'):
-        os.mkdir('/var/run/bak/')
-    log_file_name=log_file_dir+'client.log'
-    mylogger = MyLogging(log_level,log_file_name)
-    ms=Message("tcp")
-    ms.start_server()
-    addr=('10.202.125.83',1025)
-    q_backup(ms, addr)
+    se=Server()
+    print 'ok'
     #===============================
     while True:
-        if not ms.q.empty():
-            msg = ms.get_queue()
+        if not se.message.q.empty():
+            msg = se.message.get_queue()
             print msg
         time.sleep(1)
         #d_backup(ms,addr)
