@@ -1,17 +1,10 @@
 #!/usr/bin/env python
 # coding:utf-8
-import os, sys
 from datetime import *
-import time
 from SocketServer import BaseRequestHandler, ThreadingTCPServer, ThreadingUDPServer
 import threading
 import socket  # 套接字
-import fcntl, struct
 import Queue
-#from log import MyLogging
-#import logging
-import math
-#import logging.handlers as handlers
 import ConfigParser
 
 

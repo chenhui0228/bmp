@@ -1,13 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from SocketServer import BaseRequestHandler,ThreadingTCPServer,ThreadingUDPServer
-import threading
 from message import Message,Performance
-#from log import MyLogging
-#import logging.handlers as handlers
-import socket
-#import logging
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
@@ -237,9 +231,22 @@ class Server:
             dict=msg['data']
             key=dict['sub']
             value=dict[key]
-            ret=self.db.upda
-        elif msg['initialize'] == 'return':
+            task_id=dict['id']
+            bks=self.db.bk_list(super_context)[0]
+            for bk in bks:
+                if bk.task_id == task_id:
+                    pass
+        elif msg['type'] == 'initialize':
             dict = msg['data']
+            worker_ip=dict['ip']
+            workers=self.db.get_workers(super_context)
+            for worker in workers:
+                if worker.ip == worker_ip:
+                    worker_id=worker.id
+                    self.update_worker(worker_id)
+
+
+
 
 
     def listen(self):  # listen msg from client

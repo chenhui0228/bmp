@@ -1,41 +1,14 @@
 #!/usr/bin/env python
 #coding:utf-8
-from SocketServer import BaseRequestHandler,ThreadingTCPServer,ThreadingUDPServer
-from message import Message,Performance
-import socket # 套接字
-from gluster import gfapi
-import sys
 import os
-import atexit
-import errno
 from os.path import join, getsize, isfile
-from signal import SIGTERM
-import urllib2
-import httplib, urllib  # 加载模块
-import BaseHTTPServer
-from SocketServer import ThreadingMixIn
-import threading
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-import urlparse
-from multiprocessing.pool import ThreadPool as Pool
-from threading import Timer
 from datetime import *
 import subprocess
 import time
-import Queue
-import types
-import json
-import socket
-from apscheduler.schedulers.background import BackgroundScheduler
-import logging
-import math
-import logging.handlers as handlers
 import shutil
 from message import Message
 import tempfile
-from  log import MyLogging
 import ConfigParser
-import warnings
 
 
 class Work():
@@ -266,7 +239,6 @@ class Work():
     def start(self):
         self.op=self.arglist['op']
         self.send('state', 'start')
-        warnings.filterwarnings('ignore')
         if self.op == 'backup':
             #if self.arglist.has_key('destination _ip'):
             #    self.arglist['ip'].append(self.arglist['destination _ip'])
@@ -277,6 +249,7 @@ class Work():
                 '%Y%m%d%H%M') + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
+
 
             ret = self.do_mount()
             if ret != 0:
