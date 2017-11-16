@@ -19,6 +19,7 @@ if __name__ == '__main__':
     se=Server()
     print 'ok'
     #===============================
+    se.backup('a6e64ec3-6673-4c27-ad73-ec6934101b0c')
     while True:
         if not se.message.q.empty():
             msg = se.message.get_queue()
