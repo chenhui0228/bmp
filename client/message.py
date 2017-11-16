@@ -8,10 +8,10 @@ import threading
 import socket  # 套接字
 import fcntl, struct
 import Queue
-from log import MyLogging
-import logging
+#from log import MyLogging
+#import logging
 import math
-import logging.handlers as handlers
+#import logging.handlers as handlers
 import ConfigParser
 
 
