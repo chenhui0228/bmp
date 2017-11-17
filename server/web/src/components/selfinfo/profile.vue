@@ -6,27 +6,32 @@
         <el-breadcrumb-item>个人信息</el-breadcrumb-item>
       </el-breadcrumb>
     </el-col>
-
-    <el-col :span="24" class="warp-main">
-      <el-form ref="userForm" :model="userForm" :rules="rules" label-width="80px">
-        <el-form-item label="用户名">
-          <el-input v-model="userForm.name" disabled></el-input>
-        </el-form-item>
-        <el-form-item label="角色" >
-            <el-select v-model="userForm.role_id" placeholder="角色选择">
-              <el-option v-for="role in roles"  :label="role.name" :value="role.id" :key="role.id"></el-option>
-            </el-select>
-        </el-form-item>
-        <el-form-item label="用户组">
-          <el-select v-model="userForm.group_id" placeholder="组选择">
-            <el-option v-for="group in groups"  :label="group.name" :value="group.id" :key="group.id"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="submitUserProfile('userForm')">修改并保存</el-button>
-        </el-form-item>
-      </el-form>
-    </el-col>
+    <el-row class="warp">
+      <!--<el-col :span="1" min-height="12px">-->
+      <!--</el-col>-->
+      <el-col :span="10" class="warp-main" style="border-top: 1px solid #bbb;margin-top: 20px">
+        <div class="detail-item">
+          <div class="item-key">用户名&nbsp:</div>
+          <div class="item-value">&nbsp{{ user.name }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="item-key">角色&nbsp:</div>
+          <div class="item-value">&nbsp{{ user.role }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="item-key">组织&nbsp:</div>
+          <div class="item-value">&nbsp{{ user.group }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="item-key">创建时间&nbsp:</div>
+          <div class="item-value">&nbsp{{ user.created_at | timeStamp2datetime }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="item-key">更新时间&nbsp:</div>
+          <div class="item-value">&nbsp{{ user.updated_at | timeStamp2datetime }}</div>
+        </div>
+      </el-col>
+    </el-row>
   </el-row>
 </template>
 
@@ -35,7 +40,7 @@
   import {bus} from '../../bus.js'
   import export2Excel from '../../common/export2Excel'
   export default {
-    props: ["roles", "groups"],
+    //props: ["roles", "groups"],
     data() {
       return {
         form: {
@@ -44,7 +49,8 @@
           group: 0
         },
         sysUserName: '',
-        userForm: {
+        user: {
+          id: '',
           name: '',
           role_id: '',
           group_id: '',
@@ -67,40 +73,79 @@
       });
     },
     methods: {
-      onSubmit() {
-        var that = this;
-        /**this.$refs.form.validate((valid) => {
-          if (valid) {
-            var args = {name: this.form.name, email: this.form.email};
-            reqSaveUserProfile(args).then(function (data) {
-              let {msg, code, user} = data;
-              if (code !== 200) {
-                that.$message({
-                  message: msg,
-                  type: 'error'
-                });
-              } else {
-                sessionStorage.setItem('access-user', JSON.stringify(user));
-                bus.$emit('setUserName', user.name);
-                that.$message({
-                  message: "修改成功！",
-                  type: 'success',
-                  duration: 2000 //默认3s太长
-                });
-              }
-            })
-          } else {
-            console.log('error submit!!');
-            return false;
-          }
-        });*/
-      },
-      submitUserProfile(userForm){
+      getRoles(username){
         let params = {
-          user: this.userForm.name,
-          userProfile: this.userForm
+          user: username
+        };
+        reqGetRoleList(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            console.log("无法获取角色列表");
+          } else {
+            //this.roles = data.roles;
+            //bus.$emit('roles', data.roles);
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+        });
+      },
+      getGroups(username){
+        let params = {
+          user: username
+        };
+        reqGetGroupList(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            console.log("无法获取组列表");
+          } else {
+            //this.groups = data.groups;
+            this.$emit("transferRoles", groups)
+            //bus.$emit('groups', data.groups);
+          }
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+        });
+      },
+      submitUserProfile(user){
+        let params = {
+          user: this.user.name,
+          userProfile: this.user
         }
-        reqUpdateUserProfile(this.userForm).then(res => {
+        reqUpdateUserProfile(this.user).then(res => {
           let { status, data } = res;
           if (data == null) {
             this.$message({
@@ -112,7 +157,7 @@
                 message: "修改成功！",
                 type: 'success'
             });
-            this.userForm = data.user;
+            this.user = data.user;
           }
         },err => {
           if (err.response.status == 401) {
@@ -122,7 +167,12 @@
             });
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
-          } else {
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
             this.$message({
               message: "请求异常",
               type: 'error'
@@ -134,9 +184,8 @@
       getUserProfile(username){
         let params = {
           user: username,
-          name: username
         };
-        reqGetUserProfile(params).then(res => {
+        reqGetUserProfile(params, this.user.id).then(res => {
           let { status, data } = res;
           if (data == null) {
             this.$message({
@@ -144,7 +193,7 @@
               type: 'error'
             });
           } else {
-            this.userForm = data.users[0];
+            this.user = data.user;
           }
         },err => {
           if (err.response.status == 401) {
@@ -166,7 +215,12 @@
     mounted() {
       var accessInfo = sessionStorage.getItem('access-user');
       this.sysUserName = JSON.parse(accessInfo).username;
+      this.user.id = JSON.parse(accessInfo).uid;
+      //this.getRoles(this.sysUserName);
+      //this.getGroups(this.sysUserName);
       this.getUserProfile(this.sysUserName);
+      //console.log(this.roles);
+      //console.log(this.groups);
       /*if (user) {
         user = JSON.parse(user);
         this.form.name = user.name;
@@ -178,4 +232,21 @@
       }*/
     }
   }
+
 </script>
+<style scoped lang="scss">
+  .detail-item {
+    display: table;
+    height: 30px;
+  }
+  .item-key {
+    display: table-cell;
+    vertical-align: middle;
+    width: 100px;
+    text-align: right;
+  }
+  .item-value {
+    display: table-cell;
+    vertical-align: middle;
+  }
+</style>

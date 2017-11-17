@@ -16,7 +16,7 @@
         <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
-            <el-input v-model="filters.volumeName" placeholder="卷名" style="min-width: 240px;"></el-input>
+            <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getVolume">查询</el-button>
@@ -30,7 +30,7 @@
         <el-table-column type="selection" width="50"></el-table-column>
         <el-table-column type="index" width="60">
         </el-table-column>
-        <el-table-column prop="volumeName" label="卷名"  sortable>
+        <el-table-column prop="name" label="卷名" sortable>
         </el-table-column>
         <!--<el-table-column prop="worker" label="所属主机" sortable>-->
         <!--</el-table-column>-->
@@ -64,11 +64,11 @@
       <!--编辑框 -->
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
-          <el-form-item prop="volumeName" label="卷名">
-            <el-input v-model="editForm.volumeName" auto-complete="off"></el-input>
+          <el-form-item prop="name" label="卷名">
+            <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <!--<el-form-item prop="worker" label="所属主机">-->
-            <!--<el-input v-model="editForm.worker" auto-complete="off"></el-input>-->
+          <!--<el-input v-model="editForm.worker" auto-complete="off"></el-input>-->
           <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
@@ -83,11 +83,11 @@
       <!--新建框-->
       <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
         <el-form :model="addForm" label-width="100px" :rules="addFormRules" ref="addForm">
-          <el-form-item prop="volumeName" label="组名">
-            <el-input v-model="addForm.volumeName" auto-complete="off"></el-input>
+          <el-form-item prop="name" label="卷名">
+            <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
           <!--<el-form-item prop="worker" label="所属主机">-->
-            <!--<el-input v-model="addForm.worker" auto-complete="off"></el-input>-->
+          <!--<el-input v-model="addForm.worker" auto-complete="off"></el-input>-->
           <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
@@ -110,7 +110,7 @@
     data() {
       return {
         filters: {
-          volumeName: ''
+          name: ''
         },
         listLoading: false,
         isVisible:true,
@@ -125,8 +125,8 @@
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         editFormRules: {
-          volumeName: [
-            {required: true, message: '请输入组名', trigger: 'blur'}
+          name: [
+            {required: true, message: '请输入卷名', trigger: 'blur'}
           ],
           worker: [
             {required: true, message: '请输入角色', trigger: 'blur'}
@@ -137,7 +137,7 @@
         },
         editForm: {
           id: 0,
-          volumeName: '',
+          name: '',
           worker: '',
           description: ''
         },
@@ -146,7 +146,7 @@
         addFormVisible: false,
         addLoading: false,
         addFormRules: {
-          volumeName: [
+          name: [
             {required: true, message: '请输入组名', trigger: 'blur'}
           ],
           worker: [
@@ -157,7 +157,7 @@
           ]
         },
         addForm: {
-          volumeName: '',
+          name: '',
           worker: '',
           description: ''
         },
@@ -188,7 +188,7 @@
         //NProgress.start();
         reqGetVolumeList(para).then((res) => {
           this.total = res.data.total;
-          this.volumes = res.data.groups;
+          this.volumes = res.data.volumes;
           this.listLoading = false;
           this.isVisible = true;
           //NProgress.done();
@@ -244,7 +244,7 @@
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
-                this.getWorker();
+                this.getVolume();
               });
             });
           }
@@ -259,7 +259,7 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
-          volumeName: '',
+          name: '',
           worker: '',
           description: ''
         };
@@ -296,7 +296,7 @@
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
-              this.getWorker();
+              this.getVolume();
             });
           }
           else{
@@ -310,8 +310,8 @@
         this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {id: row.id};
-          reqDelVolume(para).then((res) => {
+          let para = {user: this.sysUserName};
+          reqDelVolume(row.id,para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
             this.$message({
@@ -360,6 +360,7 @@
       this.getVolume();
     }
   }
+
 </script>
 
 <style scoped>

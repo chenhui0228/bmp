@@ -20,6 +20,7 @@
     margin-top: 10px;
     width: 450px;
   }
+
 </style>
 <template>
   <el-row class="warp">
@@ -132,7 +133,7 @@
               </el-button>
             </div>
           </div>
-          <div >
+          <div>
             {{ group.description }}
           </div>
         </el-card>
@@ -401,4 +402,5 @@
       this.getGroup();
     }
   }
+
 </script>
