@@ -40,7 +40,7 @@ class Work():
         return
 
     def send(self,sub,value):
-        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
+        data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],self.arglist['bk_id'],sub,value)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)

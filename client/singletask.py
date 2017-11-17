@@ -3,6 +3,7 @@
 from datetime import *
 import time
 from message import Message
+import uuid
 
 
 
@@ -29,6 +30,16 @@ class SingleTask():
 
 
 
+    def generate_uuid( dashed=True ):
+        """Creates a random uuid string.
+        :param dashed: Generate uuid with dashes or not
+        :type dashed: bool
+        :returns: string
+        """
+        if dashed:
+            return str(uuid.uuid4())
+        return uuid.uuid4().hex
+
     def add_suspendlist( self, id ):
         self.suspendlist.append(id)
 
@@ -36,17 +47,25 @@ class SingleTask():
         if id in self.suspendlist:
             self.suspendlist.remove(id)
 
+    def send(self,sub,value):
+        data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,self.st['id'],self.st['bk_id'],sub,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error(ret)
+
     def do_insert_job( self ):  # add work job
         self.lastid = self.sumid
         self.sumid = self.sumid + 1
         now = datetime.now()
         self.st['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         self.st['ip'] = self.gluster
+        self.st['bk_id']=self.generate_uuid()
         if not self.st['id'] in self.suspendlist:
             #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             self.queue.put([str(self.st), 2], block=True, timeout=None)
+            self.send('state','waiting')
 
     """
     删除任务
