@@ -34,7 +34,7 @@
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
-        <el-button type="primary" v-if="isRecoverTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -325,7 +325,7 @@
           name: ''
         },
         listLoading: false,
-        isRecoverTask:true,
+        isBackupTask:true,
         tasks:[],
         total: 0,
         page: 1,
@@ -396,14 +396,14 @@
         this.page = 1;
         this.per_page = 10;
         this.offset = 0;
-        this.tasks = '';
+        this.tasks = [];
         if(tag.index === '1') {
           this.task_type = 'recover';
-          this.isRecoverTask = false;
+          this.isBackupTask = false;
           this.getTasks('recover');
         }else{
           this.task_type = 'backup';
-          this.isRecoverTask = true;
+          this.isBackupTask = true;
           this.getTasks();
         }
       },
@@ -464,14 +464,23 @@
       beforeShow: function (row) {
         let source = row.task.source;
         let destination = row.task.destination;
-        source = source.match(/\/\/(\S*)/)[1];
+        //source = source.match(/\/\/(\S*)/)[1];
         let desArr = destination.split('/');
         let volumeName = desArr[2];
-        destination = destination.match(/\/(\S*)/)[1];
+        //destination = destination.match(/\/(\S*)/)[1];
         let volume = {};
         volume = this.volumes.find((volume)=>{
           return volume.name === volumeName;
         });
+        if(row.task.type === 'backup'){
+          source = source.replace(/file:\//i,'');
+          var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
+          destination = destination.replace(re,'');
+        }else{
+          source = source.replace(/glusterfs:\//i,'');
+          destination = destination.replace(/file:\//i,'');
+        }
+        console.log(source,destination);
         row.task.volume_id = volume.id;
         row.task.source = source;
         row.task.destination = destination;
@@ -501,7 +510,7 @@
               };
               let para = Object.assign({}, this.editForm);
               if(para.type === "backup"){
-                para.source = 'file://' + para.source;
+                para.source = 'file:/' + para.source;
                 para.destination = 'glusterfs:/' + para.destination;
               }
               reqEditTask(para.id, user_para, para).then((res) => {
