@@ -7,6 +7,8 @@ sys.path.append('../')
 from db.sqlalchemy import api as db_api
 from db.sqlalchemy import models
 from threading import Lock
+import six
+
 class Singleton(type):
     _instances = {}
     lock = Lock()
@@ -55,8 +57,8 @@ def translate_date(sub,start_time,every,weekdat):
         dict['month']='%d/%d'%(t,int(every))
     return dict
 
-
-class Server(Singleton):
+@six.add_metaclass(Singleton)
+class Server:
     def __init__(self):
         self.message = Message('tcp')
         self.message.start_server()
