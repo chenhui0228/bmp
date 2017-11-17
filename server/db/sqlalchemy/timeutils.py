@@ -2,7 +2,7 @@ import datetime
 import calendar
 
 
-def utcnow_ts(microsecond=True):
+def utcnow_ts(microsecond=False):
     now = utcnow()
     timestamp = calendar.timegm(now.timetuple())
 

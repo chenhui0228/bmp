@@ -85,11 +85,11 @@ class ModelBase(six.Iterator):
         #local.update(joined)
         return local
 
-    def generate_param(self):
+    def generate_param(self, filter):
         param = dict([(key, value) for key, value in self
-                      if key not in ('id', 'deleted',
-                                     'deleted_at', 'created_at', 'updated_at')])
+                      if key not in filter])
         return param
+
     def iteritems(self):
         """Make the model object behave like a dict."""
         return six.iteritems(self._as_dict())
@@ -132,15 +132,16 @@ class ModelIterator(six.Iterator):
         n = six.advance_iterator(self.i)
         return n, getattr(self.model, n)
 
-
 class BackupBase(ModelBase,
                  TimestampMixin,
                  SoftDeleteMixin):
     metadata = None
-
+    filter_keys = ()
     def to_dict(self):
         model_dict = {}
         for k, v in self.items():
+            if k in self.filter_keys:
+                continue
             if not issubclass(type(v), BackupBase):
                 model_dict[k] = v
         return model_dict
@@ -152,8 +153,12 @@ class Policy(Base, BackupBase):
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
     start_time = Column(Integer)
-    interval =Column(Integer, default=0)
-
+    recurring = Column(String(10))
+    user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
+    group_id = Column(String(36))
+    protection = Column(Integer)
+    recurring_options_every = Column(Integer)
+    recurring_options_week = Column(Integer)
 
     tasks = orm.relationship(
         'Task',
@@ -164,6 +169,15 @@ class Policy(Base, BackupBase):
         back_populates='policy'
     )
 
+    user = orm.relationship(
+        'User',
+        primaryjoin=(
+            'and_('
+            'Policy.user_id == User.id)'
+        ),
+        back_populates='policies'
+    )
+
 
 class Role(Base, BackupBase):
     __tablename__ = 'role'
@@ -171,8 +185,17 @@ class Role(Base, BackupBase):
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
 
+    users = orm.relationship(
+        'User',
+        primaryjoin=(
+            'and_('
+            'Role.id == User.role_id)'
+        ),
+        back_populates='role'
+    )
+
 class Group(Base, BackupBase):
-    __tablename__ = 'group'
+    __tablename__ = 'groups'
     id = Column(String(36), primary_key=True, nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
@@ -186,13 +209,19 @@ class Group(Base, BackupBase):
         back_populates='group'
     )
 
+
 class User(Base, BackupBase):
     __tablename__ = 'user'
+
+    filter_keys = ('key', 'password')
+
     id = Column(String(36),primary_key=True, nullable=False)
     name = Column(String(255), nullable=False)
     password = Column(String(255))
-    role_id = Column(String(36), ForeignKey('role.id'), nullable=False)
-    group_id = Column(String(36), ForeignKey('group.id'), nullable=False)
+    role_id = Column(String(36), ForeignKey('role.id'))
+    group_id = Column(String(36), ForeignKey('groups.id'))
+    key = Column(String(36))
+    login_time = Column(Integer)
 
     tasks = orm.relationship(
         'Task',
@@ -211,13 +240,55 @@ class User(Base, BackupBase):
         ),
         back_populates='users'
     )
+
+    role = orm.relationship(
+        'Role',
+        primaryjoin=(
+            'and_('
+            'User.role_id == Role.id )'
+        ),
+        back_populates='users'
+    )
+
+    policies = orm.relationship(
+        'Policy',
+        primaryjoin=(
+            'and_('
+            'User.id == Policy.user_id )'
+        ),
+        back_populates='user'
+    )
+
+    workers = orm.relationship(
+        'Worker',
+        primaryjoin=(
+            'and_('
+            'User.id == Worker.owner )'
+        ),
+        back_populates='user'
+    )
+
+    volumes = orm.relationship(
+        'Volume',
+        primaryjoin=(
+            'and_('
+            'User.id == Volume.owner )'
+        ),
+        back_populates='user'
+    )
+
+
 class Worker(Base, BackupBase):
     __tablename__ = 'workers'
     id = Column(String(36), primary_key=True, nullable=False)
-    ip = Column(String(255), nullable=False)
-    port = Column(Integer, nullable=False)
     name = Column(String(255), nullable=True)
-
+    description = Column(String(1024), nullable=True)
+    ip = Column(String(255), nullable=False)
+    owner = Column(String(36), ForeignKey('user.id'), nullable=False)
+    group_id = Column(String(36))
+    start_at = Column(Integer)
+    status = Column(String(36))
+    version = Column(String(36))
 
     tasks = orm.relationship(
         'Task',
@@ -228,22 +299,28 @@ class Worker(Base, BackupBase):
         back_populates='worker'
     )
 
+    user = orm.relationship(
+        'User',
+        primaryjoin=(
+            'and_('
+            'Worker.owner == User.id)'
+        ),
+        back_populates='workers'
+    )
 
 class Task(Base, BackupBase):
     __tablename__ = 'task'
     id = Column(String(36), primary_key=True, nullable=False)
     name = Column(String(255), nullable=True)
+    type = Column(String(36))
     description = Column(String(255), nullable=True)
     user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
-    policy_id = Column(String(36), ForeignKey('policy.id'), nullable=False)
-    worker_id = Column(String(36), ForeignKey('workers.id'), nullable=False)
-    source = Column(String(1024), nullable=False)
-    destination = Column(String(1024), nullable=False)
-    start_time = Column(Integer, default=0)
-    interval = Column(Integer, default=0)
-    duration = Column(Integer, default=0)
+    group_id = Column(String(36))
+    policy_id = Column(String(36), ForeignKey('policy.id'))
+    worker_id = Column(String(36), ForeignKey('workers.id'))
+    source = Column(String(1024))
+    destination = Column(String(1024))
     script_path = Column(String(4096))
-    volume = Column(String(255))
 
     policy = orm.relationship(
         'Policy',
@@ -278,7 +355,7 @@ class Task(Base, BackupBase):
         back_populates='tasks'
     )
 
-    state = orm.relationship(
+    states = orm.relationship(
         'BackupState',
         primaryjoin=(
             'and_('
@@ -293,11 +370,13 @@ class BackupState(Base, BackupBase):
     __tablename__ = 'backupstates'
     id = Column(String(36), primary_key=True, nullable=False)
     task_id = Column(String(36), ForeignKey('task.id'), nullable=False)
+    state = Column(String(255), nullable=True, default=0)
+    process = Column(String(36))
     total_size = Column(Integer, default=0)
     current_size = Column(Integer, default=0)
     start_time = Column(Integer, nullable=True, default=0)
     end_time = Column(Integer, nullable=True, default=0)
-    state = Column(String(255), nullable=True, default=0)
+    message = Column(String(4096))
 
     task = orm.relationship(
         'Task',
@@ -307,7 +386,7 @@ class BackupState(Base, BackupBase):
             'and_('
             'BackupState.task_id == Task.id)'
         ),
-        back_populates='state'
+        back_populates='states'
     )
 
 
@@ -316,8 +395,23 @@ class Volume(Base, BackupBase):
     id = Column(String(36), primary_key=True, nullable=False)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
+    owner = Column(String(36), ForeignKey('user.id'))
+
+    user = orm.relationship(
+        'User',
+        lazy='immediate',
+        viewonly=True,
+        primaryjoin=(
+            'and_('
+            'Volume.owner == User.id)'
+        ),
+        back_populates='volumes'
+    )
+
 
 class oplog(Base, BackupBase):
     __tablename__ = 'oplog'
     id = Column(BIGINT, primary_key=True, nullable=False)
-    message =  Column(String(2048))
+    user = Column(String(36))
+    message = Column(String(2048))
+
