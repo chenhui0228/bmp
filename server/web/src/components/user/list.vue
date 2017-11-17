@@ -71,7 +71,7 @@
         </el-form-item>
         <el-form-item prop="group_id" label="用户组" :label-width="formLabelWidth">
           <!--<el-input v-model="userForm.group_id" auto-complete="off"></el-input>-->
-          <el-select v-if="userForm.role != 'superrole'" v-model="userForm.group_id" placeholder="选择组">
+          <el-select v-if="userForm.role != 'superrole'" v-model="userForm.group_id" placeholder="选择组" :disabled="role != 'superrole'">
             <el-option v-for="group in groups"  :label="group.name" :value="group.id" :key="group.id"></el-option>
           </el-select>
           <el-input v-if="userForm.role == 'superrole'" auto-complete="off" :disabled="dialogEditUserVisible" placeholder="不属于任何组"></el-input>
@@ -301,7 +301,7 @@
                   this.openMsg(this.dialogUserTitle+'成功', 'success');
                   console.log(this.dialogNewUserVisible, this.randomPassword);
                   if(this.randomPassword){
-                    this.$alert(this.user.name+'的密码是 ' + this.user.password + ' ，登陆后可修改！', '用户密码', {
+                    this.$alert(this.user.name+'的密码是' + this.user.password + '，登陆后可修改！', '用户密码', {
                       confirmButtonText: '确定',
                     });
                   }
