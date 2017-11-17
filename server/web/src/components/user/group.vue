@@ -236,6 +236,7 @@
               message: "请重新登录",
               type: 'error'
             });
+            sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/login' });
           }else{
             this.$message({

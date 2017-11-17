@@ -10,10 +10,12 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
+                   v-if="role == 'admin'">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
+                   v-if="role == 'admin'">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>
@@ -36,7 +38,7 @@
         <!--</el-table-column>-->
         <el-table-column prop="description" label="描述">
         </el-table-column>
-        <el-table-column label="操作" width="250">
+        <el-table-column label="操作" width="250" v-if="role == 'admin'">
           <template slot-scope="scope">
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
@@ -120,6 +122,7 @@
         per_page: 10,
         offset: 0,
         sels: [], //列表选中列
+        role: '',
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -198,6 +201,7 @@
               message: "请重新登录",
               type: 'error'
             });
+            sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/login' });
           }else{
             this.listLoading = false;
@@ -355,7 +359,8 @@
       var accessInfo = sessionStorage.getItem('access-user');
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
-        this.sysUserName = accessInfo.username || '';
+        this.sysUserName = accessInfo.username;
+        this.role = accessInfo.role;
       }
       this.getVolume();
     }

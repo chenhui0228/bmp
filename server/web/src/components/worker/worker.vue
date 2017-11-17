@@ -12,11 +12,13 @@
 
     <el-col :span="24" class="warp-main">
       <!--工具条-->
-      <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+      <el-col :span="24" class="toolbar" style="padding-bottom: 0px;" >
+        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
+                   v-if="role == 'admin' || role == 'superadmin'">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
+                   v-if="role == 'admin' || role == 'superadmin'">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -59,7 +61,7 @@
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superadmin'">
           <template slot-scope="scope">
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
@@ -157,6 +159,7 @@
         offset: 0,
         edit_index: 0,
         sels: [], //列表选中列
+        role: '',
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -201,6 +204,12 @@
         this.per_page = val;
         this.getWorker();
       },
+      openMsg: function (msgtxt, msgtype) {
+        this.$message({
+          message: msgtxt,
+          type: msgtype
+        });
+      },
       //获取用户列表
       getWorker: function () {
         this.offset = this.per_page * (this.page - 1);
@@ -226,6 +235,7 @@
               message: "请重新登录",
               type: 'error'
             });
+            sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/login' });
           }else{
             this.$message({
@@ -343,17 +353,28 @@
           reqDelWorker(row.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
+            this.openMsg('删除成功','success');
             this.getWorker();
           }).catch((err) => {
             this.listLoading = false;
-            this.$message({
-              message: '删除失败',
-              type: 'error'
-            });
+            if (err.response.status == 401) {
+              this.openMsg('请重新登陆', 'error');
+              sessionStorage.removeItem('access-user');
+              this.$router.push({ path: '/' });
+            }else if(err.response.data.code === 403) {
+              this.openMsg('删除失败', 'error');
+              let tips = err.response.data.tasks[0].name+' 等 '+
+                err.response.data.tasks.length+" 个备份任务正在使用，请先删除任务";
+              this.$notify({
+                title: '删除作业机失败',
+                message: tips,
+                type: 'error'
+              });
+            }else if(err.response.data.code === 401) {
+              this.openMsg('没有权限', 'error');
+            }else {
+            this.openMsg('请求失败', 'error');
+          }
           });
         });
       },
@@ -390,7 +411,8 @@
       var accessInfo = sessionStorage.getItem('access-user');
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
-        this.sysUserName = accessInfo.username || '';
+        this.sysUserName = accessInfo.username;
+        this.role = accessInfo.role;
       }
       this.getWorker();
     }
