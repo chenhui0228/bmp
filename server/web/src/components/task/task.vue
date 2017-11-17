@@ -393,20 +393,16 @@
     },
     methods: {
       handleClick(tag) {
+        this.page = 1;
+        this.per_page = 10;
+        this.offset = 0;
+        this.tasks = '';
         if(tag.index === '1') {
           this.task_type = 'recover';
-          this.page = 1;
-          this.per_page = 10;
-          this.offset = 0;
-          this.tasks = '';
           this.isRecoverTask = false;
           this.getTasks('recover');
         }else{
           this.task_type = 'backup';
-          this.page = 1;
-          this.per_page = 10;
-          this.offset = 0;
-          this.tasks = '';
           this.isRecoverTask = true;
           this.getTasks();
         }
