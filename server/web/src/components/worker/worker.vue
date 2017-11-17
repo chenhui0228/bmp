@@ -12,11 +12,13 @@
 
     <el-col :span="24" class="warp-main">
       <!--工具条-->
-      <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+      <el-col :span="24" class="toolbar" style="padding-bottom: 0px;" >
+        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
+                   v-if="role == 'admin' || role == 'superadmin'">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
+                   v-if="role == 'admin' || role == 'superadmin'">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -36,10 +38,15 @@
         <!--</el-table-column>-->
         <el-table-column type="expand">
           <template slot-scope="props">
-            <el-form label-position="left" inline class="demo-table-expand">
+            <el-form label-position="left" inline class="table-expand">
               <el-form-item label="[主机描述]">
-                <br />
                 <span>{{ props.row.description }}</span>
+              </el-form-item>
+              <el-form-item label="[启动时间]">
+                <span>{{ props.row.start_at | timeStamp2datetime }}</span>
+              </el-form-item>
+              <el-form-item label="[软件版本号]">
+                <span>{{ props.row.version }}</span>
               </el-form-item>
             </el-form>
           </template>
@@ -48,13 +55,13 @@
         </el-table-column>
         <el-table-column prop="ip" label="IP地址" sortable>
         </el-table-column>
-        <el-table-column prop="port" label="端口号">
+        <el-table-column prop="status" label="状态">
         </el-table-column>
         <el-table-column prop="user.name" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superadmin'">
           <template slot-scope="scope">
             <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
               <i class="iconfont icon-modiffy"></i>
@@ -88,20 +95,6 @@
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="editForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="owner" label="用户">
-            <el-input v-model="editForm.user.name" auto-complete="off"></el-input>
-          </el-form-item>
-          <el-form-item prop="port" label="端口号">
-            <el-input v-model="editForm.port" auto-complete="off"></el-input>
-            <!--<el-select v-model="editForm.port" placeholder="请选择主机类型" clearable>-->
-              <!--<el-option-->
-                <!--v-for="item in options"-->
-                <!--:key="item.value"-->
-                <!--:label="item.label"-->
-                <!--:value="item.value">-->
-              <!--</el-option>-->
-            <!--</el-select>-->
-          </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -121,12 +114,9 @@
           <el-form-item prop="ip" label="IP地址">
             <el-input v-model="addForm.ip" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="owner" label="用户">
-            <el-input v-model="addForm.owner" auto-complete="off"></el-input>
-          </el-form-item>
-          <el-form-item prop="port" label="端口号">
-            <el-input v-model="addForm.port" auto-complete="off"></el-input>
-          </el-form-item>
+          <!--<el-form-item prop="owner" label="用户">-->
+            <!--<el-input v-model="addForm.owner" auto-complete="off"></el-input>-->
+          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -160,19 +150,6 @@
         filters: {
           ip: ''
         },
-        options:[{
-          value: '1',
-          label: '1'
-        },{
-          value: '2',
-          label: '2'
-        },{
-          value: '3',
-          label: '3'
-        },{
-          value: '4',
-          label: '4'
-        }],
         listLoading: false,
         isVisible:true,
         workers:[],
@@ -182,6 +159,7 @@
         offset: 0,
         edit_index: 0,
         sels: [], //列表选中列
+        role: '',
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -193,12 +171,6 @@
           ip: [
             {required: true, validator: validateIp, trigger: 'blur'}
           ],
-          owner: [
-            {required: true, message: '请输入用户', trigger: 'blur'}
-          ],
-          port: [
-            {required: true, message: '请输入端口号'}
-          ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
           ]
@@ -207,8 +179,6 @@
           id: 0,
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: '',
           user: ''
         },
@@ -219,8 +189,6 @@
         addForm: {
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: ''
         },
       }
@@ -235,6 +203,12 @@
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
         this.getWorker();
+      },
+      openMsg: function (msgtxt, msgtype) {
+        this.$message({
+          message: msgtxt,
+          type: msgtype
+        });
       },
       //获取用户列表
       getWorker: function () {
@@ -261,6 +235,7 @@
               message: "请重新登录",
               type: 'error'
             });
+            sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/login' });
           }else{
             this.$message({
@@ -325,8 +300,6 @@
         this.addForm = {
           name: '',
           ip: '',
-          owner: '',
-          port: '',
           description: ''
         };
       },
@@ -380,17 +353,28 @@
           reqDelWorker(row.id, para).then((res) => {
             this.listLoading = false;
             //NProgress.done();
-            this.$message({
-              message: '删除成功',
-              type: 'success'
-            });
+            this.openMsg('删除成功','success');
             this.getWorker();
           }).catch((err) => {
             this.listLoading = false;
-            this.$message({
-              message: '删除失败',
-              type: 'error'
-            });
+            if (err.response.status == 401) {
+              this.openMsg('请重新登陆', 'error');
+              sessionStorage.removeItem('access-user');
+              this.$router.push({ path: '/' });
+            }else if(err.response.data.code === 403) {
+              this.openMsg('删除失败', 'error');
+              let tips = err.response.data.tasks[0].name+' 等 '+
+                err.response.data.tasks.length+" 个备份任务正在使用，请先删除任务";
+              this.$notify({
+                title: '删除作业机失败',
+                message: tips,
+                type: 'error'
+              });
+            }else if(err.response.data.code === 401) {
+              this.openMsg('没有权限', 'error');
+            }else {
+            this.openMsg('请求失败', 'error');
+          }
           });
         });
       },
@@ -427,9 +411,25 @@
       var accessInfo = sessionStorage.getItem('access-user');
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
-        this.sysUserName = accessInfo.username || '';
+        this.sysUserName = accessInfo.username;
+        this.role = accessInfo.role;
       }
       this.getWorker();
     }
   }
 </script>
+
+<style>
+  .table-expand {
+    font-size: 0;
+  }
+  .table-expand label {
+    width: 90px;
+    color: #99a9bf;
+  }
+  .table-expand .el-form-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    width: 46%;
+  }
+</style>

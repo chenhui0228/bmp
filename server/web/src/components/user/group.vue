@@ -20,6 +20,7 @@
     margin-top: 10px;
     width: 450px;
   }
+
 </style>
 <template>
   <el-row class="warp">
@@ -132,7 +133,7 @@
               </el-button>
             </div>
           </div>
-          <div >
+          <div>
             {{ group.description }}
           </div>
         </el-card>
@@ -235,6 +236,7 @@
               message: "请重新登录",
               type: 'error'
             });
+            sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/login' });
           }else{
             this.$message({
@@ -401,4 +403,5 @@
       this.getGroup();
     }
   }
+
 </script>

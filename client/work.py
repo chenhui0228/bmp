@@ -1,41 +1,14 @@
 #!/usr/bin/env python
 #coding:utf-8
-from SocketServer import BaseRequestHandler,ThreadingTCPServer,ThreadingUDPServer
-from message import Message,Performance
-import socket # 套接字
-from gluster import gfapi
-import sys
 import os
-import atexit
-import errno
 from os.path import join, getsize, isfile
-from signal import SIGTERM
-import urllib2
-import httplib, urllib  # 加载模块
-import BaseHTTPServer
-from SocketServer import ThreadingMixIn
-import threading
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-import urlparse
-from multiprocessing.pool import ThreadPool as Pool
-from threading import Timer
 from datetime import *
 import subprocess
 import time
-import Queue
-import types
-import json
-import socket
-from apscheduler.schedulers.background import BackgroundScheduler
-import logging
-import math
-import logging.handlers as handlers
 import shutil
 from message import Message
 import tempfile
-from  log import MyLogging
 import ConfigParser
-import warnings
 
 
 class Work():
@@ -62,21 +35,22 @@ class Work():
         if self.arglist is None:
             #print "arg is NULL ?"
             self.log.logger.warning('arg is NULL!')
-            self.send("alarm","arg is NULL ?")
+            self.send("log","arg is NULL ?")
             return
         return
 
     def send(self,sub,value):
-        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],sub,value)
+        data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,self.arglist['id'],self.arglist['bk_id'],sub,value)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)
 
     def do_mount(self):
         n=len(self.arglist['ip'])
+        self.send('state','runing')
         if os.path.ismount(self.mount_dir):
             self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
-            self.send('alarm','the dir has mounted,maybe there is a direct work doing now')
+            self.send('message','the dir has mounted,maybe there is a direct work doing now')
             return -1
         while n>0:
             self.glusterip=self.arglist['ip'][n-1]
@@ -86,13 +60,17 @@ class Work():
                     ret = os.system(cmd)
                     #print "do mount succeed"
                     self.log.logger.info("do mount succeed")
-                    return ret
-                except:
-                    pass
+                    return 0
+                except  Exception,e:
+                    #print ("do mount failed %s"%e)
+                    self.send('message',"do mount failed %s"%e)
+                    self.log.logger.warning("do mount failed")
+                    return -1
             except Exception,e:
                 #print ("do mount failed %s"%e)
-                self.send('log',"do mount failed %s"%e)
+                self.send('message',"do mount failed %s"%e)
                 self.log.logger.warning("do mount failed")
+                return -1
             n=n-1
 
 
@@ -106,11 +84,11 @@ class Work():
                 ret = os.system(cmd)
                # print "do mkidr succeed"
                 self.log.logger.info("do mkdir succeed")
-                return ret
+                return 0
             except Exception,e:
                # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
-                self.send('log',"do mkidr failed %s"%e)
+                self.send('message',"do mkidr failed %s"%e)
                 return -1
 
 
@@ -192,7 +170,7 @@ class Work():
             if not error == '':
                 #print 'error info:%s' % error
                 self.log.logger.error("cmd %s work failed"%cmd)
-                self.send('log',"cmd %s work failed"%cmd)
+                self.send('message',"cmd %s work failed"%cmd)
                 return -1
            # print write_all
            # print 'finished'
@@ -220,11 +198,11 @@ class Work():
             ret = os.system(cmd)
            # print "do close succeed"
             self.log.logger.info("do close succeed")
-            return ret
+            return 0
         except Exception,e:
            # print e
             self.log.logger.error("do close failed %s"%e)
-            self.send('log',"do close failed %s"%e)
+            self.send('message',"do close failed %s"%e)
             return -1
 
 
@@ -255,20 +233,19 @@ class Work():
             except Exception,e:
                 #print "delete failed"
                 self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
-                self.send('alarm',"delete %s failed %s" % (self.oldvfile,e))
+                self.send('message',"delete %s failed %s" % (self.oldvfile,e))
                 return -1
 
     def start(self):
         self.op=self.arglist['op']
         self.send('state', 'start')
-        warnings.filterwarnings('ignore')
         if self.op == 'backup':
-            if self.arglist.has_key('destination _ip'):
-                self.arglist['ip'].append(self.arglist['destination _ip'])
+            #if self.arglist.has_key('destination _ip'):
+            #    self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
             self.proctotal = self.get_file_size(self.pfile)
             #print self.proctotal
-            self.vfile = self.arglist['destination_address'] + self.arglist['name']+"_"+self.arglist['id'] + "_" + self.wait_start.strftime(
+            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + self.wait_start.strftime(
                 '%Y%m%d%H%M') + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
@@ -298,13 +275,12 @@ class Work():
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
-                time.sleep(2)
                 self.do_close()
                 self.send('state', 'failed')
                 return
         elif self.op=='dump':
-            if self.arglist.has_key('destination _ip'):
-                self.arglist['ip'].append(self.arglist['source_ip'])
+            #if self.arglist.has_key('destination _ip'):
+            #    self.arglist['ip'].append(self.arglist['source_ip'])
             self.mount_dir =  self.arglist['source_address']
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address']
@@ -326,8 +302,8 @@ class Work():
                 self.send('state', 'failed')
                 return
         elif self.op=='recover':
-            if self.arglist.has_key('destination _ip'):
-                self.arglist['ip'].append(self.arglist['source_ip'])
+            #if self.arglist.has_key('destination _ip'):
+             #   self.arglist['ip'].append(self.arglist['source_ip'])
 
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
@@ -353,7 +329,6 @@ class Work():
                 return
             ret = self.do_close()
             if ret != 0:
-                time.sleep(2)
                 self.do_close()
                 self.send('state', 'failed')
                 return

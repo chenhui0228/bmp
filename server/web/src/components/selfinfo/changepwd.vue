@@ -51,7 +51,9 @@
           newPwd: '',
           confirmPwd: ''
         },
-        user: {},
+        user: {
+          id: '',
+        },
         rules: {
           newPwd: [{ validator: validatePass, trigger: 'blur'}],
           confirmPwd: [{validator: validatePass2, trigger: 'blur'}]
@@ -62,9 +64,8 @@
       getUserProfile(username){
         let params = {
           user: username,
-          name: username
         };
-        reqGetUserProfile(params).then(res => {
+        reqGetUserProfile(params, this.user.id).then(res => {
           let { status, data } = res;
           if (data == null) {
             this.$message({
@@ -72,7 +73,7 @@
               type: 'error'
             });
           } else {
-            this.user = data.users[0];
+            this.user = data.user;
           }
         },err => {
           if (err.response.status == 401) {
@@ -82,7 +83,12 @@
             });
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
-          } else {
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
             this.$message({
               message: "请求异常",
               type: 'error'
@@ -94,9 +100,8 @@
         this.user.password = this.form.newPwd;
         let params = {
           user: this.user.name,
-          userProfile: this.user
         }
-        reqUpdateUserProfile(this.user).then(res => {
+        reqUpdateUserProfile(params, this.user).then(res => {
           let { status, data } = res;
           if (data == null) {
             this.$message({
@@ -105,10 +110,11 @@
             });
           } else {
             this.$message({
-                message: "修改成功！",
+                message: "修改成功，请重新登录！",
                 type: 'success'
             });
-            this.user = data.user;
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
           }
         },err => {
           if (err.response.status == 401) {
@@ -118,7 +124,12 @@
             });
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
-          } else {
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
             this.$message({
               message: "请求异常",
               type: 'error'
@@ -134,6 +145,7 @@
     mounted() {
       var accessInfo = sessionStorage.getItem('access-user');
       this.sysUserName = JSON.parse(accessInfo).username;
+      this.user.id = JSON.parse(accessInfo).uid;
       this.getUserProfile(this.sysUserName);
       console.log(this.user);
     }

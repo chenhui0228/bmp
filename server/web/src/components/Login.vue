@@ -60,7 +60,8 @@
               } else {
                 var accessInfo = {
                   username: this.account.username,
-                  token: data.token
+                  token: data.token,
+                  uid: data.user_id
                 };
                 //if (data.role != null) {
                 //  accessInfo.isSuperAdm = true;

@@ -14,9 +14,3 @@ work.py的工作是执行dump，backup，recover任务
 
 test.py是测试时的server端
 
-server.py是服务器模块，目前recover和更新数据库的部分未写，其他待测
-
-测试前需要把client.conf放到/etc/SFbackup目录中
-
-测试时先在客户端执行python main.py start,再在服务器端执行python test.py，服务器就能把命令发送的客户端，test.py中有各个命令的调用函数，执行就好（可能部分需要修改）
-

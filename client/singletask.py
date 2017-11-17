@@ -1,37 +1,10 @@
 #!/usr/bin/env python
 # coding:utf-8
-from SocketServer import BaseRequestHandler, ThreadingTCPServer, ThreadingUDPServer
-from message import Message, Performance
-import socket  # 套接字
-from gluster import gfapi
-import sys
-import os
-import atexit
-import errno
-from os.path import join, getsize, isfile
-from signal import SIGTERM
-import urllib2
-import httplib, urllib  # 加载模块
-import BaseHTTPServer
-from SocketServer import ThreadingMixIn
-import threading
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-import urlparse
-from multiprocessing.pool import ThreadPool as Pool
-from threading import Timer
 from datetime import *
 import time
-import Queue
-import types
-import json
-import socket
-from apscheduler.schedulers.background import BackgroundScheduler
-import logging
-import math
-import logging.handlers as handlers
 from message import Message
-from  log import MyLogging
-import ConfigParser
+import uuid
+
 
 
 class SingleTask():
@@ -57,15 +30,15 @@ class SingleTask():
 
 
 
-    def updateconf( self, newlist ):
-        self.info = newlist
-        if self.st.has_key('op'):
-            newlist['op']=self.st['op']
-        self.st = newlist
-        self.name = self.st['id']
-        self.do_remove_job()
-        self.start()
-
+    def generate_uuid( dashed=True ):
+        """Creates a random uuid string.
+        :param dashed: Generate uuid with dashes or not
+        :type dashed: bool
+        :returns: string
+        """
+        if dashed:
+            return str(uuid.uuid4())
+        return uuid.uuid4().hex
 
     def add_suspendlist( self, id ):
         self.suspendlist.append(id)
@@ -74,17 +47,25 @@ class SingleTask():
         if id in self.suspendlist:
             self.suspendlist.remove(id)
 
+    def send(self,sub,value):
+        data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,self.st['id'],self.st['bk_id'],sub,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error(ret)
+
     def do_insert_job( self ):  # add work job
         self.lastid = self.sumid
         self.sumid = self.sumid + 1
         now = datetime.now()
         self.st['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         self.st['ip'] = self.gluster
+        self.st['bk_id']=self.generate_uuid()
         if not self.st['id'] in self.suspendlist:
             #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             self.queue.put([str(self.st), 2], block=True, timeout=None)
+            self.send('state','waiting')
 
     """
     删除任务

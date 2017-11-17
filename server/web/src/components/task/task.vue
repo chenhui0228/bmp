@@ -34,7 +34,7 @@
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -47,7 +47,10 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="tasks" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="tasks" highlight-current-row
+                v-loading="listLoading"
+                @selection-change="selsChange"
+                @row-dblclick="taskStateDetail"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
         <!--<el-table-column type="index" width="60">-->
@@ -58,14 +61,20 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
+              <el-form-item label="任务描述">
+                <span>{{ props.row.task.description }}</span>
+              </el-form-item>
               <el-form-item label="创建时间">
                 <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="更新时间">
-                <span>{{ props.row.task.updated_at }}</span>
+                <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="任务策略">
-                <span>{{ props.row.task.policy_id }}</span>
+                <span>{{ props.row.policy.name }}</span>
+              </el-form-item>
+              <el-form-item label="作业机">
+                <span>{{ props.row.worker.name }}  (IP:{{ props.row.worker.ip }})</span>
               </el-form-item>
               <el-form-item label="源地址">
                 <span>{{ props.row.task.source }}</span>
@@ -82,20 +91,39 @@
         </el-table-column>
         <el-table-column prop="task.destination" label="目标地址">
         </el-table-column>
-        <el-table-column prop="task.policy_id" label="任务策略" v-if="isVisible" sortable>
+        <el-table-column prop="policy.name" label="任务策略" sortable>
         </el-table-column>
-        <!--<el-table-column prop="description" label="描述" sortable>-->
-        <!--</el-table-column>-->
+        <el-table-column
+          label="任务进度"
+          width="180rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.state && scope.row.state.state == 'success'" style="color: green">已完成</span>
+            <span v-else-if="scope.row.state && scope.row.state.state == 'start'" style="color: blue">执行中...</span>
+            <span v-else-if="scope.row.state && scope.row.state.state == 'failed'" style="color: red">失败</span>
+            <el-progress v-else-if="scope.row.state" :percentage="parseInt(scope.row.state.state)"></el-progress>
+            <span v-else style="color: #f7c410">未开始</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200">
           <template slot-scope="scope">
-            <el-button type="text" icon="information" @click="showEditDialog(scope.$index,scope.row)">
-            </el-button>
             <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
               <!--<i class="iconfont icon-modiffy"></i>-->
             </el-button>
             <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
               <!--<i class="iconfont icon-delete"></i>-->
             </el-button>
+            <el-tooltip content="立即执行" placement="top">
+              <el-button type="text" icon="information" @click="immediatelyExecute">
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="暂停" placement="top" v-if="!isPause"><!--没暂停就显示暂停按钮-->
+              <el-button type="text" icon="information" @click="toPause(scope.$index,scope.row)">
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="继续" placement="top" v-if="isPause">
+              <el-button type="text" icon="search" @click="toResume(scope.$index,scope.row)">
+              </el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -114,47 +142,115 @@
       </el-col>
 
       <!--编辑框 -->
-      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
+      <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false" :beforeClose="cancelEdit">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="policy_id" label="任务策略">
-            <el-input v-model="editForm.policy_id" auto-complete="off"></el-input>
+          <el-form-item prop="policy" label="任务策略">
+            <el-select v-model="editForm.policy_id" placeholder="请选择">
+              <el-option
+                v-for="policy in policies"
+                :key="policy.id"
+                :label="policy.name"
+                :value="policy.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="editForm.worker_id" placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
+            <span v-for="worker in workers"
+                  v-if="editForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="editForm.source" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="volume" label="卷">
+            <el-select v-model="editForm.volume_id" placeholder="请选择" @change="handleChange">
+              <el-option
+                v-for="volume in volumes"
+                :key="volume.id"
+                :label="volume.name"
+                :value="volume.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item prop="destination" label="目标地址">
             <el-input v-model="editForm.destination" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="script_path" label="脚本地址">
+            <el-input v-model="editForm.script_path" auto-complete="off"></el-input>
+          </el-form-item>
           <el-form-item prop="description" label="描述">
-            <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
+            <el-input type="textarea" v-model="editForm.description" :rows="2"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="editFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelEdit">取消</el-button>
           <el-button type="primary" @click.native="editSubmit" :loading="editLoading">提交</el-button>
         </div>
       </el-dialog>
 
       <!--新建框-->
       <el-dialog title="新建" v-model="addFormVisible" :close-on-click-modal="false" :beforeClose="cancelAdd">
-        <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="editForm">
+        <el-form :model="addForm" label-width="100px" :rules="editFormRules" ref="addForm">
           <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="start_time" label="开始时间">
-            <el-date-picker type="datetime" placeholder="选择日期" v-model="addForm.start_time"></el-date-picker>
+          <el-form-item prop="policy" label="任务策略">
+            <el-select v-model="addForm.policy_id" placeholder="请选择">
+              <el-option
+                v-for="policy in policies"
+                :key="policy.id"
+                :label="policy.name"
+                :value="policy.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="addForm.worker_id" placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
+            <span v-for="worker in workers"
+                  v-if="addForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
           </el-form-item>
           <el-form-item prop="source" label="源地址">
             <el-input v-model="addForm.source" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="volume" label="卷">
+            <el-select v-model="addForm.volume_id" placeholder="请选择" @change="handleChange">
+              <el-option
+                v-for="volume in volumes"
+                :key="volume.id"
+                :label="volume.name"
+                :value="volume.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item prop="destination" label="目标地址">
             <el-input v-model="addForm.destination" auto-complete="off"></el-input>
           </el-form-item>
+          <el-form-item prop="script_path" label="脚本地址">
+            <el-input v-model="addForm.script_path" auto-complete="off"></el-input>
+          </el-form-item>
           <el-form-item prop="description" label="描述">
-            <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
+            <el-input type="textarea" v-model="addForm.description" :rows="2"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
@@ -163,11 +259,63 @@
         </div>
       </el-dialog>
 
+      <!--任务状态框-->
+      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible">
+        <el-table :data="taskStates"
+                  border
+                  style="margin: auto;">
+          <el-table-column label="开始时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="结束时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.end_time | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="总大小" width="120">
+            <template scope="scope">
+              <span>{{ scope.row.total_size | BytesReadable }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="已备份" width="120">
+            <template scope="scope">
+              <span>{{ scope.row.current_size | BytesReadable }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="更新时间" width="180">
+            <template scope="scope">
+              <span>{{ scope.row.updated_at | timeStamp2datetime }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="任务状态" min-width="180">
+            <template slot-scope="scope">
+              <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
+              <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
+              <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
+              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.state)"></el-progress>
+              <span v-else style="color: #F7AD01">未开始</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          @size-change="taskStateHandleSizeChange"
+          @current-change="taskStateHandleCurrentChange"
+          :current-page="taskStateFilter.page"
+          :page-sizes="[10, 15]"
+          :page-size="taskStateFilter.per_page"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="taskState_total_rows">
+        </el-pagination>
+      </el-dialog>
+
     </el-col>
   </el-row>
 </template>
 <script>
-  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction} from '../../api/api';
+  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
+    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail } from '../../api/api';
   import {bus} from '../../bus.js'
   export default {
     data() {
@@ -177,89 +325,122 @@
           name: ''
         },
         listLoading: false,
-        isVisible:true,
+        isBackupTask:true,
         tasks:[],
         total: 0,
         page: 1,
         per_page: 10,
         offset: 0,
+        task_type: 'backup',
+        volumeName: '',
         sels: [], //列表选中列
+        workers:[],
+        volumes:[],
+        policies:[],
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         editFormRules: {
-          name: [
-            {required: true, message: '请输入主机名', trigger: 'blur'}
-          ],
-          owner: [
-            {required: true, message: '请输入角色', trigger: 'blur'}
-          ],
-          port: [
-            {required: true, message: '请输入'}
-          ],
-          description: [
-            {required: true, message: '请输入描述', trigger: 'blur'}
-          ]
+//          name: [
+//            {required: true, message: '请输入主机名', trigger: 'blur'}
+//          ],
+//          owner: [
+//            {required: true, message: '请输入角色', trigger: 'blur'}
+//          ],
+//          port: [
+//            {required: true, message: '请输入'}
+//          ],
+//          description: [
+//            {required: true, message: '请输入描述', trigger: 'blur'}
+//          ]
         },
         editForm: {
-          id: 0,
           name: '',
+          policy_id: '',
+          worker_id: '',
           source: '',
           destination: '',
-          policy: '',
-          description: ''
+          description: '',
         },
 
         //新增数据相关
         addFormVisible: false,
         addLoading: false,
         addForm: {
-          name: '',
-          source: '',
-          destination: '',
-          policy: '',
-          description: ''
+//          name: '',
+//          source: '',
+//          destination: '',
+//          policy_id: '',
+//          description: '',
+//          worker_id: '',
+//          volume: '',
         },
+
+        //任务详情相关数据
+        dialogTaskStateDetailTableVisible: false,
+        currTaskStateTabTitle: '',
+        taskStates: [],
+        currTaskRow: '',
+        taskStateFilter:{
+          page: 0,
+          per_page: 15,
+        },
+        taskState_total_rows: 0,
+        //操作按钮相关数据
+        isPause: false,
       }
     },
     methods: {
       handleClick(tag) {
+        this.page = 1;
+        this.per_page = 10;
+        this.offset = 0;
+        this.tasks = [];
         if(tag.index === '1') {
-          this.isVisible = false;
-          console.log(this.isVisible)
+          this.task_type = 'recover';
+          this.isBackupTask = false;
+          this.getTasks('recover');
         }else{
-          this.isVisible = true;
-          console.log(this.isVisible)
+          this.task_type = 'backup';
+          this.isBackupTask = true;
+          this.getTasks();
         }
       },
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        this.getTasks();
+        if(this.task_type === 'recover') {
+          this.getTasks('recover');
+        }else {
+          this.getTasks();
+        }
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        this.getTasks();
+        if(this.task_type === 'recover') {
+          this.getTasks('recover');
+        }else {
+          this.getTasks();
+        }
       },
-      //获取用户列表
-      getTasks: function () {
+      //获取任务列表
+      getTasks: function (type='backup') {
         this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
+          type: type,
           limit: this.per_page,
           offset: this.offset,
 //          ip: this.filters.ip
         };
         this.listLoading = true;
-        this.isVisible = false;
         //NProgress.start();
         reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
           this.tasks = res.data.tasks;
           this.listLoading = false;
-          this.isVisible = true;
           //NProgress.done();
         }).catch(err=>{
           this.listLoading = false;
@@ -279,10 +460,43 @@
       },
 
       //====编辑相关====
+      //处理显示
+      beforeShow: function (row) {
+        let source = row.task.source;
+        let destination = row.task.destination;
+        //source = source.match(/\/\/(\S*)/)[1];
+        let desArr = destination.split('/');
+        let volumeName = desArr[2];
+        //destination = destination.match(/\/(\S*)/)[1];
+        let volume = {};
+        volume = this.volumes.find((volume)=>{
+          return volume.name === volumeName;
+        });
+        if(row.task.type === 'backup'){
+          source = source.replace(/file:\//i,'');
+          var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
+          destination = destination.replace(re,'');
+        }else{
+          source = source.replace(/glusterfs:\//i,'');
+          destination = destination.replace(/file:\//i,'');
+        }
+        console.log(source,destination);
+        row.task.volume_id = volume.id;
+        row.task.source = source;
+        row.task.destination = destination;
+      },
+      //取消编辑
+      cancelEdit: function () {
+        this.editFormVisible = false;
+        this.$refs['editForm'].resetFields();
+        this.getTasks();
+      },
       //显示编辑界面
       showEditDialog: function (index, row) {
         this.editFormVisible = true;
+        this.beforeShow(row);
         this.editForm = Object.assign({}, row.task);
+        console.log(this.editForm);
       },
       //编辑
       editSubmit: function () {
@@ -295,6 +509,10 @@
                 user: this.sysUserName,
               };
               let para = Object.assign({}, this.editForm);
+              if(para.type === "backup"){
+                para.source = 'file:/' + para.source;
+                para.destination = 'glusterfs:/' + para.destination;
+              }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
@@ -328,12 +546,12 @@
       showAddDialog: function (index, row) {
         this.addFormVisible = true;
         this.addForm = {
-          user: this.sysUserName,
           name: '',
-          ip: '',
-          owner: '',
-          port: '',
-          description: ''
+          policy_id: '',
+          worker_id: '',
+          source: '',
+          destination: '',
+          description: '',
         };
       },
       //取消提交
@@ -341,22 +559,55 @@
         this.addFormVisible = false;
         this.$refs['addForm'].resetFields();
       },
+      handleChange: function (value) {
+        console.log(value);
+        if(typeof(value) !== "undefined"){
+          let volume = {};
+          volume = this.volumes.find((volume)=>{
+            return volume.id === value;
+          });
+          this.volumeName = volume.name;
+        }
+      },
+
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
             this.addLoading = true;
             //NProgress.start();
+            let user = {
+              user: this.sysUserName,
+            };
             let para = Object.assign({}, this.addForm);
-            reqAddTask(para).then((res) => {
+//            console.log(this.addForm);
+            para.type = this.task_type;
+
+            if(para.type === "backup"){
+              para.source = 'file:/' + para.source;
+              para.destination = 'glusterfs://' + this.volumeName + para.destination;
+            }
+//            console.log("!!!####!!!");
+//            console.log(para);
+
+            reqAddTask(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
               this.$message({
-                message: '提交成功',
+                message: '添加成功',
                 type: 'success'
               });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getTasks();
+            }).catch(err=>{
+              this.addLoading = false;
+              this.$message({
+                message: '添加失败',
+                type: 'error'
+              });
+              console.log(err.message)
+              this.$refs['addForm'].resetFields();
+              this.addFormVisible = false;
             });
           }
           else{
@@ -414,6 +665,60 @@
 //
 //        });
       },
+      //任务状态详情
+      taskStateHandleSizeChange: function (val) {
+        this.taskStateFilter.per_page = val;
+        this.getTaskStates(this.currTaskRow);
+      },
+      taskStateHandleCurrentChange: function (val) {
+        this.taskStateFilter.page = val;
+        this.getTaskStates(this.currTaskRow);
+      },
+      taskStateDetail(row) {
+        this.taskStateFilter.per_page = 10;
+        this.taskStateFilter.page = 1;
+        this.currTaskRow = row.task.id;
+        this.getTaskStates(this.currTaskRow);
+        this.currTaskStateTabTitle = row.task.name;
+      },
+      getTaskStates(task_id){
+        var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);
+
+        let params = {
+          user: this.sysUserName,
+          limit: this.taskStateFilter.per_page,
+          offset: page_offset,
+          task_id: task_id,
+        };
+        reqBackupStates(params).then(res => {
+          this.taskStates = res.data.states;
+          this.dialogTaskStateDetailTableVisible = true;
+          this.taskState_total_rows = res.data.total;
+        },err => {
+          this.$message({
+            message: '获取失败',
+            type: 'error'
+          });
+        })
+          .catch(function(response) {
+            console.log(response);
+          });
+      },
+      //TODO:操作按钮相关方法
+      immediatelyExecute: function () {
+        this.$message({
+          message: '你中计了',
+          type: 'error'
+        })
+      },
+      toPause:function (index, row) {
+        this.isPause = true;
+        console.log(index);
+      },
+      toResume:function (index, row) {
+        this.isPause = false;
+        console.log(index);
+      },
 
     },
     mounted() {
@@ -422,6 +727,18 @@
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username || '';
       }
+      let para = {
+        user: this.sysUserName
+      };
+      reqGetWorkerList(para).then(res=>{
+        this.workers = res.data.workers;
+      });
+      reqGetVolumeList(para).then(res=>{
+        this.volumes = res.data.volumes;
+      });
+      reqGetPolicyList(para).then(res=>{
+        this.policies = res.data.policies;
+      });
       this.getTasks();
     }
   }

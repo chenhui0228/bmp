@@ -31,13 +31,44 @@ axios.interceptors.request.use((config) => {
   alert("error");
 });
 
-export const requestLogin = params => { return axios.post(`${base}/login`, params).then(res => res) }
+export const requestLogin = params => {
+  return axios.post(`${base}/login`, params)
+}
 
-export const reqGetUserProfile = params => { return axios.get(`${base}/backup/users`, { params: params }).then(res => res) }
+//获取用户列表
+export const reqGetUserList = params => {
+  return axios.get(`${base}/backup/users/detail`, {params: params})
+}
 
-export const reqUpdateUserProfile = params => { return axios.put(`${base}/backup/users/${params.id}`, params, {params: {user: params.name}}).then(res => res) }
+//添加用户
+export const reqPostUser = (params, data) => {
+  return axios.post(`${base}/backup/users`, data, {params: params})
+}
 
-export const reqGetRoleList = params => { return axios.get(`${base}/backup/roles`, { params: params }) }
+//修改用户
+export const reqPutUser = (params, data) => {
+  return axios.put(`${base}/backup/users/${data.id}`, data, {params: params})
+}
+
+//删除用户
+export const reqDelUser = (params, id) => {
+  return axios.delete(`${base}/backup/users/${id}`, {params: params})
+}
+
+//个人信息获取
+export const reqGetUserProfile = (params,  uid) => {
+  return axios.get(`${base}/backup/users/${uid}`, {params: params})
+}
+
+//个人信息修改
+export const reqUpdateUserProfile = (params, data) => {
+  return axios.put(`${base}/backup/users/${data.id}`, data, {params: params})
+}
+
+//获取角色列表
+export const reqGetRoleList = params => {
+  return axios.get(`${base}/backup/roles`, {params: params})
+}
 
 //policy
 export const reqGetPolicyList = params => {
@@ -48,6 +79,9 @@ export const reqPostPolicy = (params, data) => {
 }
 export const reqPutPolicy = (params, data) => {
   return axios.put(`${base}/backup/policies/${data.id}`, data, {params: params})
+}
+export const reqDelPolicy = (params, id) => {
+  return axios.delete(`${base}/backup/policies/${id}`, {params: params})
 }
 
 
@@ -94,3 +128,13 @@ export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/bac
 
 export const reqTaskAction = (task_id, params) => { return axios.post(`${base}/tasks/${task_id}/action`, { params: params}) };
 //任务管理相关结束
+
+//任务状态
+export const reqBackupStates = params => {
+  return axios.get(`${base}/backup/backupstates`, {params: params} )
+};
+
+export const reqBackupStatesDetail = params => {
+  return axios.get(`${base}/backup/backupstates/detail`, {params: params} )
+};
+

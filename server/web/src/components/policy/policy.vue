@@ -26,9 +26,52 @@
         <el-table :data="policies" highlight-current-row v-loading="loading" style="width: 100%;">
           <el-table-column type="selection" width="50">
           </el-table-column>
+          <el-table-column type="expand">
+            <template scope="scope">
+              <el-form label-position="right" inline class="table-expand" label-width="100px">
+                <el-form-item label="策略名">
+                  <span>{{ scope.row.name }}</span>
+                </el-form-item>
+                <el-form-item label="策略说明">
+                  <span>{{ scope.row.description }}</span>
+                </el-form-item>
+                <el-form-item label="开始时间">
+                  <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
+                </el-form-item>
+                <el-form-item label="重复策略">
+                  <span v-if="scope.row.recurring == 'once'">仅一次</span>
+                  <span v-else-if="scope.row.recurring == 'hourly'">小时</span>
+                  <span v-else-if="scope.row.recurring == 'daily'">天</span>
+                  <span v-else-if="scope.row.recurring == 'weekly'">周</span>
+                  <span v-else="scope.row.recurring == 'monthly'">月</span>
+                </el-form-item>
+                <el-form-item label="备份频率">
+                  <span>{{ scope.row.recurring_options_every }}</span>
+                </el-form-item>
+                <el-form-item label="周选项" v-if="scope.row.recurring == 'weekly'">
+                  <template>
+                    <span>{{ scope.row.recurring_options_week | weeksFormat }}</span>
+                  </template>
+                </el-form-item>
+                <el-form-item label="备份保存周期">
+                  <span v-if="scope.row.protection == -1">永久保存</span>
+                  <span v-if="scope.row.protection != -1">{{ scope.row.protection }} 天</span>
+                </el-form-item>
+                <el-form-item label="创建用户">
+                  <span>{{ scope.row.user.name }}</span>
+                </el-form-item>
+                <el-form-item label="创建时间">
+                  <span>{{ scope.row.created_at | timeStamp2datetime}}</span>
+                </el-form-item>
+                <el-form-item label="更新时间">
+                  <span>{{ scope.row.updated_at | timeStamp2datetime}}</span>
+                </el-form-item>
+              </el-form>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="策略名" width="240" sortable>
           </el-table-column>
-          <el-table-column prop="recurring" label="备份频率" width="180">
+          <el-table-column prop="recurring" label="重复策略" width="180">
             <template scope="scope">
               <span v-if="scope.row.recurring == 'once'">仅一次</span>
               <span v-else-if="scope.row.recurring == 'hourly'">小时</span>
@@ -51,9 +94,9 @@
           </el-table-column>
           <el-table-column label="操作">
             <template scope="scope">
-              <el-button type="text" icon="information" @click=""></el-button>
+              <!--<el-button type="text" icon="information" @click=""></el-button>-->
               <el-button v-if="" type="text" icon="edit" @click="editPolicy(scope.$index, scope.row)"></el-button>
-              <el-button v-if="" type="text" icon="delete" style="color: red" @click=""></el-button>
+              <el-button v-if="" type="text" icon="delete" style="color: red" @click="confirmDeleteMsgbox('deletePolicy',scope.$index, scope.row, _self.confimPolicyDeleteMsg)"></el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -176,7 +219,7 @@
   </el-row>
 </template>
 <script>
-  import {reqGetPolicyList, reqPostPolicy, reqPutPolicy} from '../../api/api'
+  import {reqGetPolicyList, reqPostPolicy, reqPutPolicy, reqDelPolicy} from '../../api/api'
   import {util} from '../../common/util'
   export default{
     props: ["roles", "groups"],
@@ -260,6 +303,7 @@
         checkStarTimeError: false,
         dialogPolicyTitle: '',
         formLabelWidth: '120px',
+        confimPolicyDeleteMsg: '您确定要删除这个策略吗？',
         pickerOptionsForDate: {
           disabledDate(time) {
             return time.getTime() < Date.now() - 8.64e7;
@@ -385,8 +429,13 @@
             }
           }
         }
-        this.policyProtectionForm.protectionType = '1';
-        this.policyProtectionForm.protection = row.protection;
+        if (row.protection == -1) {
+          this.policyProtectionForm.protectionType = '4';
+          this.policyProtectionForm.protection = '';
+        } else {
+          this.policyProtectionForm.protectionType = '1';
+          this.policyProtectionForm.protection = row.protection;
+        }
       },
       savePolicy(policyBaseForm, policyTimeForm, policyRecurringForm, policyProtectionForm){
         this.$refs[policyBaseForm].validate((valid1) => {
@@ -474,6 +523,56 @@
             break;
         };
       },
+      deletePolicy(index ,row){
+        let params = {
+          user: this.sysUserName,
+        };
+        reqDelPolicy(params, row.id).then(res =>{
+          this.getPolicys(this.sysUserName);
+          this.openMsg('删除成功', 'success');
+        }, err =>{
+          if (err.response.status == 401) {
+            this.openMsg('请重新登陆', 'error');
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403) {
+            var tips = '';
+            if(err.response.data.code == 403){
+              tips = err.response.data.tasks[0]+' 等 '+err.response.data.tasks.length+" 个备份任务正在使用，请先删除任务"
+              this.openMsg('删除失败', 'error');
+              this.openNotify('失败提示',tips,'error');
+            }else if(err.response.data.code == 401) {
+              this.openMsg('没有权限', 'error');
+            }
+          }else {
+            this.openMsg('请求失败', 'error');
+          }
+        });
+      },
+      confirmDeleteMsgbox(func, index, row, mymsg){
+        const h = this.$createElement;
+        this.$msgbox({
+          title: '重要提醒',
+          message: h('p',{style: 'color: red'}, mymsg),
+          type: 'warning',
+          showCancelButton: true,
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          beforeClose: (action, instance, done) => {
+            if (action === 'confirm') {
+              if(func == 'deletePolicy'){
+                  this.deletePolicy(index, row);
+              }else {
+
+              }
+              done();
+            } else {
+              done();
+            }
+          }
+        }).then(action => {
+        });
+        },
       //-----分页----
       handleSizeChange(val) {
           this.filter.per_page = val;

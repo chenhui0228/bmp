@@ -41,7 +41,7 @@
         <!--导航菜单-->
         <el-menu default-active="0" router :collapse="collapsed">
           <template v-for="(item,index) in $router.options.routes"
-                    v-if="item.menuShow && (role == 'superrole' ? item.menuShow : !item.isSuperAdm)">
+                    v-if="item.menuShow && ((role == 'superrole' || role == 'admin')? item.menuShow : !item.isSuperAdm)">
             <el-submenu v-if="!item.leaf" :index="index+''">
               <template slot="title"><i :class="item.iconCls"></i><span slot="title">{{item.name}}</span></template>
               <el-menu-item v-for="term in item.children" :key="term.path" :index="term.path" v-if="term.menuShow"
@@ -62,8 +62,9 @@
         <div class="grid-content bg-purple-light">
           <el-col :span="24" class="content-wrapper">
             <transition name="fade" mode="out-in">
-              <router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles"
-                           @transferGroups="refreshGroups"></router-view>
+              <router-view></router-view>
+              <!--<router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles"-->
+                           <!--@transferGroups="refreshGroups"></router-view>-->
             </transition>
           </el-col>
         </div>
@@ -187,8 +188,8 @@
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username;
         this.role = accessInfo.role;
-        this.getRoles(this.sysUserName);
-        this.getGroups(this.sysUserName);
+        //this.getRoles(this.sysUserName);
+        //this.getGroups(this.sysUserName);
       } else {
         _this.$router.push('/login');
       }
@@ -318,6 +319,7 @@
       .content-wrapper {
         background-color: #fff;
         box-sizing: border-box;
+
       }
     }
   }

@@ -1,17 +1,30 @@
 import os, sys
 from datetime import *
 import time
-from SocketServer import BaseRequestHandler,ThreadingTCPServer,ThreadingUDPServer
-import threading
 from message import Message,Performance
-from log import MyLogging
-import logging.handlers as handlers
-import socket # 套接字
-import logging
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
 from db.sqlalchemy import models
+from threading import Lock
+import six
+
+class Singleton(type):
+    _instances = {}
+    lock = Lock()
+
+    def __call__(cls, *args, **kwargs):
+        cls.lock.acquire()
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(
+                *args, **kwargs)
+        cls.lock.release()
+        return cls._instances[cls]
+
+super_context = {
+    'is_superrole': True
+}
+
 
 def translate_date(sub,start_time,every,weekdat):
     timestamp = int(start_time)
@@ -24,7 +37,7 @@ def translate_date(sub,start_time,every,weekdat):
         dict['minute']=time_local.minute
         t=time_local.hour%int(every)
         dict['hour']='%d/%d'%(t,int(every))
-    elif sub=='datly':
+    elif sub=='daily':
         dict['second']=time_local.second
         dict['minute']=time_local.minute
         dict['hour'] = time_local.hour
@@ -44,8 +57,7 @@ def translate_date(sub,start_time,every,weekdat):
         dict['month']='%d/%d'%(t,int(every))
     return dict
 
-
-
+@six.add_metaclass(Singleton)
 class Server:
     def __init__(self):
         self.message = Message('tcp')
@@ -54,14 +66,19 @@ class Server:
             'driver': 'mysql',
             'user': 'backup',
             'password': '123456',
-            'host': '10.202.127.11'
+            'host': '10.202.127.11',
+            'database': 'test'
+
         }
         self.db= db_api.get_database(conf)
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        self.port = cp.get('server', 'port')
 
     def suspend(self,id):
-        task = self.db.get_task(id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        task = self.db.get_task(super_context,id)
+        worker = self.db.get_worker(super_context,'%s' % task.worker_id)
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'suspend','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
@@ -69,9 +86,9 @@ class Server:
         self.message.issued(info)
 
     def delete(self,id):
-        task = self.db.get_task(id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        task = self.db.get_task(super_context,id)
+        worker = self.db.get_worker(super_context, task.worker_id)
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'delete','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
@@ -79,25 +96,26 @@ class Server:
         self.message.issued(info)
 
     def restart(self,id):
-        task = self.db.get_task(id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        task = self.db.get_task(super_context,id)
+        worker = self.db.get_worker(super_context,task.worker_id)
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'restart','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
         info['addr'] = addr
         self.message.issued(info)
 
-    def update(self,id):
-        task = self.db.get_task('%s' % id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        policy = self.db.get_policy('%s' % task.policy_id)
-        addr = (worker.ip, int(worker.port))
+    def update_task(self,id):
+        task = self.db.get_task(super_context,id)
+        worker = self.db.get_worker(super_context, task.worker_id)
+        policy = self.db.get_policy( super_context,task.policy_id)
+        addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
         vol = vol_dir.split('/', 1)[0]
         dir = vol_dir.split('/', 1)[1]
-        date_dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        source = task.source.split('/', 1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
@@ -105,57 +123,121 @@ class Server:
         data = "{'type':'update','data':{'id':'%s','name':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % ( id, task.name, worker.ip, task.source, dir, vol, policy.protrction,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % ( id, task.name, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+        data2=data['data']
+        data2['sub']=task.type
+        if data2['sub'] == 'dump':
+            data2['script'] == task.script_path
+        elif data2['sub'] == 'recover':
+            vol_dir = destination.split('//')[1]
+            vol = vol_dir.split('/', 1)[0]
+            dir = vol_dir.split('/', 1)[1]
+            source = task.source.split('/', 1)[1]
+            data2['source_vol']=vol
+            data2['source_address'] =dir
+            data2['destination_address']=source
+            data2['destination_ip'] = worker.ip
+
         info = {}
         info['data'] = data
         info['addr'] = addr
         self.message.issued(info)
 
-    def backup(self,id):
-        task = self.db.get_task('%s' % id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        policy = self.db.get_policy('%s' % task.policy_id)
-        addr = (worker.ip, int(worker.port))
+
+    def update_worker(self,id,old_ip):
+        tasks=self.db.get_tasks(super_context)[0]
+        worker=self.db.get_worker(super_context,id)
+        if worker.ip == old_ip:
+            for task in tasks:
+                if task.worker_id == id:
+                    self.update_task(task.id)
+        else:
+            for task in tasks:
+                if task.worker_id == id:
+                    addr = (old_ip, int(self.port))
+                    data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
+                    info = {}
+                    info['data'] = data
+                    info['addr'] = addr
+                    self.message.issued(info)
+            for task in tasks:
+                if task.worker_id == id:
+                    self.update_task(task.id)
+
+
+    def update_policy(self,id):
+        tasks=self.db.get_tasks(super_context)[0]
+        for task in tasks:
+            if task.policy_id == id:
+                self.update_task(task.id)
+
+
+
+
+
+
+
+    def backup(self,id,do_type=False):
+        task = self.db.get_task(super_context,id)
+        worker = self.db.get_worker(super_context, task.worker_id)
+        policy = self.db.get_policy(super_context, task.policy_id)
+        addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
-        date_dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
+        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        source = task.source.split('/', 1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
+        if do_type:
+            run_sub='immediately'
         data = "{'type':'backup','data':{'id':'%s','name':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, worker.ip, task.source, dir, vol, policy.protrction,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr
         self.message.issued(info)
 
-    def recover(self,id):         # need change
-        task = self.db.get_task('%s' % id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        policy = self.db.get_policy('%s' % task.policy_id)
-        addr = (worker.ip, int(worker.port))
+    def recover(self,id,do_type=False):         # need change
+        task = self.db.get_task(super_context, id)
+        worker = self.db.get_worker(super_context,task.worker_id)
+        policy = self.db.get_policy(super_context, task.policy_id)
+        addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
-        date_dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
+        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        source = task.source.split('/', 1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
-        data = "{'type':'recover','data':{'name':'test1','backup_time':'201711031508'," \
-               "'source_ip':'10.202.125.83','source_address':'/data/dump/','source_vol':'rp','destination_address': '/data/dump/'," \
-               "'destination_ip':'10.202.125.83','cron': {'year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'0'," \
-               "'second':'0','start_date':'2017-11-2 00:00:00'}}} "
+        if do_type:
+            run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s'," \
-               "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, worker.ip, task.source, dir, vol, policy.protrction,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
+               "'destination_ip':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name, vol,  dir ,source, worker.ip,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -163,41 +245,73 @@ class Server:
 
 
 
-    def dump(self,id):
-        task = self.db.get_task('%s' % id)
-        worker = self.db.get_worker('%s' % task.worker_id)
-        policy = self.db.get_policy('%s' % task.policy_id)
-        addr = (worker.ip, int(worker.port))
+    def dump(self,id,do_type=False):
+        task = self.db.get_task(super_context, id)
+        worker = self.db.get_worker(super_context, task.worker_id)
+        policy = self.db.get_policy(super_context,task.policy_id)
+        addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
-        date_dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
+        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        source=task.source.split('/',1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
+        if do_type:
+            run_sub='immediately'
         data = "{'type':'backup','data':{'id':'%s','name':'%s','script':'%s'" \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.script_path,worker.ip, task.source, dir, vol, policy.protrction,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.script_path,worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr
         self.message.issued(info)
 
 
-
-
-
-
-
-
-
-
-
     def to_db(self,msg):
-        pass
+        if msg['type'] == 'return':
+            dict=msg['data']
+            key=dict['sub']
+            value=dict[key]
+            try:
+                bk = self.db.bk_list(super_context, dict['bk_id'])
+            except:
+                bk_value={}
+                bk_value['id']=dict['bk_id']
+                bk_value['task_id']=dict['id']
+                bk=self.db.bk_create(super_context,bk_value)
+            bk_dict={}
+            bk_dict['id'] = bk.id
+            bk_dict[key]=value
+            self.db.bk_update(super_context,bk_dict)
+        elif msg['type'] == 'initialize':
+            dict = msg['data']
+            worker_name=dict['hostname']
+            try:
+                worker=self.db.get_worker_by_name(super_context,worker_name)
+            except:
+                worker_value={}
+                worker_value['name']=worker_name
+                worker_value['ip']=dict['ip']
+                worker_value['version'] = dict['version']
+                worker_value['group_id'] =dict['group']
+                worker=self.db.create_worker(super_context,)
+            self.update_worker(worker.id)
+
+
+
+
 
     def listen(self):  # listen msg from client
         while True:
