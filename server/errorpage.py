@@ -1,15 +1,20 @@
+import cherrypy
 import logging
 logger = logging.getLogger('backup')
-
 class page(object):
     content = None
 
     def __call__(self, status, message, traceback, version):
         logger.debug('status : %s , version : %s'%(status, version))
         logger.debug(traceback)
+        self.set_response()
         if message:
             return message
         return self.content
+
+    def set_response(self):
+        response = cherrypy.serving.response
+        response.headers['Content-Type'] = 'text/html;charset=utf-8'
 
     def set_content(self, content):
         self.content = content
@@ -29,6 +34,11 @@ class error_page_500(page):
 class error_page_403(page):
     def __init__(self):
         self.content = '403 Error'
+
+    def set_response(self):
+        response = cherrypy.serving.response
+        response.headers['Content-Type'] = 'application/json'
+
 
 class error_page_401(page):
     def __init__(self):

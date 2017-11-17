@@ -22,6 +22,13 @@ else:
     binary_type = str
 
 string_types = (text_type, binary_type)
+
+super_context = {
+    'is_superrole': True
+}
+
+tokmgr = None
+
 def check_token(auth_header, user):
     if not user:
         logger.error('user should not be none')
@@ -33,7 +40,7 @@ def check_token(auth_header, user):
     if isinstance(user, string_types) :
         db = get_database(None)
         try:
-            user = db.get_user_by_name(user)
+            user = db.get_user_by_name(super_context, user)
         except NotFound:
             logger.error('user {0} is not found'.format(user))
             raise HTTPError(401, 'user {0} is not found'.format(user))
@@ -43,10 +50,9 @@ def check_token(auth_header, user):
     if not auth_header:
         logger.error('no token')
         raise HTTPError(401, 'token for user {0} is not found'.format(username))
-    tm = token.TokenManager()
     scheme, tok = auth_header.split(' ', 1)
     if scheme == 'Bearer':
-        valid = tm.check_token(tok, user)
+        valid = tokmgr.check_token(tok, user)
         if not valid:
             logger.error('invalid token for user : {0}'.format(username))
             raise HTTPError(401, 'invalid token')
@@ -70,36 +76,38 @@ def init(conf):
     token_conf = conf.get('token')
     if not token_conf:
         token_conf = {'exp': 3600}
-    token.TokenManager(token_conf)
+    logger.debug('token conf : %s ' % token_conf)
+    global tokmgr
+    tokmgr = token.TokenManager(token_conf)
     db = get_database(conf)
-    superrole = db.role_get_by_name('superrole')
+    superrole = db.role_get_by_name(super_context, 'superrole')
     if not superrole:
         role = {
             "name": 'superrole',
             "description": "this role has super power, take it carefully ! "
         }
 
-        superrole = db.role_create(role)
-
-    superuser = db.get_super_user(superrole.id)
+        superrole = db.role_create(super_context, role)
+    superuser = db.get_super_user(super_context, superrole.id)
     password = uuidutils.generate_uuid(False)
     if not superuser:
         user = {
-            'name':'root',
+            'name': 'root',
             'password': password,
             'role_id': superrole.id
         }
-        superuser = db.create_user(user)
+        superuser = db.create_user(super_context, user)
         logger.error('root password is : {0}, you should change it at  the first time'.format(password))
 
 def login(request, **kwargs):
+    global tokmgr
     if request.method == 'POST':
         auth_header = request.headers.get('authorization')
         db = get_database(None)
         username = kwargs.get('user')
         if username:
             try:
-                user_info = db.get_user_by_name(username)
+                user_info = db.get_user_by_name(super_context, username)
             except NotFound:
                 logger.error('user {0} is not found'.format(username))
                 raise HTTPError(401, 'user {0} is not found'.format(username))
@@ -114,18 +122,20 @@ def login(request, **kwargs):
             except HTTPError:
                 raise
         else:
-            tm = token.TokenManager()
             password = kwargs.get('password')
             valid = auth_basic.verify_user(user_info, username, password)
             if valid:
                 logger.info('user {0} is logged in successful'.format(username))
-                payload = tm.build_payload(username)
+                payload = tokmgr.build_payload(username)
                 tok = token.genarate_token(payload, user_info.key)
                 role = user_info.role
                 rolename = ''
                 if role:
                     rolename = role.name
-                return {'token': tok, 'role':rolename}
+                return {'token': tok,
+                        'role':rolename,
+                        'user_id': user_info.id
+                        }
             raise HTTPError(401, 'user {0} password is not right'.format(username))
 
 

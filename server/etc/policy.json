@@ -1,0 +1,77 @@
+{
+  "admin_role": "role:admin",
+  "operator_role": "role:operator",
+  "user_role": "role:user",
+  "admin_or_owner": "rule:admin_role or rule:operator_role",
+  "default": "rule:admin_or_owner",
+
+  "task:index": "rule:default",
+  "task:detail": "rule:default",
+  "task:show": "rule:default",
+  "task:create": "rule:default",
+  "task:update": "rule:default",
+  "task:delete": "rule:default",
+  "task:start": "rule:default",
+  "task:stop": "rule:default",
+  "task:pause": "rule:default",
+  "task:resume": "rule:default",
+
+  "policy:index": "rule:default",
+  "policy:detail": "rule:default",
+  "policy:show": "rule:default",
+  "policy:create": "rule:default",
+  "policy:update": "rule:default",
+  "policy:delete": "rule:default",
+
+  "user:index": "rule:admin_role",
+  "user:detail": "rule:admin_role",
+  "user:show": "rule:default",
+  "user:create": "rule:admin_role",
+  "user:update": "rule:default",
+  "user:delete": "rule:admin_role",
+
+
+  "worker:index": "rule:default",
+  "worker:detail": "rule:default",
+  "worker:show": "rule:default",
+  "worker:create": "rule:default",
+  "worker:update": "rule:default",
+  "worker:delete": "rule:default",
+
+  "group:index": "rule:default",
+  "group:detail": "rule:default",
+  "group:show": "rule:default",
+  "group:create": "rule:default",
+  "group:update": "rule:default",
+  "group:delete": "rule:default",
+
+  "role:index": "rule:admin_role",
+  "role:detail": "rule:admin_role",
+  "role:show": "rule:default",
+  "role:create": "rule:admin_role",
+  "role:update": "rule:admin_role",
+  "role:delete": "rule:admin_role",
+
+
+  "volume:index": "rule:default",
+  "volume:detail": "rule:default",
+  "volume:show": "rule:default",
+  "volume:create": "rule:default",
+  "volume:update": "rule:default",
+  "volume:delete": "rule:default",
+
+  "backupstate:index": "rule:default",
+  "backupstate:detail": "rule:default",
+  "backupstate:show": "rule:default",
+  "backupstate:create": "rule:default",
+  "backupstate:update": "rule:default",
+  "backupstate:delete": "rule:default",
+
+  "oplog:index": "rule:default",
+  "oplog:detail": "rule:default",
+  "oplog:show": "rule:default",
+  "oplog:create": "rule:default",
+  "oplog:update": "rule:default",
+  "oplog:delete": "rule:default"
+
+}

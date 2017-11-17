@@ -98,10 +98,22 @@ def t8():
     from threading import Timer
 
 
-
 def user_create_test(db):
     user = {'name':'lucy', 'password':'123456'}
     db.create_user(user)
+
+def updata_user(db, context):
+    user = db._get_user(context, name='bob')
+
+    user_info = {
+        'id': user.id,
+        'password':'1234567'
+    }
+
+    print user.to_dict()
+
+
+    db.update_user(context, user_info)
 
 def role_create_test(db):
     role = {
@@ -109,6 +121,19 @@ def role_create_test(db):
         'description': u'管理员'.encode('utf-8')
     }
     db.role_create(role)
+
+
+def state_create_test(db, context):
+    state={
+        'task_id': '33f0439b-f046-4b54-8856-8b6574e90029'
+    }
+
+    st = db.bk_create(context, state)
+    print st.to_dict()
+
+def state_get_test(db, context):
+    st = db.get_bk_state(context, '1')
+    print st.to_dict()
 
 if __name__ == '__main__':
 
@@ -128,6 +153,12 @@ if __name__ == '__main__':
     #t6(db)
     #t7(db)
     #user_create_test(db)
-    role_create_test(db)
+    #role_create_test(db)
+    context = {
+        'is_superuser':True
+    }
+    #updata_user(db, context)
+    #state_create_test(db, context)
+    state_get_test(db, context)
 
 

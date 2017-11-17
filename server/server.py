@@ -39,6 +39,7 @@ def parse_cmdargs(args=None, target=''):
                         action='store_true')
 
     parser.add_argument('-c', '--conf', dest='backupconf',
+                        default='etc/server.conf',
                         help='backup configuration file')
 
     parser.add_argument('-p', '--pid-file', dest='pidfile',
@@ -92,25 +93,25 @@ class BackupPolicyService(object):
 
     @authentication.check_login
     def GET(self, *args, **kwargs):
-        result = self.router.dispatch(cherrypy.request)
+        result = self.router.dispatch(cherrypy.serving.request)
         return result
 
     @cherrypy.tools.json_out()
     @authentication.check_login
     def POST(self, *args, **kwargs):
-        result = self.router.dispatch(cherrypy.request)
+        result = self.router.dispatch(cherrypy.serving.request)
         return result
 
     @cherrypy.tools.json_out()
     @authentication.check_login
     def PUT(self, *args, **kwargs):
-        result = self.router.dispatch(cherrypy.request)
+        result = self.router.dispatch(cherrypy.serving.request)
         return result
 
     @cherrypy.tools.json_out()
     @authentication.check_login
     def DELETE(self, *args, **kwargs):
-        result = self.router.dispatch(cherrypy.request)
+        result = self.router.dispatch(cherrypy.serving.request)
         return result
 
     def OPTIONS(self, *arg, **kwargs):
@@ -129,9 +130,7 @@ if __name__ == '__main__':
         sys.exit(0)
     if parsed_args.help:
         do_basic_help(parser, childargs)
-    config_path = 'server.conf'
-    if parsed_args.backupconf:
-        config_path = parsed_args.backupconf
+    config_path = parsed_args.backupconf
 
     PIDFile(cherrypy.engine, parsed_args.pidfile).subscribe()
     if not parsed_args.foreground:
