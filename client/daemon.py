@@ -214,38 +214,13 @@ class Daemon:
 
     """
 
-    def do_date( self, data ):
-        dict = data['data']
-        ms=dict['id']
-        if data['type']=='backup':
-            self.log.logger.info('create a new direct backup work')
-            dict['op'] = "backup"
-        elif data['type']=='dump':
-            self.log.logger.info('create a new direct dump work')
-            dict['op']='dump'
-        elif data['type']=='recover':
-            self.log.logger.info('create a new direct recover work')
-            dict['op']='recover'
-        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
-        new_task.start('date')
-        self.task_list[ms] = new_task
-        self.task_sum = self.task_sum + 1
-
-
-    def do_cron(self,data):
+    def addtask(self,data,do_type):
         dict = data['data']
         ms = dict['id']
-        if data['type']=='backup':
-            self.log.logger.info('create a new queue backup work,the id of it is %s' % ms)
-            dict['op'] = "backup"
-        elif data['type']=='dump':
-            self.log.logger.info('create a new queue dump work,the id of it is %s' % ms)
-            dict['op']='dump'
-        elif data['type']=='recover':
-            self.log.logger.info('create a new queue recover work')
-            dict['op']='recover'
+        dict['op'] =data['type']
+        self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
         new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
-        new_task.start('cron')
+        new_task.start(do_type)
         self.task_list[ms] = new_task
         self.task_sum = self.task_sum + 1
 
@@ -254,10 +229,10 @@ class Daemon:
             dict = data['data']
             if dict['run_sub'] == 'date':
                 #print "do backup use direct"
-                self.do_date(data)
+                self.addtask(data,'date')
             elif dict['run_sub'] == 'cron':
                 #print "do backup use queue"
-                self.do_cron(data)
+                self.addtask(data,'cron')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
                 dict['op'] = "backup"
@@ -275,24 +250,11 @@ class Daemon:
                     self.task_list[ms].do_remove_job()
                     del self.task_list[ms]
                     self.task_sum = self.task_sum - 1
-                    if dict['sub']=='backup':
-                        dict['op'] = "backup"
-                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
-                        new_task.start('cron')
-                        self.task_list[ms] = new_task
-                        self.task_sum = self.task_sum + 1
-                    elif dict['sub']=='dump':
-                        dict['op'] = "dump"
-                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
-                        new_task.start('cron')
-                        self.task_list[ms] = new_task
-                        self.task_sum = self.task_sum + 1
-                    elif dict['sub']=='recover':
-                        dict['op'] = "recover"
-                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
-                        new_task.start('cron')
-                        self.task_list[ms] = new_task
-                        self.task_sum = self.task_sum + 1
+                    dict['op'] = dict['sub']
+                    new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                    new_task.start(dict['run_sub'])
+                    self.task_list[ms] = new_task
+                    self.task_sum = self.task_sum + 1
                     self.send('result', ms, 'success')
                 except:
                     self.send('result', ms, 'failed')
@@ -304,7 +266,7 @@ class Daemon:
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
             if dict['run_sub']=='date':
-                self.do_date(data)
+                self.addtask(data,'date')
             elif dict['run_sub'] =='immediately':
                 dict = data['data']
                 dict['op'] = "recover"
@@ -349,10 +311,10 @@ class Daemon:
             dict = data['data']
             if dict['run_sub'] == 'cron':
                # print "do dump in queue"
-               self.do_cron(data)
+               self.addtask(data,'cron')
             elif dict['run_sub'] == 'date':
                 #print "do dump in direct"
-                self.do_date(data)
+                self.addtask(data,'date')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
                 dict['op'] = "dump"
