@@ -6,7 +6,18 @@ import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
 from db.sqlalchemy import models
+from threading import Lock
+class Singleton(type):
+    _instances = {}
+    lock = Lock()
 
+    def __call__(cls, *args, **kwargs):
+        cls.lock.acquire()
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(
+                *args, **kwargs)
+        cls.lock.release()
+        return cls._instances[cls]
 
 super_context = {
     'is_superrole': True
@@ -45,8 +56,7 @@ def translate_date(sub,start_time,every,weekdat):
     return dict
 
 
-
-class Server:
+class Server(Singleton):
     def __init__(self):
         self.message = Message('tcp')
         self.message.start_server()
@@ -165,22 +175,29 @@ class Server:
 
 
 
-    def backup(self,id,type=False):
+    def backup(self,id,do_type=False):
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context, task.worker_id)
         policy = self.db.get_policy(super_context, task.policy_id)
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
         dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
         source = task.source.split('/', 1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
-        if type:
+        if do_type:
             run_sub='immediately'
         data = "{'type':'backup','data':{'id':'%s','name':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
@@ -191,22 +208,29 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def recover(self,id,type=False):         # need change
+    def recover(self,id,do_type=False):         # need change
         task = self.db.get_task(super_context, id)
         worker = self.db.get_worker(super_context,task.worker_id)
         policy = self.db.get_policy(super_context, task.policy_id)
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
         dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
         source = task.source.split('/', 1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
-        if type:
+        if do_type:
             run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
@@ -219,22 +243,29 @@ class Server:
 
 
 
-    def dump(self,id,type=False):
+    def dump(self,id,do_type=False):
         task = self.db.get_task(super_context, id)
         worker = self.db.get_worker(super_context, task.worker_id)
         policy = self.db.get_policy(super_context,task.policy_id)
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
+            return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
         dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
         source=task.source.split('/',1)[1]
         if policy.recurring=='once':
             run_sub='date'
         else:
             run_sub='cron'
-        if type:
+        if do_type:
             run_sub='immediately'
         data = "{'type':'backup','data':{'id':'%s','name':'%s','script':'%s'" \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
@@ -251,21 +282,30 @@ class Server:
             dict=msg['data']
             key=dict['sub']
             value=dict[key]
-            task_id=dict['id']
-            bks=self.db.bk_list(super_context,task_id='%s'%task_id)[0]
-            for bk in bks:
-                bk_dict={}
-                bk_dict['id'] = bk.id
-                bk_dict[key]=value
-                self.db.bk_update(super_context,bk_dict)
+            try:
+                bk = self.db.bk_list(super_context, dict['bk_id'])
+            except:
+                bk_value={}
+                bk_value['id']=dict['bk_id']
+                bk_value['task_id']=dict['id']
+                bk=self.db.bk_create(super_context,bk_value)
+            bk_dict={}
+            bk_dict['id'] = bk.id
+            bk_dict[key]=value
+            self.db.bk_update(super_context,bk_dict)
         elif msg['type'] == 'initialize':
             dict = msg['data']
-            worker_ip=dict['ip']
-            workers=self.db.get_workers(super_context)
-            for worker in workers:
-                if worker.ip == worker_ip:
-                    worker_id=worker.id
-                    self.update_worker(worker_id)
+            worker_name=dict['hostname']
+            try:
+                worker=self.db.get_worker_by_name(super_context,worker_name)
+            except:
+                worker_value={}
+                worker_value['name']=worker_name
+                worker_value['ip']=dict['ip']
+                worker_value['version'] = dict['version']
+                worker_value['group_id'] =dict['group']
+                worker=self.db.create_worker(super_context,)
+            self.update_worker(worker.id)
 
 
 

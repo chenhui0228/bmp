@@ -15,7 +15,7 @@ from message import Message
 from singletask import SingleTask
 from workerpool import WorkerPool
 import ConfigParser
-
+import  uuid
 
 class Daemon:
     def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
@@ -37,13 +37,18 @@ class Daemon:
         self.q = ""
         self.uc_size = int(cp.get('client', 'usually_concurrent')) # 线程池大小
         self.ic_size = int(cp.get('client', 'immediately_concurrent'))
+        self.version=cp.get('client', 'version')
+        self.group = cp.get('client', 'group')
         self.reload_interval = int(cp.get('client', 'reload_interval'))
+        self.port = cp.get('server', 'port')
         self.info_l = ""
         self.glusterlist = ['10.202.125.83']
         self.confip = '10.202.125.83:80'
         self.task_sum = 0  # 当前任务数
         self.task_list = {}
         self.tp = []
+        self.hostname = str(socket.gethostname())
+        self.ip = socket.gethostbyname(self.hostname)
 
         # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
 
@@ -171,11 +176,25 @@ class Daemon:
                 time.sleep(1)
                 self.message.con.release()
 
+    def generate_uuid( dashed=True ):
+        """Creates a random uuid string.
+        :param dashed: Generate uuid with dashes or not
+        :type dashed: bool
+        :returns: string
+        """
+        if dashed:
+            return str(uuid.uuid4())
+        return uuid.uuid4().hex
+
     def send(self,sub,id,value):
-        data="{'type':'return','data':{'sub':'%s','id':'%s','%s':'%s'}}"%(sub,id,sub,value)
-        ret=self.message.send(data)
-        if ret!=0:
-            self.log.logger.error(ret)
+        if sub == 'live':
+            data = "{'type':'return','data':{'sub':'%s','ip':'%s','hostname':'%s','work_num':'%s'}}" % (sub, self.ip, self.hostname, value)
+        else:
+            bk_id=self.generate_uuid()
+            data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,id,bk_id,sub,value)
+            ret=self.message.send(data)
+            if ret!=0:
+                self.log.logger.error(ret)
 
 
     def _timer_func( self ):
@@ -184,6 +203,10 @@ class Daemon:
         """
         没过2秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
         """
+        if self.timer_id * self.timer_interval % self.reload_interval == 0:
+            self.send('live','1',self.task_sum)
+
+
         if self.listen_thread.isAlive():
             pass
         else:
@@ -240,6 +263,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
+                self.send('state',dict['id'],'waiting')
         elif data['type'] == "update":
             print "do revise"
             dict = data['data']
@@ -274,7 +298,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-
+                self.send('state', dict['id'], 'waiting')
         elif data['type'] == 'suspend':  # 暂停
             #print "do suspend"
             dict = data['data']
@@ -322,6 +346,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
+                self.send('state', dict['id'], 'waiting')
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
@@ -369,10 +394,8 @@ class Daemon:
         self.listen_thread.start()
         self.t.start()
 
-        hostname = str(socket.gethostname())
-        ip = socket.gethostbyname(hostname)
-        port = str(24007)
-        data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'port': '%s'}}" % (ip, hostname, port)
+
+        data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version,self.group)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error(ret)
