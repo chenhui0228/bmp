@@ -66,7 +66,7 @@ class Server:
     def suspend(self,id):
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context,'%s' % task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'suspend','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
@@ -76,7 +76,7 @@ class Server:
     def delete(self,id):
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context, task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'delete','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
@@ -86,7 +86,7 @@ class Server:
     def restart(self,id):
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context,task.worker_id)
-        addr = (worker.ip, int(worker.port))
+        addr = (worker.ip, int(self.port))
         data = "{'typr':'restart','data':{'id':'%s'}}" % id
         info = {}
         info['data'] = data
@@ -97,7 +97,7 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context, task.worker_id)
         policy = self.db.get_policy( super_context,task.policy_id)
-        addr = (worker.ip, int(worker.port))
+        addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
         vol = vol_dir.split('/', 1)[0]
@@ -112,17 +112,46 @@ class Server:
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
                "'second':'%s','start_date':'%s'}}} " % ( id, task.name, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+        data2=data['data']
+        data2['sub']=task.type
+        if data2['sub'] == 'dump':
+            data2['script'] == task.script_path
+        elif data2['sub'] == 'recover':
+            vol_dir = destination.split('//')[1]
+            vol = vol_dir.split('/', 1)[0]
+            dir = vol_dir.split('/', 1)[1]
+            source = task.source.split('/', 1)[1]
+            data2['source_vol']=vol
+            data2['source_address'] =dir
+            data2['destination_address']=source
+            data2['destination_ip'] = worker.ip
+
         info = {}
         info['data'] = data
         info['addr'] = addr
         self.message.issued(info)
 
 
-    def update_worker(self,id):
+    def update_worker(self,id,old_ip):
         tasks=self.db.get_tasks(super_context)[0]
-        for task in tasks:
-            if task.worker_id == id:
-                self.update_task(task.id)
+        worker=self.db.get_worker(super_context,id)
+        if worker.ip == old_ip:
+            for task in tasks:
+                if task.worker_id == id:
+                    self.update_task(task.id)
+        else:
+            for task in tasks:
+                if task.worker_id == id:
+                    addr = (old_ip, int(self.port))
+                    data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
+                    info = {}
+                    info['data'] = data
+                    info['addr'] = addr
+                    self.message.issued(info)
+            for task in tasks:
+                if task.worker_id == id:
+                    self.update_task(task.id)
+
 
     def update_policy(self,id):
         tasks=self.db.get_tasks(super_context)[0]
@@ -217,25 +246,18 @@ class Server:
         self.message.issued(info)
 
 
-
-
-
-
-
-
-
-
-
     def to_db(self,msg):
         if msg['type'] == 'return':
             dict=msg['data']
             key=dict['sub']
             value=dict[key]
             task_id=dict['id']
-            bks=self.db.bk_list(super_context)[0]
+            bks=self.db.bk_list(super_context,task_id='%s'%task_id)[0]
             for bk in bks:
-                if bk.task_id == task_id:
-                    pass
+                bk_dict={}
+                bk_dict['id'] = bk.id
+                bk_dict[key]=value
+                self.db.bk_update(super_context,bk_dict)
         elif msg['type'] == 'initialize':
             dict = msg['data']
             worker_ip=dict['ip']

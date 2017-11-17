@@ -29,16 +29,6 @@ class SingleTask():
 
 
 
-    def updateconf( self, newlist ):
-        self.info = newlist
-        if self.st.has_key('op'):
-            newlist['op']=self.st['op']
-        self.st = newlist
-        self.name = self.st['id']
-        self.do_remove_job()
-        self.start()
-
-
     def add_suspendlist( self, id ):
         self.suspendlist.append(id)
 

@@ -272,8 +272,28 @@ class Daemon:
             ms = dict['id']
             if self.task_list.has_key(ms):
                 try:
-                    self.task_list[ms].updateconf(dict)
-                    self.send('result',ms,'success')
+                    self.task_list[ms].do_remove_job()
+                    del self.task_list[ms]
+                    self.task_sum = self.task_sum - 1
+                    if dict['sub']=='backup':
+                        dict['op'] = "backup"
+                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                        new_task.start('cron')
+                        self.task_list[ms] = new_task
+                        self.task_sum = self.task_sum + 1
+                    elif dict['sub']=='dump':
+                        dict['op'] = "dump"
+                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                        new_task.start('cron')
+                        self.task_list[ms] = new_task
+                        self.task_sum = self.task_sum + 1
+                    elif dict['sub']=='recover':
+                        dict['op'] = "recover"
+                        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                        new_task.start('cron')
+                        self.task_list[ms] = new_task
+                        self.task_sum = self.task_sum + 1
+                    self.send('result', ms, 'success')
                 except:
                     self.send('result', ms, 'failed')
             else:
