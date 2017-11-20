@@ -40,12 +40,12 @@
         </el-table-column>
         <el-table-column label="操作" width="250" v-if="role == 'admin'">
           <template slot-scope="scope">
-            <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
-              <i class="iconfont icon-modiffy"></i>
-            </el-button>
-            <el-button type="danger" @click="delVolume(scope.$index,scope.row)" size="small">
-              <i class="iconfont icon-delete"></i>
-            </el-button>
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
+              <use xlink:href="#icon-modify"></use>
+            </svg>
+            <svg class="icon" aria-hidden="true" @click="delVolume(scope.$index,scope.row)">
+              <use xlink:href="#icon-delete"></use>
+            </svg>
           </template>
         </el-table-column>
       </el-table>

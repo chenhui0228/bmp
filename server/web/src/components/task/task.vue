@@ -85,44 +85,75 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="task.name" label="任务名"sortable>
+        <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="task.source" label="源地址">
+        <!--<el-table-column prop="task.source" label="源地址" width="240rem" show-overflow-tooltip>-->
+          <!--<template scope="scope">-->
+            <!--<span>{{ scope.row.task.source | pathFilter }}</span>-->
+          <!--</template>-->
+        <!--</el-table-column>-->
+        <!--<el-table-column prop="task.destination" label="目标地址" width="240rem" show-overflow-tooltip>-->
+          <!--<template scope="scope">-->
+            <!--<span>{{ scope.row.task.destination | pathFilter }}</span>-->
+          <!--</template>-->
+        <!--</el-table-column>-->
+        <el-table-column prop="policy.name" label="任务策略" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="task.destination" label="目标地址">
+        <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" sortable>
+        <el-table-column prop="task.state" label="状态" width="80rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
+            <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
+            <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
+            <span v-else style="color: red">未知</span>
+          </template>
         </el-table-column>
         <el-table-column
           label="任务进度"
-          width="180rem">
+          width="150rem">
           <template slot-scope="scope">
-            <span v-if="scope.row.state && scope.row.state.state == 'success'" style="color: green">已完成</span>
-            <span v-else-if="scope.row.state && scope.row.state.state == 'start'" style="color: blue">执行中...</span>
-            <span v-else-if="scope.row.state && scope.row.state.state == 'failed'" style="color: red">失败</span>
-            <el-progress v-else-if="scope.row.state" :percentage="parseInt(scope.row.state.state)"></el-progress>
-            <span v-else style="color: #f7c410">未开始</span>
+            <el-progress v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" :percentage="parseInt(scope.row.state.state)"></el-progress>
+            <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="开始时间" sortable width="180rem">
           <template slot-scope="scope">
-            <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
-              <!--<i class="iconfont icon-modiffy"></i>-->
-            </el-button>
-            <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
-              <!--<i class="iconfont icon-delete"></i>-->
-            </el-button>
-            <el-tooltip content="立即执行" placement="top">
-              <el-button type="text" icon="information" @click="immediatelyExecute">
-              </el-button>
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="文件大小" width="100rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'">{{ scope.row.state.total_size | Bytes  }}</span>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="">
+
+          <template slot-scope="scope">
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
+              <use xlink:href="#icon-modify"></use>
+            </svg>
+
+            <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
+              <use xlink:href="#icon-delete"></use>
+            </svg>
+
+            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state == 'running_s'">
+              <svg class="icon" aria-hidden="true" @click="immediatelyExecute(scope.$index,scope.row)">
+                <use xlink:href="#icon-exec"></use>
+              </svg>
             </el-tooltip>
-            <el-tooltip content="暂停" placement="top" v-if="!isPause"><!--没暂停就显示暂停按钮-->
-              <el-button type="text" icon="information" @click="toPause(scope.$index,scope.row)">
-              </el-button>
+            <el-tooltip content="停止" placement="top" v-if="scope.row.task.state != 'stopped'"><!--没暂停就显示暂停按钮-->
+              <svg class="icon" aria-hidden="true" @click="toPause(scope.$index,scope.row)">
+                <use xlink:href="#icon-stop"></use>
+              </svg>
             </el-tooltip>
-            <el-tooltip content="继续" placement="top" v-if="isPause">
-              <el-button type="text" icon="search" @click="toResume(scope.$index,scope.row)">
-              </el-button>
+            <el-tooltip content="恢复执行" placement="top" v-if="scope.row.task.state == 'stopped'">
+              <svg class="icon" aria-hidden="true" @click="toResume(scope.$index,scope.row)">
+                <use xlink:href="#icon-recover"></use>
+              </svg>
             </el-tooltip>
           </template>
         </el-table-column>

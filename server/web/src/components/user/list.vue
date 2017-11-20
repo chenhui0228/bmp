@@ -41,8 +41,12 @@
           <el-table-column label="操作">
             <template scope="scope">
               <!--<el-button type="text" icon="information" @click=""></el-button>-->
-              <el-button v-if="" type="text" icon="edit" @click="editUser(scope.$index, scope.row)"></el-button>
-              <el-button v-if="" type="text" icon="delete" style="color: red" @click="confirmDeleteMsgbox('deleteUser',scope.$index, scope.row, _self.confimUserDeleteMsg)"></el-button>
+              <svg class="icon" aria-hidden="true" @click="editUser(scope.$index,scope.row)">
+                <use xlink:href="#icon-modify"></use>
+              </svg>
+              <svg class="icon" aria-hidden="true" @click="confirmDeleteMsgbox('deleteUser',scope.$index, scope.row, _self.confimUserDeleteMsg)">
+                <use xlink:href="#icon-delete"></use>
+              </svg>
             </template>
           </el-table-column>
         </el-table>
