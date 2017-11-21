@@ -19,9 +19,8 @@ con=threading.Condition()
 
 def do_put(info):
     global q
-    global con
-    q.put(info)
     con.acquire()
+    q.put_nowait(info)
     con.notify()
     con.release()
 
@@ -51,6 +50,7 @@ class TCPServer(BaseRequestHandler):
             # data = self.request.recv(4096)
             data = self.request.recv(4096)
             if len(data) > 0:
+                #print "address=", address, "pid",pid,"recv data:", data
                 cur_thread = threading.current_thread()
                 response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
@@ -102,7 +102,7 @@ class Message:
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
-        return self.q.get()
+        return self.q.get_nowait()
 
     def start_server(self):   # 监听
         global con

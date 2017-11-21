@@ -186,14 +186,23 @@ class Daemon:
             return str(uuid.uuid4())
         return uuid.uuid4().hex
 
-    def send(self,sub,id,value):
+    def send_ta(self,id,value):
+        data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error('message send failed %s'%ret)
+
+    def send_bk(self,sub,id,value):
         if sub == 'live':
             data = "{'type':'return','data':{'sub':'%s','ip':'%s','hostname':'%s','work_num':'%s'}}" % (sub, self.ip, self.hostname, value)
-        else:
-            bk_id=self.generate_uuid()
-            data="{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}"%(sub,id,bk_id,sub,value)
             ret=self.message.send(data)
             if ret!=0:
+                self.log.logger.error('message send failed %s'%ret)
+        else:
+            bk_id = self.generate_uuid()
+            data = "{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}" % (sub, id, bk_id, sub, value)
+            ret = self.message.send(data)
+            if ret != 0:
                 self.log.logger.error(ret)
 
 
@@ -204,7 +213,8 @@ class Daemon:
         没过2秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
         """
         if self.timer_id * self.timer_interval % self.reload_interval == 0:
-            self.send('live','1',self.task_sum)
+            #self.send_bk('live','1',self.task_sum)
+            pass
 
 
         if self.listen_thread.isAlive():
@@ -222,7 +232,7 @@ class Daemon:
             self.tp.remove(t)
 
             # self.logger.warning(
-            newthread = WorkerPool(self.q, t.getName(), self.confip,self.log)
+            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.confip,self.log)
             self.tp.append(newthread)
             newthread.setDaemon(True)
             newthread.start()
@@ -239,6 +249,7 @@ class Daemon:
 
     def addtask(self,data,do_type):
         dict = data['data']
+        dict['bk_id']=self.generate_uuid()
         ms = dict['id']
         dict['op'] =data['type']
         self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
@@ -246,6 +257,7 @@ class Daemon:
         new_task.start(do_type)
         self.task_list[ms] = new_task
         self.task_sum = self.task_sum + 1
+        self.send_ta(dict['id'], 'waiting')
 
     def schd_task( self, data ):
         if data['type'] == 'backup':  # 创建新任务
@@ -263,7 +275,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-                self.send('state',dict['id'],'waiting')
+                self.send_ta(dict['id'],'waiting')
         elif data['type'] == "update":
             print "do revise"
             dict = data['data']
@@ -279,13 +291,13 @@ class Daemon:
                     new_task.start(dict['run_sub'])
                     self.task_list[ms] = new_task
                     self.task_sum = self.task_sum + 1
-                    self.send('result', ms, 'success')
+                    self.send_bk('result', ms, 'success')
                 except:
-                    self.send('result', ms, 'failed')
+                    self.send_bk('result', ms, 'failed')
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('result', ms, 'failed')
-                self.send('message',ms,'No any work which id is %s' % ms)
+                self.send_bk('result', ms, 'failed')
+                self.send_bk('message',ms,'No any work which id is %s' % ms)
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
@@ -298,7 +310,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-                self.send('state', dict['id'], 'waiting')
+                self.send_ta( dict['id'], 'waiting')
         elif data['type'] == 'suspend':  # 暂停
             #print "do suspend"
             dict = data['data']
@@ -306,9 +318,10 @@ class Daemon:
             ms = dict['id']
             if self.task_list.has_key(ms):
                 self.task_list[ms].add_suspendlist(ms)
+                self.send_ta(dict['id'], 'stopped')
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('message',ms,'No any work which id is %s' % ms)
+                self.send_bk('message',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
             #print "do delete"
             dict = data['data']
@@ -320,7 +333,7 @@ class Daemon:
                 self.task_sum = self.task_sum - 1
             else:
                 self.log.logger.error('No any work which id is %s'%ms)
-                self.send('message', ms, 'No any work which id is %s' % ms)
+                self.send_bk('message', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'restart':  # 重启备份任务
             #print "do restart"
             dict = data['data']
@@ -330,7 +343,7 @@ class Daemon:
                 self.task_list[ms].del_suspendlist(ms)
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send('message', ms, 'No any work which id is %s' % ms)
+                self.send_bk('message', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
             if dict['run_sub'] == 'cron':
@@ -346,7 +359,7 @@ class Daemon:
                 now = datetime.now()
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-                self.send('state', dict['id'], 'waiting')
+                self.send_ta(dict['id'], 'waiting')
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
@@ -378,10 +391,10 @@ class Daemon:
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
         for i in range(self.uc_size):
-            t = WorkerPool(self.q, i, self.confip,self.log)
+            t = WorkerPool(self.q, i,self.uc_size ,self.confip,self.log)
             self.tp.append(t)
         for i in range(self.uc_size,self.uc_size+self.ic_size):
-            t = WorkerPool(self.qq, i, self.confip, self.log)
+            t = WorkerPool(self.qq, i,self.uc_size, self.confip, self.log)
             self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
@@ -394,12 +407,16 @@ class Daemon:
         self.listen_thread.start()
         self.t.start()
 
-
+        self.log.logger.debug("initialize")
         data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version,self.group)
-        ret=self.message.send(data)
-        if ret!=0:
-            self.log.logger.error(ret)
-
+        self.log.logger.debug("group %s "%self.group)
+        try:
+            ret=self.message.send(data)
+            if ret!=0:
+                self.log.logger.error(ret)
+        except Exception,e:
+            print e
+        self.log.logger.debug("date")
         self.scheduler.start()
         #print "start threadpool over"
         self.log.logger.debug("start threadpool over")

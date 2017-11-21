@@ -4,10 +4,13 @@ import time
 from message import Message,Performance
 import ConfigParser
 sys.path.append('../')
-from server.db.sqlalchemy import api as db_api
-from server.db.sqlalchemy import models
+from db.sqlalchemy import api as db_api
+from db.sqlalchemy import models
 from threading import Lock
+import threading
 import six
+import logging
+logger=logging.getLogger('backup')
 
 class Singleton(type):
     _instances = {}
@@ -22,7 +25,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 super_context = {
-    'is_superrole': True
+    'is_superuser': True
 }
 
 
@@ -74,6 +77,9 @@ class Server:
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/SFbackup/client.conf')
         self.port = cp.get('server', 'port')
+        self.listen_thread = threading.Thread(target=self.listen)
+        self.listen_thread.setDaemon(True)
+        self.listen_thread.start()
 
     def suspend(self,id):
         task = self.db.get_task(super_context,id)
@@ -144,25 +150,49 @@ class Server:
         self.message.issued(info)
 
 
-    def update_worker(self,id,old_ip):
-        tasks=self.db.get_tasks(super_context)[0]
-        worker=self.db.get_worker(super_context,id)
-        if worker.ip == old_ip:
-            for task in tasks:
-                if task.worker_id == id:
-                    self.update_task(task.id)
-        else:
-            for task in tasks:
-                if task.worker_id == id:
-                    addr = (old_ip, int(self.port))
-                    data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
-                    info = {}
-                    info['data'] = data
-                    info['addr'] = addr
-                    self.message.issued(info)
-            for task in tasks:
-                if task.worker_id == id:
-                    self.update_task(task.id)
+    def update_worker(self,id,**kwargs):
+        with open('/home/python/test/update_worker.txt', 'w+') as tp:
+            tp.write('1')
+            tasks_all=self.db.get_tasks(super_context,worker_id=id)
+            tp.write('1.1')
+            tasks=tasks_all[0]
+            tp.write('1.2')
+            try:
+                worker = self.db.get_worker(super_context, id)
+            except Exception,e:
+                tp.write(e.message)
+
+
+            tp.write('ok')
+            if kwargs.has_key('ip'):
+                tp.write('2.1')
+                old_ip=kwargs['ip']
+            else:
+                old_ip=worker.ip
+            if worker.ip == old_ip:
+                tp.write('2.2')
+                if len(tasks)!=0:
+                    tp.write('2.21')
+                    for task in tasks:
+                        tp.write('2.22')
+                        self.update_task(task.id)
+                else:
+                    tp.write('2.23')
+                    pass
+            else:
+                tp.write('2.3')
+                for task in tasks:
+                    if task.worker_id == id:
+                        addr = (old_ip, int(self.port))
+                        data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
+                        info = {}
+                        info['data'] = data
+                        info['addr'] = addr
+                        self.message.issued(info)
+                for task in tasks:
+                    if task.worker_id == id:
+                        self.update_task(task.id)
+            tp.write('3')
 
 
     def update_policy(self,id):
@@ -281,33 +311,84 @@ class Server:
 
     def to_db(self,msg):
         if msg['type'] == 'return':
-            dict=msg['data']
-            key=dict['sub']
-            value=dict[key]
-            try:
-                bk = self.db.bk_list(super_context, dict['bk_id'])
-            except:
-                bk_value={}
-                bk_value['id']=dict['bk_id']
-                bk_value['task_id']=dict['id']
-                bk=self.db.bk_create(super_context,bk_value)
-            bk_dict={}
-            bk_dict['id'] = bk.id
-            bk_dict[key]=value
-            self.db.bk_update(super_context,bk_dict)
+            with open('/home/python/test/return.txt','w') as fp:
+                fp.write('1\n')
+                dict=msg['data']
+                fp.write(str(dict))
+                fp.write('\n')
+                key=dict['sub']
+                value=dict[key]
+                fp.write('2\n')
+                try:
+                    bk = self.db.get_bk_state(super_context, dict['bk_id'])
+                except:
+                    bk_value={}
+                    bk_value['id']=dict['bk_id']
+                    bk_value['task_id']=dict['id']
+                    bk=self.db.bk_create(super_context,bk_value)
+                fp.write('3')
+                bk_dict={}
+                bk_dict['id'] = bk.id
+                bk_dict[key]=value
+                self.db.bk_update(super_context,bk_dict)
+                fp.write('4\n')
+        elif msg['type'] == 'state':
+            with open('/home/python/test/state.txt','w') as fp:
+                fp.write('1\n')
+                dict = msg['data']
+                fp.write(str(dict))
+                fp.write('\n')
+                try:
+                    task=self.db.get_task(super_context,dict['id'])
+                    fp.write('2\n')
+                    task_dict={}
+                    task_dict['id']=dict['id']
+                    task_dict['state']=dict['state']
+                    self.db.update_task(super_context,task_dict)
+                    fp.write('3\n')
+                except:
+                    pass
+                fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
             worker_name=dict['hostname']
-            try:
-                worker=self.db.get_worker_by_name(super_context,worker_name)
-            except:
-                worker_value={}
-                worker_value['name']=worker_name
-                worker_value['ip']=dict['ip']
-                worker_value['version'] = dict['version']
-                worker_value['group_id'] =dict['group']
-                worker=self.db.create_worker(super_context,)
-            self.update_worker(worker.id)
+            with open('/home/python/test/initialize.txt', 'w+') as tp:
+                tp.write('initialize start %s'%str(dict))
+                try:
+                    tp.write('t 111')
+                    worker=self.db.get_worker_by_name(super_context,worker_name)
+                    tp.write('t 222')
+                    worker_value={}
+                    worker_value['id'] = worker.id
+                    worker_value['ip'] = dict['ip']
+                    worker_value['version'] = dict['version']
+                    worker_value['group_id'] =dict['group']
+                    worker_value['status'] = 'Active'
+                    worker_value['start_at'] = str(time.time())
+                    self.db.update_worker(super_context,worker_value)
+
+                    tp.write('t 333')
+                    info = {}
+                    info['data'] = "{'type':'show'}"
+                    info['addr'] = ('10.202.125.83',11111)
+                    self.message.issued(info)
+                    tp.write('t 44123123214')
+                    #self.update_worker(worker.id)
+                except:
+                    worker_value={}
+                    worker_value['name']=worker_name
+                    worker_value['ip']=dict['ip']
+                    worker_value['version'] = dict['version']
+                    worker_value['group_id'] =dict['group']
+                    worker_value['owner']=  'robot'
+                    worker_value['status'] = 'Active'
+                    worker_value['start_at'] = str(time.time())
+                    try:
+                        worker=self.db.create_worker(super_context,worker_value)
+                    except Exception ,e:
+                        tp.write(str(e))
+                tp.write('initialize end')
+
 
 
 
