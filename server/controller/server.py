@@ -113,8 +113,8 @@ class Server:
 
     def update_task(self,id):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context, task.worker_id)
-        policy = self.db.get_policy( super_context,task.policy_id)
+        worker = task.worker
+        policy = task.policy
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
@@ -311,7 +311,7 @@ class Server:
 
     def to_db(self,msg):
         if msg['type'] == 'return':
-            with open('/home/python/test/return.txt','w') as fp:
+            with open('/home/python/test/return.txt','a') as fp:
                 fp.write('1\n')
                 dict=msg['data']
                 fp.write(str(dict))
@@ -333,7 +333,7 @@ class Server:
                 self.db.bk_update(super_context,bk_dict)
                 fp.write('4\n')
         elif msg['type'] == 'state':
-            with open('/home/python/test/state.txt','w') as fp:
+            with open('/home/python/test/state.txt','a') as fp:
                 fp.write('1\n')
                 dict = msg['data']
                 fp.write(str(dict))
@@ -352,7 +352,7 @@ class Server:
         elif msg['type'] == 'initialize':
             dict = msg['data']
             worker_name=dict['hostname']
-            with open('/home/python/test/initialize.txt', 'w+') as tp:
+            with open('/home/python/test/initialize.txt', 'a') as tp:
                 tp.write('initialize start %s'%str(dict))
                 try:
                     tp.write('t 111')

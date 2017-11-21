@@ -147,6 +147,7 @@ class Work():
                         pro=(int((write_all * 100) / self.proctotal))
                         if pro-self.sendpro>=2:
                             self.send_bk('process',str(pro))
+                            self.send_bk('current_size', str(write_all))
                             self.sendpro=pro
                     else:
                         write_old = 0
@@ -160,6 +161,7 @@ class Work():
                         pro=(int((self.proclen * 100) / self.proctotal))
                         if pro-self.sendpro>=2 or pro==100:
                             self.send_bk('process',str(pro))
+                            self.send_bk('current_size', str(self.proclen ))
                             self.sendpro=pro
                     else:
                         #print "size is not same"
@@ -256,18 +258,21 @@ class Work():
             if ret != 0:
                 #print "mount failed"
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "mkdir failed"
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "work failed"
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret = self.do_delete()
             if ret != 0:
@@ -278,6 +283,7 @@ class Work():
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
         elif self.op=='dump':
             #if self.arglist.has_key('destination _ip'):
@@ -289,11 +295,13 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret=os.system(path)
             if ret!=0:
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret = self.do_close()
             #print "end do_cloes"
@@ -301,6 +309,7 @@ class Work():
                 time.sleep(2)
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
         elif self.op=='recover':
             #if self.arglist.has_key('destination _ip'):
@@ -314,6 +323,7 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             ret = self.do_mkdir(self.vfile+'/'+self.arglist['name'] + '_'+self.arglist['id']+'_'+\
@@ -321,22 +331,27 @@ class Work():
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             self.vfile=os.path.join(self.vfile,self.arglist['name'] + '_'+self.arglist['backup_time'])
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
             ret = self.do_close()
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')
+                self.send_bk('end_time', str(time.time()))
                 return
         else:
             self.send_bk('state', 'failed')
+            self.send_bk('end_time', str(time.time()))
             return
             #print "end do_cloes"
         self.send_bk('state','success')
+        self.send_bk('end_time', str(time.time()))
         self.log.logger.info("the work %s is success"%self.arglist['name'])
         return
