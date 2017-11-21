@@ -138,3 +138,8 @@ export const reqBackupStatesDetail = params => {
   return axios.get(`${base}/backup/backupstates/detail`, {params: params} )
 };
 
+//日志管理
+export const reqGetOplogList = params => {
+  return axios.get(`${base}/backup/oplogs`, {params: params} )
+};
+

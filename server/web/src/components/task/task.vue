@@ -500,6 +500,7 @@
           destination = destination.replace(/file:\//i,'');
         }
         console.log(source,destination);
+        row.task.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
         row.task.destination = destination;
@@ -515,7 +516,7 @@
         this.editFormVisible = true;
         this.beforeShow(row);
         this.editForm = Object.assign({}, row.task);
-        console.log(this.editForm);
+//        console.log(this.editForm);
       },
       //编辑
       editSubmit: function () {
@@ -530,7 +531,7 @@
               let para = Object.assign({}, this.editForm);
               if(para.type === "backup"){
                 para.source = 'file:/' + para.source;
-                para.destination = 'glusterfs:/' + para.destination;
+                para.destination = 'glusterfs://' + para.volumeName + para.destination;
               }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;

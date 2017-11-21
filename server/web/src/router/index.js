@@ -18,6 +18,8 @@ import Volume from '@/components/volume/volume'
 
 import Worker from '@/components/worker/worker'
 
+import Log from '@/components/log/log'
+
 // 懒加载方式，当路由被访问的时候才加载对应组件
 const Login = resolve => require(['@/components/Login'], resolve)
 
@@ -91,6 +93,18 @@ let router = new Router({
       iconCls: '#icon-volume', // 图标样式class
       children: [
         {path: '/volume', component: Volume, name: '卷列表', menuShow: true}
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '日志管理',
+      menuShow: true,
+      isSuperAdm: false,
+      leaf: true, // 只有一个节点
+      iconCls: '#icon-volume', // 图标样式class
+      children: [
+        {path: '/log-manage', component: Log, name: '日志管理', menuShow: true}
       ]
     },
     {
