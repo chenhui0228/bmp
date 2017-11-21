@@ -270,6 +270,7 @@ class Daemon:
                 self.addtask(data,'cron')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
+                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "backup"
                 dict['ip'] = self.glusterlist
                 now = datetime.now()
@@ -305,6 +306,7 @@ class Daemon:
                 self.addtask(data,'date')
             elif dict['run_sub'] =='immediately':
                 dict = data['data']
+                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "recover"
                 dict['ip'] = self.glusterlist
                 now = datetime.now()
@@ -354,6 +356,7 @@ class Daemon:
                 self.addtask(data,'date')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
+                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "dump"
                 dict['ip'] = self.glusterlist
                 now = datetime.now()

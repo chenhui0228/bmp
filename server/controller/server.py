@@ -111,7 +111,7 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def update_task(self,id):
+    def update_task(self,id,isRestart=False):
         with open('/home/python/test/update_task.txt', 'w+') as tp:
             tp.write('1\n')
             task = self.db.get_task(super_context,id)
@@ -129,12 +129,21 @@ class Server:
                 run_sub='date'
             else:
                 run_sub='cron'
-            data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'" \
+            data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'," \
                    "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                    "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
                    "'second':'%s','start_date':'%s'}}} " % ( id, task.name, task.state, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
-            data2=data['data']
+            tp.write('2.2\n')
+            try:
+                data=eval(data)
+            except Exception,e:
+                tp.write(str(e))
+                tp.write(data)
+                tp.write('2.23\n')
+            data2 = data['data']
+            tp.write('2.3\n')
             data2['sub']=task.type
+            tp.write('2.5\n')
             if data2['sub'] == 'dump':
                 data2['script'] == task.script_path
             elif data2['sub'] == 'recover':
@@ -146,45 +155,48 @@ class Server:
                 data2['source_address'] =dir
                 data2['destination_address']=source
                 data2['destination_ip'] = worker.ip
+            if isRestart:
+                data['type']=data2['sub']
             tp.write('3\n')
             info = {}
-            info['data'] = data
+            info['data'] = str(data)
             info['addr'] = addr
             self.message.issued(info)
             tp.write('4\n')
 
 
-    def update_worker(self,id,**kwargs):
+    def update_worker(self,id,isRestart=False,**kwargs):
         with open('/home/python/test/update_worker.txt', 'w+') as tp:
-            tp.write('1')
+            tp.write('1\n')
             tasks_all=self.db.get_tasks(super_context,worker_id=id)
-            tp.write('1.1')
+            tp.write('1.1\n')
             tasks=tasks_all[0]
-            tp.write('1.2')
+            tp.write('1.2\n')
             try:
                 worker = self.db.get_worker(super_context, id)
             except Exception,e:
                 tp.write(e.message)
-
-
-            tp.write('ok')
+            tp.write('ok\n')
             if kwargs.has_key('ip'):
-                tp.write('2.1')
+                tp.write('2.1\n')
                 old_ip=kwargs['ip']
             else:
                 old_ip=worker.ip
             if worker.ip == old_ip:
-                tp.write('2.2')
+                tp.write('2.2\n')
                 if len(tasks)!=0:
-                    tp.write('2.21')
+                    tp.write('2.21\n')
                     for task in tasks:
-                        tp.write('2.22')
-                        self.update_task(task.id)
+                        tp.write('2.22\n')
+                        if not isRestart:
+                            self.update_task(task.id)
+                        else:
+                            self.update_task(task.id,True)
                 else:
-                    tp.write('2.23')
+                    tp.write('2.23\n')
                     pass
             else:
-                tp.write('2.3')
+                tp.write('2.3\n')
                 for task in tasks:
                     if task.worker_id == id:
                         addr = (old_ip, int(self.port))
@@ -196,7 +208,7 @@ class Server:
                 for task in tasks:
                     if task.worker_id == id:
                         self.update_task(task.id)
-            tp.write('3')
+            tp.write('3\n')
 
 
     def update_policy(self,id):
@@ -204,8 +216,6 @@ class Server:
         for task in tasks:
             if task.policy_id == id:
                 self.update_task(task.id)
-
-
 
 
 
@@ -235,7 +245,7 @@ class Server:
             run_sub='cron'
         if do_type:
             run_sub='immediately'
-        data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'" \
+        data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
                "'second':'%s','start_date':'%s'}}} " % (id, task.name, task.state, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
@@ -314,6 +324,8 @@ class Server:
 
 
     def to_db(self,msg):
+        with open('/home/python/test/to_db.txt','w') as fp:
+            fp.write('start')
         if msg['type'] == 'return':
             with open('/home/python/test/return.txt','a') as fp:
                 fp.write('1\n')
@@ -355,12 +367,11 @@ class Server:
                 fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
-            worker_name=dict['hostname']
             with open('/home/python/test/initialize.txt', 'a') as tp:
                 tp.write('initialize start %s'%str(dict))
-                try:
-                    tp.write('t 111')
-                    worker=self.db.get_worker_by_name(super_context,worker_name)
+                workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'])[0]
+                if len(workers)==1:
+                    worker=workers[0]
                     tp.write('t 222')
                     worker_value={}
                     worker_value['id'] = worker.id
@@ -377,10 +388,10 @@ class Server:
                     info['addr'] = ('10.202.125.83',11111)
                     self.message.issued(info)
                     tp.write('t 44123123214')
-                    #self.update_worker(worker.id)
-                except:
+                    self.update_worker(worker.id)
+                elif len(workers)==0:
                     worker_value={}
-                    worker_value['name']=worker_name
+                    worker_value['name']=dict['hostname']
                     worker_value['ip']=dict['ip']
                     worker_value['version'] = dict['version']
                     worker_value['group_id'] =dict['group']
@@ -391,6 +402,8 @@ class Server:
                         worker=self.db.create_worker(super_context,worker_value)
                     except Exception ,e:
                         tp.write(str(e))
+                else:
+                    tp.write('more one workers')
                 tp.write('initialize end')
 
 
