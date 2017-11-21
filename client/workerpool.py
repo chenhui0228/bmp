@@ -106,7 +106,7 @@ class WorkerPool(threading.Thread):
             """
             self.arglist['confip'] = self.confip
             self.arglist['threadId'] = self.name
-            if self.name>=self.allcron and self.arglist['state']=='stop':
+            if self.name>=self.allcron and self.arglist['state']=='stoped':
                 self.send_ta(self.arglist['id'],'running_s')
             else:
                 self.send_ta(self.arglist['id'], 'running_w')
@@ -118,10 +118,10 @@ class WorkerPool(threading.Thread):
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
-            if self.name>=self.allcron and self.arglist['state']=='stop':
-                self.send_ta(self.arglist['id'],'waiting')
+            if self.name>=self.allcron and self.arglist['state']=='stoped':
+                self.send_ta(self.arglist['id'],'stopped')
             else:
-                self.send_ta(self.arglist['id'], 'stopped')
+                self.send_ta(self.arglist['id'], 'waiting')
             res = self.queue.qsize()  # 判断消息队列大小
             if res > 0:
                 #print("ahua!There are still %d tasks to do" % (res))
