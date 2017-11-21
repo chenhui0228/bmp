@@ -78,6 +78,8 @@ class Server:
         cp.read('/etc/SFbackup/client.conf')
         self.port = cp.get('server', 'port')
         self.listen_thread = threading.Thread(target=self.listen)
+        with open('/home/python/test/name.txt','w') as fp:
+            fp.write(self.listen_thread.name)
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
 
@@ -112,7 +114,7 @@ class Server:
         self.message.issued(info)
 
     def update_task(self,id,isRestart=False):
-        with open('/home/python/test/update_task.txt', 'w+') as tp:
+        with open('/home/python/test/update_task.txt', 'a') as tp:
             tp.write('1\n')
             task = self.db.get_task(super_context,id)
             worker = task.worker
@@ -157,7 +159,7 @@ class Server:
                 data2['destination_ip'] = worker.ip
             if isRestart:
                 data['type']=data2['sub']
-            tp.write('3\n')
+            tp.write(str(data))
             info = {}
             info['data'] = str(data)
             info['addr'] = addr
@@ -188,10 +190,12 @@ class Server:
                     tp.write('2.21\n')
                     for task in tasks:
                         tp.write('2.22\n')
-                        if not isRestart:
-                            self.update_task(task.id)
-                        else:
+                        if  isRestart:
                             self.update_task(task.id,True)
+                            tp.write('2.221\n')
+                        else:
+                            self.update_task(task.id)
+                            tp.write('2.222\n')
                 else:
                     tp.write('2.23\n')
                     pass
@@ -388,7 +392,7 @@ class Server:
                     info['addr'] = ('10.202.125.83',11111)
                     self.message.issued(info)
                     tp.write('t 44123123214')
-                    self.update_worker(worker.id)
+                    self.update_worker(worker.id,True)
                 elif len(workers)==0:
                     worker_value={}
                     worker_value['name']=dict['hostname']
@@ -415,11 +419,9 @@ class Server:
         while True:
             if self.message.con.acquire():
                 if not self.message.q.empty():
+                        logger.info(self.listen_thread.name)
                         msg = self.message.get_queue()
-                        #print msg
                         msg_data = msg.split(":", 1)[1]
-                        #print msg_data
-                        #self.log.logger.info("get msg is that %s"%msg_data)
                         date = eval(msg_data)
                         self.to_db(date)
                 else:
