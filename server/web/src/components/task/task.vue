@@ -53,8 +53,6 @@
                 @row-dblclick="taskStateDetail"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
-        <!--<el-table-column type="index" width="60">-->
-        <!--</el-table-column>-->
         <el-table-column type="expand">
           <template slot-scope="props">
             <el-form label-position="left" inline class="table-expand">
@@ -87,16 +85,6 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <!--<el-table-column prop="task.source" label="源地址" width="240rem" show-overflow-tooltip>-->
-          <!--<template scope="scope">-->
-            <!--<span>{{ scope.row.task.source | pathFilter }}</span>-->
-          <!--</template>-->
-        <!--</el-table-column>-->
-        <!--<el-table-column prop="task.destination" label="目标地址" width="240rem" show-overflow-tooltip>-->
-          <!--<template scope="scope">-->
-            <!--<span>{{ scope.row.task.destination | pathFilter }}</span>-->
-          <!--</template>-->
-        <!--</el-table-column>-->
         <el-table-column prop="policy.name" label="任务策略" sortable width="180rem">
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
@@ -140,7 +128,7 @@
               <use xlink:href="#icon-delete"></use>
             </svg>
 
-            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state == 'running_s'">
+            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s'">
               <svg class="icon" aria-hidden="true" @click="immediatelyExecute(scope.$index,scope.row)">
                 <use xlink:href="#icon-exec"></use>
               </svg>

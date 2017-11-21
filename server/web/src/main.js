@@ -65,12 +65,21 @@ Vue.filter("pathFilter", function (path) {
   path = path.replace(/^\w+:\//g,'');
   return path;
 });
-Vue.filter("BytesReadable", function (bytes) {
+Vue.filter("dateStampFormat", function (value) {
+  var _date = new Date(value*1000);
+  if (value == 0 || value == '0' || _date == undefined){
+    return "-";
+  }
+  var _datetime = Vue.prototype.myDateFormat(_date,"yyyy-MM-dd hh:mm:ss");
+  return _datetime;
+});
+Vue.filter("Bytes", function (bytes) {
   if (bytes === 0) return '0 B';
   let k = 1024, // or 1024
     sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
     i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+  //return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
 });
 Vue.prototype.myDateFormat = function (date, fmt) {
   var o = {

@@ -39,7 +39,7 @@ let router = new Router({
       leaf: true, // 只有一个节点
       menuShow: true,
       isSuperAdm: false,
-      iconCls: 'iconfont icon-home', // 图标样式class
+      iconCls: '#icon-home', // 图标样式class
       children: [
         {path: '/dashboard', component: Dashboard, name: '首页', menuShow: true}
       ]
@@ -51,7 +51,7 @@ let router = new Router({
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
-      iconCls: 'iconfont icon-task', // 图标样式class
+      iconCls: '#icon-task', // 图标样式class
       children: [
         {path: '/task', component: Task, name: '任务管理', menuShow: true}
       ]
@@ -63,7 +63,8 @@ let router = new Router({
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
-      iconCls: 'iconfont icon-policy', // 图标样式class
+      //iconCls: 'iconfont icon-policy', // 图标样式class
+      iconCls: '#icon-policy',
       children: [
         {path: '/policy', component: Policy, name: '策略列表', menuShow: true}
       ]
@@ -75,7 +76,7 @@ let router = new Router({
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
-      iconCls: 'iconfont icon-host', // 图标样式class
+      iconCls: '#icon-host', // 图标样式class
       children: [
         {path: '/worker', component: Worker, name: '主机列表', menuShow: true}
       ]
@@ -87,7 +88,7 @@ let router = new Router({
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
-      iconCls: 'iconfont icon-volume', // 图标样式class
+      iconCls: '#icon-volume', // 图标样式class
       children: [
         {path: '/volume', component: Volume, name: '卷列表', menuShow: true}
       ]
@@ -97,12 +98,12 @@ let router = new Router({
       component: Home,
       name: '用户管理',
       menuShow: true,
-      iconCls: 'iconfont icon-userMgr',
+      iconCls: '#icon-userMgr',
       isSuperAdm: true,
       children: [
         // {path: '/user', component: User, name: '用户', menuShow: true},
-        {path: '/user/list', component: UserList, name: '用户列表', menuShow: true},
-        {path: '/user/group', component: Group, name: '组列表', menuShow: true}
+        {path: '/user/list', component: UserList, name: '用户列表',iconCls: '#icon-users', menuShow: true},
+        {path: '/user/group', component: Group, name: '组列表',iconCls: '#icon-groups', menuShow: true}
       ]
     },
     {
@@ -110,7 +111,7 @@ let router = new Router({
       component: Home,
       name: '个人信息',
       menuShow: false,
-      iconCls: 'iconfont icon-user',
+      iconCls: '#icon-user',
       children: [
         // {path: '/user', component: User, name: '用户', menuShow: true},
         {path: '/selfinfo/profile', component: UserProfile, name: '个人信息', menuShow: true},
