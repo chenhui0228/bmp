@@ -112,42 +112,46 @@ class Server:
         self.message.issued(info)
 
     def update_task(self,id):
-        task = self.db.get_task(super_context,id)
-        worker = task.worker
-        policy = task.policy
-        addr = (worker.ip, int(self.port))
-        destination = task.destination
-        vol_dir = destination.split('//')[1]
-        vol = vol_dir.split('/', 1)[0]
-        dir = vol_dir.split('/', 1)[1]
-        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-        source = task.source.split('/', 1)[1]
-        if policy.recurring=='once':
-            run_sub='date'
-        else:
-            run_sub='cron'
-        data = "{'type':'update','data':{'id':'%s','name':'%s'," \
-               "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % ( id, task.name, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
-        data2=data['data']
-        data2['sub']=task.type
-        if data2['sub'] == 'dump':
-            data2['script'] == task.script_path
-        elif data2['sub'] == 'recover':
+        with open('/home/python/test/update_task.txt', 'w+') as tp:
+            tp.write('1\n')
+            task = self.db.get_task(super_context,id)
+            worker = task.worker
+            policy = task.policy
+            addr = (worker.ip, int(self.port))
+            destination = task.destination
             vol_dir = destination.split('//')[1]
             vol = vol_dir.split('/', 1)[0]
             dir = vol_dir.split('/', 1)[1]
+            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
             source = task.source.split('/', 1)[1]
-            data2['source_vol']=vol
-            data2['source_address'] =dir
-            data2['destination_address']=source
-            data2['destination_ip'] = worker.ip
-
-        info = {}
-        info['data'] = data
-        info['addr'] = addr
-        self.message.issued(info)
+            tp.write('2\n')
+            if policy.recurring=='once':
+                run_sub='date'
+            else:
+                run_sub='cron'
+            data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'" \
+                   "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
+                   "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
+                   "'second':'%s','start_date':'%s'}}} " % ( id, task.name, task.state, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+            data2=data['data']
+            data2['sub']=task.type
+            if data2['sub'] == 'dump':
+                data2['script'] == task.script_path
+            elif data2['sub'] == 'recover':
+                vol_dir = destination.split('//')[1]
+                vol = vol_dir.split('/', 1)[0]
+                dir = vol_dir.split('/', 1)[1]
+                source = task.source.split('/', 1)[1]
+                data2['source_vol']=vol
+                data2['source_address'] =dir
+                data2['destination_address']=source
+                data2['destination_ip'] = worker.ip
+            tp.write('3\n')
+            info = {}
+            info['data'] = data
+            info['addr'] = addr
+            self.message.issued(info)
+            tp.write('4\n')
 
 
     def update_worker(self,id,**kwargs):
@@ -231,10 +235,10 @@ class Server:
             run_sub='cron'
         if do_type:
             run_sub='immediately'
-        data = "{'type':'backup','data':{'id':'%s','name':'%s'," \
+        data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'" \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name, task.state, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -264,10 +268,10 @@ class Server:
             run_sub='cron'
         if do_type:
             run_sub='immediately'
-        data = "{'type':'recover','data':{'id':'%s','name':'%s'," \
+        data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'" \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_ip':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, vol,  dir ,source, worker.ip,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name, task.state, vol,  dir ,source, worker.ip,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -299,10 +303,10 @@ class Server:
             run_sub='cron'
         if do_type:
             run_sub='immediately'
-        data = "{'type':'backup','data':{'id':'%s','name':'%s','script':'%s'" \
+        data = "{'type':'backup','data':{'id':'%s','name':'%s','script':'%s','state':'%s'" \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.script_path,worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.script_path, task.state,worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
         info = {}
         info['data'] = data
         info['addr'] = addr

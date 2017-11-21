@@ -106,7 +106,7 @@ class WorkerPool(threading.Thread):
             """
             self.arglist['confip'] = self.confip
             self.arglist['threadId'] = self.name
-            if self.name>=self.allcron:
+            if self.name>=self.allcron and self.arglist['state']=='stop':
                 self.send_ta(self.arglist['id'],'running_s')
             else:
                 self.send_ta(self.arglist['id'], 'running_w')
@@ -118,7 +118,7 @@ class WorkerPool(threading.Thread):
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
-            if self.name>=self.allcron:
+            if self.name>=self.allcron and self.arglist['state']=='stop':
                 self.send_ta(self.arglist['id'],'waiting')
             else:
                 self.send_ta(self.arglist['id'], 'stopped')
