@@ -128,7 +128,7 @@ class Work():
         write_now = 0
         self.log.logger.info('write file %s'%pd)
         cmd = ('rsync -avlP %s %s' % (pd, vd))
-       #print cmd
+        #print cmd
         try:
             fp = tempfile.TemporaryFile(mode='w+t')
             process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
