@@ -377,9 +377,9 @@ class Server:
                 bk_dict={}
                 bk_dict['id'] = bk.id
                 bk_dict[key]=value
-                if key == 'process':
-                    if bk.process < int(dict[key]):
-                        return
+                #if key == 'process':
+                #    if int(bk.process) < int(dict[key]):
+                #        return
                 self.db.bk_update(super_context,bk_dict)
                 fp.write('4\n')
         elif msg['type'] == 'state':

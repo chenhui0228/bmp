@@ -325,6 +325,7 @@ class Daemon:
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
+            dict=data['data']
             if dict['run_sub'] =='immediately':
                 dict = data['data']
                 dict['bk_id'] = self.generate_uuid()

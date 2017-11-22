@@ -301,13 +301,14 @@ class Work():
                 self.send_bk('end_time', str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
+            self.send_bk('total_size', self.proctotal)
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')
                 self.send_bk('end_time', str(time.time()))
                 return
-            self.vfile=os.path.join(self.vfile,self.arglist['name'] + '_'+self.arglist['backup_time'])
+            #self.vfile=os.path.join(self.vfile)
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
