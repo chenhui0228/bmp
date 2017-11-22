@@ -777,12 +777,14 @@
         this.dialogTaskStateDetailTableVisible = false;
       },
       taskStateDetail(row) {
-        this.taskStateFilter.per_page = 10;
-        this.taskStateFilter.page = 1;
-        this.currTaskRow = row.task.id;
-        this.currentWatchingTask = row.task;
-        this.getTaskStates(this.currTaskRow);
-        this.currTaskStateTabTitle = row.task.name;
+        if(this.isBackupTask){
+          this.taskStateFilter.per_page = 10;
+          this.taskStateFilter.page = 1;
+          this.currTaskRow = row.task.id;
+          this.currentWatchingTask = row.task;
+          this.getTaskStates(this.currTaskRow);
+          this.currTaskStateTabTitle = row.task.name;
+        }
       },
       getTaskStates(task_id){
         var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);
