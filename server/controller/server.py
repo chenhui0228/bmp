@@ -77,6 +77,7 @@ class Server:
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/SFbackup/client.conf')
         self.port = cp.get('server', 'port')
+        self.workstate_dict={}
         self.listen_thread = threading.Thread(target=self.listen)
         with open('/home/python/test/name.txt','w') as fp:
             fp.write(self.listen_thread.name)
@@ -363,24 +364,39 @@ class Server:
                 dict=msg['data']
                 fp.write(str(dict))
                 fp.write('\n')
-                key=dict['sub']
-                value=dict[key]
-                fp.write('2\n')
-                try:
-                    bk = self.db.get_bk_state(super_context, dict['bk_id'])
-                except:
-                    bk_value={}
-                    bk_value['id']=dict['bk_id']
-                    bk_value['task_id']=dict['id']
-                    bk=self.db.bk_create(super_context,bk_value)
-                fp.write('3')
-                bk_dict={}
-                bk_dict['id'] = bk.id
-                bk_dict[key]=value
+                bk_value = {}
+                bk_value['id'] = dict['bk_id']
+                bk_value['task_id'] = dict['id']
+                typeofMessage=dict['sub']
+                if typeofMessage == 'frist':
+                    bk_value['start_time']=dict['start_time']
+                    bk_value['total_size'] = dict['total_size']
+                    bk_value['process'] = dict['process']
+                    bk_value['state'] = dict['state']
+                    self.workstate_dict[dict['bk_id']]=0
+                    try:
+                        bk = self.db.bk_create(super_context, bk_value)
+                    except Exception,e:
+                        pass
+                    return
+                elif typeofMessage == 'run':
+                    bk_value['process'] = dict['process']
+                    bk_value['state'] = dict['state']
+                    if not self.workstate_dict.has_key(dict['bk_id']):
+                        return
+                    if self.workstate_dict[dict['bk_id']]>int(dict['process']):
+                        return
+                elif typeofMessage == 'last':
+                    bk_value['state'] = dict['state']
+                    bk_value['end_time'] = dict['end_time']
+                    del self.workstate_dict[dict['bk_id']]
                 #if key == 'process':
                 #    if int(bk.process) < int(dict[key]):
                 #        return
-                self.db.bk_update(super_context,bk_dict)
+                try:
+                    self.db.bk_update(super_context,bk_value)
+                except Exception,e:
+                    pass
                 fp.write('4\n')
         elif msg['type'] == 'state':
             with open('/home/python/test/state.txt','a') as fp:
@@ -401,7 +417,6 @@ class Server:
                 except:
                     pass
                 fp.write('4\n')
-
         elif msg['type'] == 'initialize':
             dict = msg['data']
             with open('/home/python/test/initialize.txt', 'a') as tp:
@@ -417,7 +432,10 @@ class Server:
                     worker_value['group_id'] =dict['group']
                     worker_value['status'] = 'Active'
                     worker_value['start_at'] = str(time.time())
-                    self.db.update_worker(super_context,worker_value)
+                    try:
+                        self.db.update_worker(super_context,worker_value)
+                    except Exception,e:
+                        pass
 
                     tp.write('t 333')
                     info = {}
@@ -425,7 +443,10 @@ class Server:
                     info['addr'] = ('10.202.125.83',11111)
                     self.message.issued(info)
                     tp.write('t 44123123214')
-                    self.update_worker(worker.id,True)
+                    try:
+                        self.update_worker(worker.id,True)
+                    except Exception,e:
+                        pass
                 elif len(workers)==0:
                     worker_value={}
                     worker_value['name']=dict['hostname']

@@ -53,7 +53,7 @@ class Work():
         elif sub == 'run':
             data['current_size']=kwargs['current_size']
             data['process']=kwargs['process']
-        elif sub == 'end':
+        elif sub == 'last':
             data['state'] = kwargs['process']
             data['end_time'] = kwargs['end_time']
         ret=self.message.send(str(data))
@@ -248,25 +248,25 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 #print "mount failed"
-                self.send_bk('end', state='failed',end_time=str(time.time()))
+                self.send_bk('last', state='failed',end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "mkdir failed"
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "work failed"
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         elif self.op=='dump':
             #if self.arglist.has_key('destination _ip'):
@@ -277,19 +277,19 @@ class Work():
             path=self.arglist['script']
             ret = self.do_mount()
             if ret != 0:
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret=os.system(path)
             if ret!=0:
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
                 time.sleep(2)
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         elif self.op=='recover':
             #if self.arglist.has_key('destination _ip'):
@@ -307,23 +307,23 @@ class Work():
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             #self.vfile=os.path.join(self.vfile)
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             if ret != 0:
                 self.do_close()
-                self.send_bk('end', state='failed', end_time=str(time.time()))
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         else:
-            self.send_bk('end', state='failed', end_time=str(time.time()))
+            self.send_bk('last', state='failed', end_time=str(time.time()))
             return
             #print "end do_cloes"
-        self.send_bk('end', state='success', end_time=str(time.time()))
+        self.send_bk('last', state='success', end_time=str(time.time()))
         self.log.logger.info("the work %s is success"%self.arglist['name'])
         return
