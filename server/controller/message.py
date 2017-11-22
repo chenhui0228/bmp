@@ -44,7 +44,7 @@ class Performance:
 
 class TCPServer(BaseRequestHandler):
     def handle(self):
-        address, pid = self.client_address
+        #address, pid = self.client_address
         # while True:
         if True:
             # data = self.request.recv(4096)
@@ -55,7 +55,7 @@ class TCPServer(BaseRequestHandler):
                 response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
                 do_put(response)
-                self.request.sendto(response, self.client_address)
+                #self.request.sendto(response, self.client_address)
                 #print "address=", address, "recv data:", data
                 self.finish()
 
@@ -168,8 +168,8 @@ class Message:
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.tcpclient.connect(info['addr'])
-                    self.tcpclient.sendto(ms, info['addr'])
-                    server_reply = self.tcpclient.recv(1024)
+                    self.tcpclient.send(ms)
+                    #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
                 except Exception, e:
