@@ -17,7 +17,7 @@ Vue.use(ElementUI)
 
 Vue.filter("timeStamp2datetime", function (value) {
   if(!value) {
-    return 'N/A';
+    return '--';
   }
   return Vue.prototype.myDateFormat(new Date(value*1000), "yyyy-MM-dd hh:mm:ss");
 });

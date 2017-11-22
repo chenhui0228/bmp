@@ -68,7 +68,7 @@
               <el-form-item label="更新时间">
                 <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
               </el-form-item>
-              <el-form-item label="任务策略">
+              <el-form-item label="任务策略" v-if="isBackupTask">
                 <span>{{ props.row.policy.name }}</span>
               </el-form-item>
               <el-form-item label="作业机">
@@ -85,7 +85,7 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
@@ -277,7 +277,7 @@
       </el-dialog>
 
       <!--任务状态框-->
-      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible">
+      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
         <el-table :data="taskStates"
                   border
                   style="margin: auto;">
@@ -311,8 +311,15 @@
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
               <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
-              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.process)"></el-progress>
+              <el-progress v-else-if="scope.row && scope.row.process" :percentage="parseInt(scope.row.process)"></el-progress>
+              <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180">
+            <template scope="scope">
+              <!--TODO:创建恢复任务-->
+              <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -327,6 +334,33 @@
         </el-pagination>
       </el-dialog>
 
+      <!--TODO: 创建恢复任务框-->
+      <el-dialog title="创建恢复任务" v-model="createRecoverTaskFormVisible" :close-on-click-modal="false">
+        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm">
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="createRecoverTaskForm.worker_id" placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
+            <span v-for="worker in workers"
+                  v-if="addForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
+          </el-form-item>
+          <el-form-item prop="destination" label="目标地址">
+            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"></el-input>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click.native="createRecoverTaskFormVisible = false">取消</el-button>
+          <el-button type="primary" @click.native="createRecoverTask" :loading="createRecoverTaskLoading">提交</el-button>
+        </div>
+      </el-dialog>
+
     </el-col>
   </el-row>
 </template>
@@ -334,6 +368,7 @@
   import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
     reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail } from '../../api/api';
   import {bus} from '../../bus.js'
+  import util from '../../common/util'
   export default {
     data() {
       return {
@@ -354,6 +389,12 @@
         workers:[],
         volumes:[],
         policies:[],
+
+        //TODO: 创建恢复任务相关数据
+        createRecoverTaskLoading: false,
+        createRecoverTaskFormVisible: false,
+        currentWatchingTask: [],
+        createRecoverTaskForm: {},
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -434,20 +475,12 @@
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        if(this.task_type === 'recover') {
-          this.getTasks('recover');
-        }else {
-          this.getTasks();
-        }
+        this.getTasks(this.task_type);
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        if(this.task_type === 'recover') {
-          this.getTasks('recover');
-        }else {
-          this.getTasks();
-        }
+        this.getTasks(this.task_type);
       },
       //获取任务列表
       getTasks: function (type='backup') {
@@ -464,6 +497,7 @@
         reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
           this.tasks = res.data.tasks;
+//          console.log(this.tasks);
           this.listLoading = false;
           //NProgress.done();
         }).catch(err=>{
@@ -480,6 +514,46 @@
               type: 'error'
             });
           }
+        });
+      },
+
+      //TODO:Recover Task
+      showCreateRecoverTaskDialog: function (row) {
+        this.createRecoverTaskFormVisible = true;
+        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmm');
+        let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
+        let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
+        let source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
+        let source = this.currentWatchingTask.destination + source_suffix;
+        let description = `This is a recover task for ${this.currentWatchingTask.name} which worked in ${descript_suffix}`;
+        this.createRecoverTaskForm = {
+          name: name,
+          worker_id: '',
+          source: source,
+          destination: '',
+          description: description,
+        };
+      },
+      createRecoverTask: function () {
+        let user = {
+          user: this.sysUserName,
+        };
+        let para = Object.assign({}, this.createRecoverTaskForm);
+        para.type = 'recover';
+        para.destination = 'file:/' + para.destination;
+        console.log(para);
+        reqAddTask(user, para).then((res) => {
+          this.createRecoverTaskLoading = false;
+          //NProgress.done();
+          this.openMsg('创建成功，请前往恢复任务查看','success');
+          this.$refs['createRecoverTaskForm'].resetFields();
+          this.createRecoverTaskFormVisible = false;
+        }).catch(err=>{
+          this.createRecoverTaskLoading = false;
+          this.openMsg('添加失败','error');
+          console.log(err.message);
+          this.$refs['createRecoverTaskForm'].resetFields();
+          this.createRecoverTaskFormVisible = false;
         });
       },
 
@@ -504,6 +578,7 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
+//        console.log(source,destination);
         row.task.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
@@ -628,7 +703,7 @@
                 message: '添加失败',
                 type: 'error'
               });
-              console.log(err.message)
+              console.log(err.message);
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
             });
@@ -652,7 +727,7 @@
               message: '删除成功',
               type: 'success'
             });
-            this.getTasks();
+            this.getTasks(this.task_type);
           });
         }).catch(() => {
           this.listLoading = false;
@@ -697,12 +772,19 @@
         this.taskStateFilter.page = val;
         this.getTaskStates(this.currTaskRow);
       },
+      closeStateDialog() {
+        this.currentWatchingTask = [];
+        this.dialogTaskStateDetailTableVisible = false;
+      },
       taskStateDetail(row) {
-        this.taskStateFilter.per_page = 10;
-        this.taskStateFilter.page = 1;
-        this.currTaskRow = row.task.id;
-        this.getTaskStates(this.currTaskRow);
-        this.currTaskStateTabTitle = row.task.name;
+        if(this.isBackupTask){
+          this.taskStateFilter.per_page = 10;
+          this.taskStateFilter.page = 1;
+          this.currTaskRow = row.task.id;
+          this.currentWatchingTask = row.task;
+          this.getTaskStates(this.currTaskRow);
+          this.currTaskStateTabTitle = row.task.name;
+        }
       },
       getTaskStates(task_id){
         var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);
@@ -847,9 +929,11 @@
           this.total = res.data.total;
           for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
             this.tasks[i].task.state = res.data.tasks[i].task.state;
-            this.tasks[i].state.state = res.data.tasks[i].state.state;
-            this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
-            this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+            if(res.data.tasks[i].state && res.data.tasks[i].state.state) {
+              this.tasks[i].state.state = res.data.tasks[i].state.state;
+              this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
+              this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+            }
           }
         },err => {
           console.log(error)
