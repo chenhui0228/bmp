@@ -13,11 +13,13 @@
 
     <el-col el-col :span="24" class="warp-main">
       <!--列表-->
-      <el-table :data="OplogList" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
-                style="width: 100%;" max-height="750">
+      <el-table :data="OplogList" highlight-current-row v-loading="listLoading" style="width: 100%;" max-height="750">
         <el-table-column prop="username" label="用户名"sortable>
         </el-table-column>
         <el-table-column prop="created_at" label="时间" sortable>
+          <template slot-scope="scope">
+            <span>{{ scope.row.created_at | dateStampFormat }}</span>
+          </template>
         </el-table-column>
         <el-table-column prop="message" label="日志">
         </el-table-column>
@@ -49,11 +51,25 @@
     data() {
       return {
         OplogList: [],
+        listLoading: false,
+
         total: 0,
-        listloading: false,
+        page: 1,
+        per_page: 10,
+        offset: 0,
       };
     },
     methods: {
+      handleCurrentChange(val) {
+        //console.log(`当前 ${val} 页`)
+        this.page = val;
+        this.getOplogList();
+      },
+      handleSizeChange(val) {
+        //console.log(`每页 ${val} 条`)
+        this.per_page = val;
+        this.getOplogList();
+      },
       openMsg: function (msgtxt, msgtype) {
         this.$message({
           message: msgtxt,
@@ -61,13 +77,13 @@
         })
       },
       getOplogList: function () {
+        this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
-//          limit: this.per_page,
-//          offset: this.offset,
+          limit: this.per_page,
+          offset: this.offset,
         };
         reqGetOplogList(para).then((res) => {
-          console.log(res.data);
           this.total = res.data.total;
           this.OplogList = res.data.oplogs;
           //NProgress.done();
