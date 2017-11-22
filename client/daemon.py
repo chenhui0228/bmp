@@ -206,7 +206,7 @@ class Daemon:
             except Exception,e:
                 #print "delete failed"
                 self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
-                self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
+                #self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
                 return -1
 
 
@@ -216,19 +216,6 @@ class Daemon:
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error('message send failed %s'%ret)
-
-    def send_bk(self,sub,id,value):
-        if sub == 'live':
-            data = "{'type':'return','data':{'sub':'%s','ip':'%s','hostname':'%s','work_num':'%s'}}" % (sub, self.ip, self.hostname, value)
-            ret=self.message.send(data)
-            if ret!=0:
-                self.log.logger.error('message send failed %s'%ret)
-        else:
-            bk_id = self.generate_uuid()
-            data = "{'type':'return','data':{'sub':'%s','id':'%s','bk_id':'%s','%s':'%s'}}" % (sub, id, bk_id, sub, value)
-            ret = self.message.send(data)
-            if ret != 0:
-                self.log.logger.error(ret)
 
 
     def _timer_func( self ):
