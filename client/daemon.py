@@ -349,6 +349,8 @@ class Daemon:
                 self.log.logger.error('No any work which id is %s'%ms)
             if dict.has_key('delete'):
                 self.send_ta( ms, 'deleted')
+            else:
+                self.send_ta(ms, 'stopped')
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
             if dict['run_sub'] == 'cron':
