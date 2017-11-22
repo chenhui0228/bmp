@@ -86,9 +86,9 @@ class Server:
 
     def stop(self,id):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context, task.worker_id)
+        worker = task.worker
         addr = (worker.ip, int(self.port))
-        data = "{'typr':'delete','data':{'id':'%s'}}" % (id)
+        data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -99,12 +99,12 @@ class Server:
 
     def delete(self,id):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context, task.worker_id)
+        worker = task.worker
         addr = (worker.ip, int(self.port))
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'
-        data = "{'typr':'delete','data':{'id':'%s'}}" % (id)
+        data = "{'type':'delete','data':{'id':'%s','deletework':'yes'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -126,30 +126,33 @@ class Server:
     def update_task(self,id,isRestart=False):
         with open('/home/python/test/update_task.txt', 'a') as tp:
             tp.write('1\n')
-            task = self.db.get_task(super_context,id)
-            if task.state == 'stopped':
-                return
-            worker = task.worker
-            policy = task.policy
-            addr = (worker.ip, int(self.port))
-            destination = task.destination
-            vol_dir = destination.split('//')[1]
-            new_vor_dir = vol_dir.split('/', 1)
-            if len(new_vor_dir) == 0:
-                return
-            elif len(new_vor_dir) == 1:
-                vol = new_vor_dir[0]
-                dir = ''
-            elif len(new_vor_dir) == 2:
-                vol = new_vor_dir[0]
-                dir = new_vor_dir[1]
-            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-            source = task.source.split('/', 1)[1]
-            tp.write('2\n')
-            if policy.recurring=='once':
-                run_sub='date'
-            else:
-                run_sub='cron'
+            try:
+                task = self.db.get_task(super_context,id)
+                if task.state == 'stopped':
+                    return
+                worker = task.worker
+                policy = task.policy
+                addr = (worker.ip, int(self.port))
+                destination = task.destination
+                vol_dir = destination.split('//')[1]
+                new_vor_dir = vol_dir.split('/', 1)
+                if len(new_vor_dir) == 0:
+                    return
+                elif len(new_vor_dir) == 1:
+                    vol = new_vor_dir[0]
+                    dir = ''
+                elif len(new_vor_dir) == 2:
+                    vol = new_vor_dir[0]
+                    dir = new_vor_dir[1]
+                dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+                source = task.source.split('/', 1)[1]
+                tp.write('2\n')
+                if policy.recurring=='once':
+                    run_sub='date'
+                else:
+                    run_sub='cron'
+            except:
+                pass
             data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'," \
                    "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                    "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
@@ -245,29 +248,32 @@ class Server:
 
 
     def backup(self,id,do_type=False):
-        task = self.db.get_task(super_context,id)
-        worker = task.worker
-        policy = task.policy
-        addr = (worker.ip, int(self.port))
-        destination = task.destination
-        vol_dir = destination.split('//')[1]
-        new_vor_dir= vol_dir.split('/', 1)
-        if len(new_vor_dir) == 0:
-            return
-        elif len(new_vor_dir) == 1:
-            vol=new_vor_dir[0]
-            dir=''
-        elif len(new_vor_dir)==2:
-            vol = new_vor_dir[0]
-            dir = new_vor_dir[1]
-        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-        source = task.source.split('/', 1)[1]
-        if policy.recurring=='once':
-            run_sub='date'
-        else:
-            run_sub='cron'
-        if do_type:
-            run_sub='immediately'
+        try:
+            task = self.db.get_task(super_context,id)
+            worker = task.worker
+            policy = task.policy
+            addr = (worker.ip, int(self.port))
+            destination = task.destination
+            vol_dir = destination.split('//')[1]
+            new_vor_dir= vol_dir.split('/', 1)
+            if len(new_vor_dir) == 0:
+                return
+            elif len(new_vor_dir) == 1:
+                vol=new_vor_dir[0]
+                dir=''
+            elif len(new_vor_dir)==2:
+                vol = new_vor_dir[0]
+                dir = new_vor_dir[1]
+            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+            source = task.source.split('/', 1)[1]
+            if policy.recurring=='once':
+                run_sub='date'
+            else:
+                run_sub='cron'
+            if do_type:
+                run_sub='immediately'
+        except:
+            pass
         data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
@@ -278,33 +284,35 @@ class Server:
         self.message.issued(info)
 
     def recover(self,id,do_type=False):         # need change
-        task = self.db.get_task(super_context, id)
-        worker = task.worker
-        policy = task.policy
-        addr = (worker.ip, int(self.port))
-        destination = task.destination
-        vol_dir = destination.split('//')[1]
-        new_vor_dir= vol_dir.split('/', 1)
-        if len(new_vor_dir) == 0:
-            return
-        elif len(new_vor_dir) == 1:
-            vol=new_vor_dir[0]
-            dir=''
-        elif len(new_vor_dir)==2:
-            vol = new_vor_dir[0]
-            dir = new_vor_dir[1]
-        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-        source = task.source.split('/', 1)[1]
-        if policy.recurring=='once':
-            run_sub='date'
-        else:
-            run_sub='cron'
-        if do_type:
-            run_sub='immediately'
+        try:
+            task = self.db.get_task(super_context, id)
+            worker = task.worker
+            policy = task.policy
+            addr = (worker.ip, int(self.port))
+            destination = task.destination
+            vol_dir = destination.split('//')[1]
+            new_vor_dir= vol_dir.split('/', 1)
+            if len(new_vor_dir) == 0:
+                return
+            elif len(new_vor_dir) == 1:
+                vol=new_vor_dir[0]
+                dir=''
+            elif len(new_vor_dir)==2:
+                vol = new_vor_dir[0]
+                dir = new_vor_dir[1]
+            #dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+            source = task.source.split('/', 1)[1]
+        except:
+            pass
+        #if policy.recurring=='once':
+        #    run_sub='date'
+        #else:
+        #    run_sub='cron'
+        #if do_type:
+        run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'" \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_ip':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, task.state, vol,  dir ,source, worker.ip,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'destination_ip':'%s','run_sub':'%s',}} " % (id, task.name, task.state, vol,  dir ,source, worker.ip,run_sub)
         info = {}
         info['data'] = data
         info['addr'] = addr

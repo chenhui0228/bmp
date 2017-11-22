@@ -217,26 +217,6 @@ class Work():
                 size += sum([getsize(join(root, name)) for name in files])
         return size
 
-    def do_delete(self):
-        if self.arglist['run_sub'] == 'date' or self.arglist['duration'] == '-1':
-            return 0
-        old_time=self.wait_start-timedelta(days=int(self.arglist['duration']))
-        dict=self.arglist['cron']
-        start_time=datetime.strptime(dict['start_date'], "%Y-%m-%d %H:%M:%S")
-        if start_time>old_time:
-            return 0
-        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] +"_"+self.arglist['id']+ "_" + old_time.strftime(
-                '%Y%m%d%H%M') + "/"
-        if os.path.exists('%s/%s'%(self.mount_dir, self.oldvfile)):
-            try:
-                shutil.rmtree(self.mount_dir+'/'+self.oldvfile)
-                self.log.logger.info("delete %s succeed"%self.oldvfile)
-                return 0
-            except Exception,e:
-                #print "delete failed"
-                self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
-                self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
-                return -1
 
     def start(self):
         self.op=self.arglist['op']
@@ -274,10 +254,6 @@ class Work():
                 self.send_bk('state', 'failed')
                 self.send_bk('end_time', str(time.time()))
                 return
-            ret = self.do_delete()
-            if ret != 0:
-               # print "delete failed"
-                self.log.logger.error("delete failed")
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
@@ -318,8 +294,7 @@ class Work():
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
             self.vfile = self.arglist['destination_address']
-            self.pfile = self.arglist['source_address'] + "/" + self.arglist['name'] + '_'+self.arglist['id']+'_'+\
-                         self.arglist['backup_time']
+            self.pfile = self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
                 self.send_bk('state', 'failed')

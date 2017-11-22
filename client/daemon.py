@@ -186,6 +186,31 @@ class Daemon:
             return str(uuid.uuid4())
         return uuid.uuid4().hex
 
+
+    def deleteBackupData(self):
+        pass
+        if self.arglist['run_sub'] == 'date' or self.arglist['duration'] == '-1':
+            return 0
+        old_time=self.wait_start-timedelta(days=int(self.arglist['duration']))
+        dict=self.arglist['cron']
+        start_time=datetime.strptime(dict['start_date'], "%Y-%m-%d %H:%M:%S")
+        if start_time>old_time:
+            return 0
+        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] +"_"+self.arglist['id']+ "_" + old_time.strftime(
+                '%Y%m%d%H%M') + "/"
+        if os.path.exists('%s/%s'%(self.mount_dir, self.oldvfile)):
+            try:
+                shutil.rmtree(self.mount_dir+'/'+self.oldvfile)
+                self.log.logger.info("delete %s succeed"%self.oldvfile)
+                return 0
+            except Exception,e:
+                #print "delete failed"
+                self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
+                self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
+                return -1
+
+
+
     def send_ta(self,id,value):
         data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
         ret=self.message.send(data)
@@ -300,9 +325,7 @@ class Daemon:
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
-            if dict['run_sub']=='date':
-                self.addtask(data,'date')
-            elif dict['run_sub'] =='immediately':
+            if dict['run_sub'] =='immediately':
                 dict = data['data']
                 dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "recover"
@@ -311,6 +334,8 @@ class Daemon:
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta( dict['id'], 'waiting')
+            else:
+                self.log.logger.error('recover  must be immediately')
         elif data['type'] == 'delete':  # 删除任务
             #print "do delete"
             dict = data['data']
@@ -322,7 +347,8 @@ class Daemon:
                 self.task_sum = self.task_sum - 1
             else:
                 self.log.logger.error('No any work which id is %s'%ms)
-            self.send_bk('message', ms, 'No any work which id is %s' % ms)
+            if dict.has_key('delete'):
+                self.send_ta( ms, 'deleted')
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
             if dict['run_sub'] == 'cron':
