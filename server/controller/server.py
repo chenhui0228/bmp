@@ -83,40 +83,52 @@ class Server:
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
 
-    def suspend(self,id):
+
+    def stop(self,id):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context,'%s' % task.worker_id)
+        worker = self.db.get_worker(super_context, task.worker_id)
         addr = (worker.ip, int(self.port))
-        data = "{'typr':'suspend','data':{'id':'%s'}}" % id
+        data = "{'typr':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
-        self.message.issued(info)
+        try:
+            self.message.issued(info)
+        except Exception,e:
+            pass
 
     def delete(self,id):
         task = self.db.get_task(super_context,id)
         worker = self.db.get_worker(super_context, task.worker_id)
         addr = (worker.ip, int(self.port))
-        data = "{'typr':'delete','data':{'id':'%s'}}" % id
+        task_value = {}
+        task_value['id'] = id
+        task_value['state'] = 'deleteing'
+        data = "{'typr':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
-        self.message.issued(info)
+        try:
+            self.message.issued(info)
+            self.db.update_task(super_context, task_value)
+        except Exception,e:
+            pass
 
-    def restart(self,id):
+    def resume(self,id):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context,task.worker_id)
-        addr = (worker.ip, int(self.port))
-        data = "{'typr':'restart','data':{'id':'%s'}}" % id
-        info = {}
-        info['data'] = data
-        info['addr'] = addr
-        self.message.issued(info)
+        if task.type=='backup':
+            self.backup(id)
+        elif task.type=='recover':
+            self.recover(id)
+        elif task.type =='dump':
+            self.dump(id)
 
     def update_task(self,id,isRestart=False):
         with open('/home/python/test/update_task.txt', 'a') as tp:
             tp.write('1\n')
             task = self.db.get_task(super_context,id)
+            if task.state == 'stopped':
+                return
             worker = task.worker
             policy = task.policy
             addr = (worker.ip, int(self.port))
@@ -234,8 +246,8 @@ class Server:
 
     def backup(self,id,do_type=False):
         task = self.db.get_task(super_context,id)
-        worker = self.db.get_worker(super_context, task.worker_id)
-        policy = self.db.get_policy(super_context, task.policy_id)
+        worker = task.worker
+        policy = task.policy
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
@@ -267,8 +279,8 @@ class Server:
 
     def recover(self,id,do_type=False):         # need change
         task = self.db.get_task(super_context, id)
-        worker = self.db.get_worker(super_context,task.worker_id)
-        policy = self.db.get_policy(super_context, task.policy_id)
+        worker = task.worker
+        policy = task.policy
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
@@ -302,8 +314,8 @@ class Server:
 
     def dump(self,id,do_type=False):
         task = self.db.get_task(super_context, id)
-        worker = self.db.get_worker(super_context, task.worker_id)
-        policy = self.db.get_policy(super_context,task.policy_id)
+        worker = task.worker
+        policy = task.policy
         addr = (worker.ip, int(self.port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
@@ -371,16 +383,19 @@ class Server:
                     task_dict={}
                     task_dict['id']=dict['id']
                     task_dict['state']=dict['state']
+                    if dict['state'] == 'deleted':
+                        task_dict['deleted'] == 'deleted'
                     self.db.update_task(super_context,task_dict)
                     fp.write('3\n')
                 except:
                     pass
                 fp.write('4\n')
+
         elif msg['type'] == 'initialize':
             dict = msg['data']
             with open('/home/python/test/initialize.txt', 'a') as tp:
                 tp.write('initialize start %s'%str(dict))
-                workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'])[0]
+                workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'],worker_ip=dict['ip'])[0]
                 if len(workers)==1:
                     worker=workers[0]
                     tp.write('t 222')

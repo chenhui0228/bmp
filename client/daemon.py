@@ -292,13 +292,11 @@ class Daemon:
                     new_task.start(dict['run_sub'])
                     self.task_list[ms] = new_task
                     self.task_sum = self.task_sum + 1
-                    self.send_bk('result', ms, 'success')
+                    self.send_ta(dict['id'], 'waiting')
                 except:
-                    self.send_bk('result', ms, 'failed')
+                    pass
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-                self.send_bk('result', ms, 'failed')
-                self.send_bk('message',ms,'No any work which id is %s' % ms)
 
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
@@ -313,17 +311,6 @@ class Daemon:
                 dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta( dict['id'], 'waiting')
-        elif data['type'] == 'suspend':  # 暂停
-            #print "do suspend"
-            dict = data['data']
-            self.log.logger.info('suspend a work,the id of it is %s' % dict['id'])
-            ms = dict['id']
-            if self.task_list.has_key(ms):
-                self.task_list[ms].add_suspendlist(ms)
-                self.send_ta(dict['id'], 'stopped')
-            else:
-                self.log.logger.error('No any work which id is %s' % ms)
-                self.send_bk('message',ms,'No any work which id is %s' % ms)
         elif data['type'] == 'delete':  # 删除任务
             #print "do delete"
             dict = data['data']
@@ -335,17 +322,7 @@ class Daemon:
                 self.task_sum = self.task_sum - 1
             else:
                 self.log.logger.error('No any work which id is %s'%ms)
-                self.send_bk('message', ms, 'No any work which id is %s' % ms)
-        elif data['type'] == 'restart':  # 重启备份任务
-            #print "do restart"
-            dict = data['data']
-            self.log.logger.info('restart a work,the id of it is %s' % dict['id'])
-            ms = dict['id']
-            if self.task_list.has_key(ms):
-                self.task_list[ms].del_suspendlist(ms)
-            else:
-                self.log.logger.error('No any work which id is %s' % ms)
-                self.send_bk('message', ms, 'No any work which id is %s' % ms)
+            self.send_bk('message', ms, 'No any work which id is %s' % ms)
         elif data['type'] == 'dump':  # 准备dump
             dict = data['data']
             if dict['run_sub'] == 'cron':

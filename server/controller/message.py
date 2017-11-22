@@ -118,7 +118,7 @@ class Message:
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
                 server_thread.daemon = True
                 server_thread.start()
-                with open('/home/python/test/mseeageName.txt') as fp:
+                with open('/home/python/test/mseeageName.txt','w') as fp:
                     fp.write(server_thread.name)
                 self.server_thread.append(server_thread)
             except Exception ,e:
