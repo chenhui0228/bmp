@@ -122,8 +122,15 @@ class Server:
             addr = (worker.ip, int(self.port))
             destination = task.destination
             vol_dir = destination.split('//')[1]
-            vol = vol_dir.split('/', 1)[0]
-            dir = vol_dir.split('/', 1)[1]
+            new_vor_dir = vol_dir.split('/', 1)
+            if len(new_vor_dir) == 0:
+                return
+            elif len(new_vor_dir) == 1:
+                vol = new_vor_dir[0]
+                dir = ''
+            elif len(new_vor_dir) == 2:
+                vol = new_vor_dir[0]
+                dir = new_vor_dir[1]
             dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
             source = task.source.split('/', 1)[1]
             tp.write('2\n')
