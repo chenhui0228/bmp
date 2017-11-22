@@ -41,8 +41,6 @@ class SingleTask():
     def do_insert_job( self ):  # add work job
         self.lastid = self.sumid
         self.sumid = self.sumid + 1
-        now = datetime.now()
-        self.st['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
         self.st['ip'] = self.gluster
         if not self.st['id'] in self.suspendlist:
             #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name

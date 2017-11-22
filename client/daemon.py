@@ -285,8 +285,6 @@ class Daemon:
                 dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "backup"
                 dict['ip'] = self.glusterlist
-                now = datetime.now()
-                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'],'waiting')
         elif data['type'] == "update":
@@ -318,8 +316,6 @@ class Daemon:
                 dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "recover"
                 dict['ip'] = self.glusterlist
-                now = datetime.now()
-                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta( dict['id'], 'waiting')
             else:
@@ -352,8 +348,6 @@ class Daemon:
                 dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "dump"
                 dict['ip'] = self.glusterlist
-                now = datetime.now()
-                dict['wait_start'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'], 'waiting')
         elif data['type'] == 'show':

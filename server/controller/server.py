@@ -389,6 +389,7 @@ class Server:
                 elif typeofMessage == 'last':
                     bk_value['state'] = dict['state']
                     bk_value['end_time'] = dict['end_time']
+                    bk_value['message'] = dict['errormessage']
                     del self.workstate_dict[dict['bk_id']]
                 #if key == 'process':
                 #    if int(bk.process) < int(dict[key]):

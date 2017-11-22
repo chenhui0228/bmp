@@ -2,7 +2,7 @@
 #coding:utf-8
 import os
 from os.path import join, getsize, isfile
-from datetime import *
+#from datetime import *
 import subprocess
 import time
 import shutil
@@ -23,11 +23,11 @@ class Work():
         self.message=ms
         self.sendpro=0
         #print "to init arglist"
-        self.wait_start = datetime.strptime(arglist['wait_start'], "%Y-%m-%d %H:%M:%S")  # 开始等待
         self.arglist = arglist
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/SFbackup/client.conf')
         self.mount = cp.get('client', 'mount_dir')
+        self.errormessage=""
         #print "work arglist is:", self.arglist, " time at:", datetime.now()
         #self.log.logger.info("work arglist is:", self.Z, " time at:", datetime.now())
         #self.log.logger.debug('work arglist is ' + str(self.arglist))
@@ -51,11 +51,12 @@ class Work():
             data['process']='0'
             data['state']='runing'
         elif sub == 'run':
+            data['process'] = kwargs['process']
             data['current_size']=kwargs['current_size']
-            data['process']=kwargs['process']
         elif sub == 'last':
-            data['state'] = kwargs['process']
+            data['state'] = kwargs['state']
             data['end_time'] = kwargs['end_time']
+            data['message']=self.errormessage
         ret=self.message.send(str(data))
         if ret!=0:
             self.log.logger.error(ret)
@@ -144,55 +145,50 @@ class Work():
         self.log.logger.info('write file %s'%pd)
         cmd = ('rsync -avlP %s %s' % (pd, vd))
         #print cmd
-        try:
-            fp = tempfile.TemporaryFile(mode='w+t')
-            process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
-            while True:
-                lines = fp.readlines()
-                for line in lines:
-                    s = line
-                    if len(s) <= 1:
-                        continue
-                    list = s.split()
-                    if list[0].isdigit():
-                        write_old = write_now
-                        write_now = int(list[0])
-                        write_all = write_all + (write_now - write_old)
-                        #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
-                        pro=(int((write_all * 100) / self.proctotal))
-                        if pro-self.sendpro>=2:
-                            self.send_bk('run',process=str(pro),current_size=str(write_all))
-                            self.sendpro=pro
-                    else:
-                        write_old = 0
-                        write_now = 0
-                    time.sleep(1)
-                if process.poll() == 0:
-                    list=pd.split('/')
-                    new_file=os.path.join(vd,list[-1])
-                    if self.get_file_size(pd)==self.get_file_size(new_file):
-                        self.proclen=self.proclen+self.get_file_size(new_file)
-                        pro=(int((self.proclen * 100) / self.proctotal))
-                        if pro-self.sendpro>=2 or pro==100:
-                            self.send_bk('run',process=str(pro),current_size=str(write_all))
-                            self.sendpro=pro
-                    else:
-                        #print "size is not same"
-                        return -1
-                    break
-            fp.close()
-            error = process.stderr.read()
-            if not error == '':
-                #print 'error info:%s' % error
-                self.log.logger.error("cmd %s work failed"%cmd)
-                #self.send_bk('message',"cmd %s work failed"%cmd)
-                return -1
-           # print write_all
-           # print 'finished'
-            self.log.logger.info("cmd %s work finished"%cmd)
-        except Exception,e:
-            self.log.logger.error("cmd %s work failed %s"%(cmd,e))
+        fp = tempfile.TemporaryFile(mode='w+t')
+        process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
+        while True:
+            lines = fp.readlines()
+            for line in lines:
+                s = line
+                if len(s) <= 1:
+                    continue
+                list = s.split()
+                if list[0].isdigit():
+                    write_old = write_now
+                    write_now = int(list[0])
+                    write_all = write_all + (write_now - write_old)
+                    #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
+                    pro=(int((write_all * 100) / self.proctotal))
+                    if pro-self.sendpro>=2:
+                        self.send_bk('run',process=str(pro),current_size=str(write_all))
+                        self.sendpro=pro
+                else:
+                    write_old = 0
+                    write_now = 0
+                time.sleep(1)
+            if process.poll() == None:
+                list=pd.split('/')
+                new_file=os.path.join(vd,list[-1])
+                if self.get_file_size(pd)==self.get_file_size(new_file):
+                    self.proclen=self.proclen+self.get_file_size(new_file)
+                    pro=(int((self.proclen * 100) / self.proctotal))
+                    if pro-self.sendpro>=2 or pro==100:
+                        self.send_bk('run',process=str(pro),current_size=str(write_all))
+                        self.sendpro=pro
+                else:
+                    return -1
+                break
+        fp.close()
+        outdata, errdata = process.communicate()
+        if  len(errdata) != 0:
+            #print 'error info:%s' % error
+            self.log.logger.error("cmd %s work failed"%cmd)
+            self.errormessage=errdata
             return -1
+       # print write_all
+       # print 'finished'
+        self.log.logger.info("cmd %s work finished"%cmd)
         return 0
 
     def do_write_dir(self,pdir,vdir,pname):
@@ -237,10 +233,13 @@ class Work():
             #    self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
             self.proctotal = self.get_file_size(self.pfile)
+            if self.proctotal==0:
+                self.proctotal+=1
             print self.proctotal
-            self.send_bk('frist',total_size=self.proctotal,start_time=str(time.time()))
-            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + self.wait_start.strftime(
-                '%Y%m%d%H%M') + "/"  # 添加时间戳
+            start_time=time.time()
+            timeArray = time.localtime(start_time)
+            self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
+            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
 
@@ -263,7 +262,7 @@ class Work():
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
-            #print "end do_cloes"
+            print "end do_cloes"
             if ret != 0:
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
@@ -315,6 +314,7 @@ class Work():
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
+            time.sleep(2)
             ret = self.do_close()
             if ret != 0:
                 self.do_close()
