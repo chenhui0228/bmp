@@ -301,8 +301,7 @@ class Work():
                 self.send_bk('end_time', str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
-            ret = self.do_mkdir(self.vfile+'/'+self.arglist['name'] + '_'+self.arglist['id']+'_'+\
-                         self.arglist['backup_time'])
+            ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 self.do_close()
                 self.send_bk('state', 'failed')

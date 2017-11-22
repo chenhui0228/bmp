@@ -310,7 +310,7 @@ class Server:
         #    run_sub='cron'
         #if do_type:
         run_sub='immediately'
-        data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'" \
+        data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_ip':'%s','run_sub':'%s',}} " % (id, task.name, task.state, vol,  dir ,source, worker.ip,run_sub)
         info = {}
