@@ -303,7 +303,6 @@
                 console.log(params, this.user);
                 reqPostUser(params, this.user).then(res => {
                   this.openMsg(this.dialogUserTitle+'成功', 'success');
-                  console.log(this.dialogNewUserVisible, this.randomPassword);
                   if(this.randomPassword){
                     this.$alert(this.user.name+'的密码是' + this.user.password + '，登陆后可修改！', '用户密码', {
                       confirmButtonText: '确定',

@@ -89,7 +89,7 @@
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="task.state" label="状态" width="80rem">
+        <el-table-column prop="task.state" label="状态" width="120rem">
           <template slot-scope="scope">
             <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
             <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
@@ -101,7 +101,7 @@
           label="任务进度"
           width="150rem">
           <template slot-scope="scope">
-            <el-progress v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" :percentage="parseInt(scope.row.state.state)"></el-progress>
+            <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
             <span v-else>--</span>
           </template>
         </el-table-column>
@@ -120,26 +120,24 @@
         <el-table-column label="操作" width="">
 
           <template slot-scope="scope">
-            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)" v-if="isBackupTask">
               <use xlink:href="#icon-modify"></use>
             </svg>
-
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-
             <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s'">
-              <svg class="icon" aria-hidden="true" @click="immediatelyExecute(scope.$index,scope.row)">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
                 <use xlink:href="#icon-exec"></use>
               </svg>
             </el-tooltip>
             <el-tooltip content="停止" placement="top" v-if="scope.row.task.state != 'stopped'"><!--没暂停就显示暂停按钮-->
-              <svg class="icon" aria-hidden="true" @click="toPause(scope.$index,scope.row)">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
             </el-tooltip>
             <el-tooltip content="恢复执行" placement="top" v-if="scope.row.task.state == 'stopped'">
-              <svg class="icon" aria-hidden="true" @click="toResume(scope.$index,scope.row)">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
                 <use xlink:href="#icon-recover"></use>
               </svg>
             </el-tooltip>
@@ -295,12 +293,12 @@
           </el-table-column>
           <el-table-column label="总大小" width="120">
             <template scope="scope">
-              <span>{{ scope.row.total_size | BytesReadable }}</span>
+              <span>{{ scope.row.total_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="已备份" width="120">
             <template scope="scope">
-              <span>{{ scope.row.current_size | BytesReadable }}</span>
+              <span>{{ scope.row.current_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="更新时间" width="180">
@@ -313,7 +311,7 @@
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
               <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
-              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.state)"></el-progress>
+              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
@@ -408,7 +406,14 @@
         taskState_total_rows: 0,
         //操作按钮相关数据
         isPause: false,
+        intervalTask: '',
       }
+    },
+    created() {
+
+    },
+    beforeDestroy() {
+        clearInterval(this.intervalTask)
     },
     methods: {
       handleClick(tag) {
@@ -499,7 +504,6 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-        console.log(source,destination);
         row.task.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
@@ -516,7 +520,6 @@
         this.editFormVisible = true;
         this.beforeShow(row);
         this.editForm = Object.assign({}, row.task);
-//        console.log(this.editForm);
       },
       //编辑
       editSubmit: function () {
@@ -724,12 +727,78 @@
             console.log(response);
           });
       },
+      //消息通知模块
+      openMsg(msgtext, type){
+          this.$message({
+              message: msgtext,
+              type: type
+          });
+      },
+      //事件通知模块
+      openNotify(title, msgtext, type){
+          this.$notify({
+              title: title,
+              message: msgtext,
+              type: type
+          });
+      },
       //TODO:操作按钮相关方法
-      immediatelyExecute: function () {
-        this.$message({
-          message: '你中计了',
-          type: 'error'
-        })
+      taskActions: function (index, row, action) {
+        let params = {
+          user: this.sysUserName,
+        };
+        let headers = {
+          'Content-Type': 'application/json;charset=UTF-8'
+        };
+        let data = ''
+        //let data = {};
+        var info = '';
+        if (action == "start") {
+          //data.start = action;
+          data = "{\"start\": \"start\"}"
+          info = "命令下发成功，正在准备执行..."
+        } else if (action == "stop") {
+          data = "{\"stop\": \"stop\"}"
+          info = "命令下发成功，从下一个任务周期停止执行..."
+        } else if (action == "resume") {
+          data = "{\"resume\": \"resume\"}"
+          info = "命令下发成功，任务正在恢复..."
+        }
+        reqTaskAction(row.task.id, data, params, headers).then(res => {
+          this.openMsg(info, 'success');
+          params.name = row.task.name;
+          reqGetTaskList(params).then(res =>{
+            this.tasks[index] = res.data.tasks[0]
+          })
+          /*
+          if (action == "start") {
+            if (row.task.state == "waiting") {
+              this.tasks[index].task.state = 'running_w'
+            }else if(row.task.state == "stopped"){
+              this.tasks[index].task.state = 'running_s'
+            }
+          } else if (action == "stop") {
+            this.tasks[index].task.state = 'stopped'
+          } else if (action == "resume") {
+            this.tasks[index].task.state = 'waiting'
+          }*/
+        }, err => {
+          if (err.response.status == 401) {
+            this.openMsg('请重新登陆', 'error');
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403) {
+            if(err.response.data.code == 403){
+              this.openMsg('命令下发失败', 'error');
+            }else if(err.response.data.code == 401) {
+              this.openMsg('没有权限', 'error');
+            }else {
+              this.openMsg('命令下发失败', 'error');
+            }
+          }else {
+            this.openMsg('请求失败', 'error');
+          }
+        });
       },
       toPause:function (index, row) {
         this.isPause = true;
@@ -760,6 +829,32 @@
         this.policies = res.data.policies;
       });
       this.getTasks();
+      // 组件创建完后获取数据，
+      // 此时 data 已经被 observed 了
+      this.intervalTask = setInterval(() => {
+        this.offset = this.per_page * (this.page - 1);
+        let params = {
+          user: this.sysUserName,
+          limit: this.per_page,
+          offset: this.offset,
+        }
+        if (this.isBackupTask){
+          params.type = 'backup';
+        }else{
+          params.type = 'recover';
+        }
+        reqGetTaskList(params).then((res) => {
+          this.total = res.data.total;
+          for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
+            this.tasks[i].task.state = res.data.tasks[i].task.state;
+            this.tasks[i].state.state = res.data.tasks[i].state.state;
+            this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
+            this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+          }
+        },err => {
+          console.log(error)
+        });
+      },5000)
     }
   }
 </script>

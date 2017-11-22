@@ -98,18 +98,6 @@ let router = new Router({
     {
       path: '/',
       component: Home,
-      name: '日志管理',
-      menuShow: true,
-      isSuperAdm: false,
-      leaf: true, // 只有一个节点
-      iconCls: '#icon-volume', // 图标样式class
-      children: [
-        {path: '/log-manage', component: Log, name: '日志管理', menuShow: true}
-      ]
-    },
-    {
-      path: '/',
-      component: Home,
       name: '用户管理',
       menuShow: true,
       iconCls: '#icon-userMgr',
@@ -131,7 +119,19 @@ let router = new Router({
         {path: '/selfinfo/profile', component: UserProfile, name: '个人信息', menuShow: true},
         {path: '/selfinfo/changepwd', component: UserChangePwd, name: '修改密码', menuShow: true}
       ]
-    }
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '日志管理',
+      menuShow: true,
+      isSuperAdm: false,
+      leaf: true, // 只有一个节点
+      iconCls: '#icon-volume', // 图标样式class
+      children: [
+        {path: '/log-manage', component: Log, name: '日志管理', menuShow: true}
+      ]
+    },
   ]
 })
 

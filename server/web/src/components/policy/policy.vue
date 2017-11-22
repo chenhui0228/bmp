@@ -94,7 +94,6 @@
           </el-table-column>
           <el-table-column label="操作">
             <template scope="scope">
-              <!--<el-button type="text" icon="information" @click=""></el-button>-->
               <svg class="icon" aria-hidden="true" @click="editPolicy(scope.$index, scope.row)">
                 <use xlink:href="#icon-modify"></use>
               </svg>
@@ -102,8 +101,6 @@
               <svg class="icon" aria-hidden="true" @click="confirmDeleteMsgbox('deletePolicy',scope.$index, scope.row, _self.confimPolicyDeleteMsg)">
                 <use xlink:href="#icon-delete"></use>
               </svg>
-              <!--<el-button v-if="" type="text" icon="edit" @click="editPolicy(scope.$index, scope.row)"></el-button>-->
-              <!--<el-button v-if="" type="text" icon="delete" style="color: red" @click="confirmDeleteMsgbox('deletePolicy',scope.$index, scope.row, _self.confimPolicyDeleteMsg)"></el-button>-->
             </template>
           </el-table-column>
         </el-table>
