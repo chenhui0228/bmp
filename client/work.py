@@ -131,7 +131,7 @@ class Work():
        #print cmd
         try:
             fp = tempfile.TemporaryFile(mode='w+t')
-            process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE)
+            process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
             while True:
                 lines = fp.readlines()
                 for line in lines:
