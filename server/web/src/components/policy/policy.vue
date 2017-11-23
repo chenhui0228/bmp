@@ -16,7 +16,7 @@
         <div class="toolbar" style="float:right;">
           <el-form :inline="true" :model="searchCmds">
             <el-form-item>
-              <el-input v-model="searchCmds.name" placeholder="姓名" style="min-width: 240px;"></el-input>
+              <el-input v-model="searchCmds.name" placeholder="策略名" style="min-width: 240px;"></el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="">查询</el-button>
@@ -32,7 +32,7 @@
                 <el-form-item label="策略名">
                   <span>{{ scope.row.name }}</span>
                 </el-form-item>
-                <el-form-item label="策略说明">
+                <el-form-item label="策略说明" v-if="scope.row.description">
                   <span>{{ scope.row.description }}</span>
                 </el-form-item>
                 <el-form-item label="开始时间">
@@ -45,7 +45,7 @@
                   <span v-else-if="scope.row.recurring == 'weekly'">周</span>
                   <span v-else="scope.row.recurring == 'monthly'">月</span>
                 </el-form-item>
-                <el-form-item label="备份频率">
+                <el-form-item label="备份频率" v-if="scope.row.recurring_options_every">
                   <span>{{ scope.row.recurring_options_every }}</span>
                 </el-form-item>
                 <el-form-item label="周选项" v-if="scope.row.recurring == 'weekly'">
@@ -58,7 +58,7 @@
                   <span v-if="scope.row.protection != -1">{{ scope.row.protection }} 天</span>
                 </el-form-item>
                 <el-form-item label="创建用户">
-                  <span>{{ scope.row.user.name }}</span>
+                  <span>{{ scope.row.user }}</span>
                 </el-form-item>
                 <el-form-item label="创建时间">
                   <span>{{ scope.row.created_at | timeStamp2datetime}}</span>
@@ -85,7 +85,7 @@
               <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="user.name" label="创建用户" width="240">
+          <el-table-column prop="user" label="创建用户" width="240">
           </el-table-column>
           <el-table-column prop="created_at" label="创建时间" width="240" sortable>
             <template scope="scope">
@@ -94,9 +94,13 @@
           </el-table-column>
           <el-table-column label="操作">
             <template scope="scope">
-              <!--<el-button type="text" icon="information" @click=""></el-button>-->
-              <el-button v-if="" type="text" icon="edit" @click="editPolicy(scope.$index, scope.row)"></el-button>
-              <el-button v-if="" type="text" icon="delete" style="color: red" @click="confirmDeleteMsgbox('deletePolicy',scope.$index, scope.row, _self.confimPolicyDeleteMsg)"></el-button>
+              <svg class="icon" aria-hidden="true" @click="editPolicy(scope.$index, scope.row)">
+                <use xlink:href="#icon-modify"></use>
+              </svg>
+
+              <svg class="icon" aria-hidden="true" @click="confirmDeleteMsgbox('deletePolicy',scope.$index, scope.row, _self.confimPolicyDeleteMsg)">
+                <use xlink:href="#icon-delete"></use>
+              </svg>
             </template>
           </el-table-column>
         </el-table>
@@ -134,9 +138,6 @@
             <el-form-item prop="delay" label="指定开始日期" :label-width="formLabelWidth">
               <template>
                 <el-switch v-model="policyTimeForm.delay" on-text="是" off-text="否"></el-switch>
-                <!--<el-checkbox-group v-model="policyTimeForm.delay">-->
-                <!--<el-checkbox label="1"></el-checkbox>-->
-                <!--</el-checkbox-group>-->
               </template>
             </el-form-item>
           </el-col>
@@ -222,7 +223,7 @@
   import {reqGetPolicyList, reqPostPolicy, reqPutPolicy, reqDelPolicy} from '../../api/api'
   import {util} from '../../common/util'
   export default{
-    props: ["roles", "groups"],
+    //props: ["roles", "groups"],
     data(){
       var checkStarTime = (rule, value, callback) => {
         if (this.dialogNewPolicyVisible && !this.policyTimeForm.delay) {
@@ -352,17 +353,17 @@
       },
 
       initialPolicyForms() {
-        this.policyBaseForm.name = '',
-        this.policyBaseForm.description = '',
-        this.policyTimeForm.start_time = '',
-        this.policyTimeForm.delay = false,
-        this.policyTimeForm.start_date = '',
-        this.policyRecurringForm.recurring = 'once',
-        this.policyRecurringForm.recurring_options_every = '',
-        this.policyRecurringForm.recurring_options_week = [],
-        this.policyProtectionForm.protectionType = '1',
-        this.policyProtectionForm.protection = '',
-        this.formCheckErrorMsgForStarTime = true
+        this.policyBaseForm.name = '';
+        this.policyBaseForm.description = '';
+        this.policyTimeForm.start_time = '';
+        this.policyTimeForm.delay = false;
+        this.policyTimeForm.start_date = '';
+        this.policyRecurringForm.recurring = 'once';
+        this.policyRecurringForm.recurring_options_every = '';
+        this.policyRecurringForm.recurring_options_week = [];
+        this.policyProtectionForm.protectionType = '1';
+        this.policyProtectionForm.protection = '';
+        this.formCheckErrorMsgForStarTime = true;
       },
       //事件通知模块
       openNotify(title, msgtext, type){
@@ -396,7 +397,12 @@
             this.openMsg('请重新登陆', 'error');
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
-          } else {
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          }  else {
             console.log(err);
           }
         });

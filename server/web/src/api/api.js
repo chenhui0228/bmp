@@ -10,11 +10,11 @@ axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded
 axios.defaults.headers.put['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
 //请求时的拦截
 axios.interceptors.request.use((config) => {
-  // console.log('config:');
-  // console.log(config);
   let url = config.url;
   if (config.method === 'post' || config.method === 'put') {
-    config.data = Qs.stringify(config.data);
+    if (typeof (config.data) != "string") {
+      config.data = Qs.stringify(config.data);
+    }
   }
   if (url.indexOf("login") < 0) {
     // console.log(config.method);
@@ -126,7 +126,8 @@ export const reqAddTask = (user,params) => { return axios.post(`${base}/backup/t
 
 export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/backup/tasks/${task_id}`, { params: params }) };
 
-export const reqTaskAction = (task_id, params) => { return axios.post(`${base}/tasks/${task_id}/action`, { params: params}) };
+export const reqTaskAction = (task_id, data, params, headers) => { return axios.post(`${base}/backup/tasks/${task_id}/action`, data, { params: params, headers: headers}) };
+
 //任务管理相关结束
 
 //任务状态
@@ -136,5 +137,10 @@ export const reqBackupStates = params => {
 
 export const reqBackupStatesDetail = params => {
   return axios.get(`${base}/backup/backupstates/detail`, {params: params} )
+};
+
+//日志管理
+export const reqGetOplogList = params => {
+  return axios.get(`${base}/backup/oplogs`, {params: params} )
 };
 

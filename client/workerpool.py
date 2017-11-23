@@ -10,7 +10,7 @@ from message import Message
 
 
 class WorkerPool(threading.Thread):
-    def __init__(self, workq, i, cip,log):
+    def __init__(self, workq, i,n ,cip,log):
         # self.logger = logging.getLogger(__name__)
         threading.Thread.__init__(self)
         self.log = log
@@ -23,6 +23,7 @@ class WorkerPool(threading.Thread):
         self.work_id = 0
         self.name = str(i)
         self.threadID = i
+        self.allcron=n
         self.confip = cip
         self.arglist = {}
 
@@ -57,6 +58,13 @@ class WorkerPool(threading.Thread):
     1、work_id 单调递增
     2、
     """
+
+    def send_ta(self,id,value):
+        data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
+        ret=self.message.send(data)
+        if ret!=0:
+            self.log.logger.error('message send failed %s'%ret)
+
 
     def run(self):
 
@@ -98,14 +106,25 @@ class WorkerPool(threading.Thread):
             """
             self.arglist['confip'] = self.confip
             self.arglist['threadId'] = self.name
+            if self.name>=self.allcron and self.arglist['state']=='stoped':
+                self.send_ta(self.arglist['id'],'running_s')
+            else:
+                self.send_ta(self.arglist['id'], 'running_w')
             self.work = Work(self.arglist, self.log)
 
             if not self.work:
-                return -1
+                self.log.logger.error('work create failed %s'% (self.threadID))
             
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
+            if self.arglist['op'] == 'backup':
+                if self.name>=self.allcron and self.arglist['state']=='stoped':
+                    self.send_ta(self.arglist['id'],'stopped')
+                else:
+                    self.send_ta(self.arglist['id'], 'waiting')
+            else:
+                self.send_ta(self.arglist['id'], 'end')
             res = self.queue.qsize()  # 判断消息队列大小
             if res > 0:
                 #print("ahua!There are still %d tasks to do" % (res))

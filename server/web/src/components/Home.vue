@@ -13,8 +13,14 @@
       </div>
       <div class="topbar-account topbar-btn">
         <el-dropdown trigger="click">
-          <span class="el-dropdown-link userinfo-inner"><i class="iconfont icon-user"></i> {{sysUserName}}  <i
-            class="iconfont icon-down"></i></span>
+          <span class="el-dropdown-link userinfo-inner">
+            <svg class="icon-static" aria-hidden="true">
+              <use xlink:href="#icon-user"></use>
+            </svg> {{sysUserName}}
+            <svg class="icon-static" aria-hidden="true">
+              <use xlink:href="#icon-down"></use>
+            </svg>
+          </span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item v-if="role != 'superrole'">
               <router-link to="/selfinfo/profile"><span style="color: #555;font-size: 14px;">个人信息</span></router-link>
@@ -35,23 +41,37 @@
       <aside :class="{showSidebar:!collapsed}">
         <!--展开折叠开关-->
         <div class="menu-toggle" @click.prevent="collapse">
-          <i class="iconfont icon-fold" v-show="!collapsed"></i>
-          <i class="iconfont icon-unfold" v-show="collapsed"></i>
+          <svg class="icon" aria-hidden="true" v-show="!collapsed">
+            <use xlink:href="#icon-fold"></use>
+          </svg>
+          <svg class="icon" aria-hidden="true" v-show="collapsed">
+            <use xlink:href="#icon-unfold"></use>
+          </svg>
         </div>
         <!--导航菜单-->
         <el-menu default-active="0" router :collapse="collapsed">
           <template v-for="(item,index) in $router.options.routes"
                     v-if="item.menuShow && ((role == 'superrole' || role == 'admin')? item.menuShow : !item.isSuperAdm)">
             <el-submenu v-if="!item.leaf" :index="index+''">
-              <template slot="title"><i :class="item.iconCls"></i><span slot="title">{{item.name}}</span></template>
+              <template slot="title">
+                <svg class="icon" aria-hidden="true">
+                  <use :xlink:href="item.iconCls"></use>
+                </svg>
+                <span slot="title">{{item.name}}</span></template>
               <el-menu-item v-for="term in item.children" :key="term.path" :index="term.path" v-if="term.menuShow"
                             :class="$route.path==term.path?'is-active':''">
-                <i :class="term.iconCls"></i><span slot="title">{{term.name}}</span>
+                <svg class="icon" aria-hidden="true">
+                  <use :xlink:href="term.iconCls"></use>
+                </svg>
+                <span slot="title">{{term.name}}</span>
               </el-menu-item>
             </el-submenu>
             <el-menu-item v-else-if="item.leaf&&item.children&&item.children.length" :index="item.children[0].path"
                           :class="$route.path==item.children[0].path?'is-active':''">
-              <i :class="item.iconCls"></i><span slot="title">{{item.children[0].name}}</span>
+              <svg class="icon" aria-hidden="true">
+                <use :xlink:href="item.iconCls"></use>
+              </svg>
+              <span slot="title">{{item.children[0].name}}</span>
             </el-menu-item>
           </template>
         </el-menu>
@@ -64,7 +84,7 @@
             <transition name="fade" mode="out-in">
               <router-view></router-view>
               <!--<router-view :roles="roles" :groups="groups" @transferRoles="refreshRoles"-->
-                           <!--@transferGroups="refreshGroups"></router-view>-->
+              <!--@transferGroups="refreshGroups"></router-view>-->
             </transition>
           </el-col>
         </div>
@@ -195,6 +215,7 @@
       }
     }
   }
+
 
 </script>
 <!-- Add "scoped" attribute to limit CSS to this component only -->

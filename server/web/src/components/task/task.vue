@@ -53,8 +53,6 @@
                 @row-dblclick="taskStateDetail"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
-        <!--<el-table-column type="index" width="60">-->
-        <!--</el-table-column>-->
         <el-table-column type="expand">
           <template slot-scope="props">
             <el-form label-position="left" inline class="table-expand">
@@ -70,7 +68,7 @@
               <el-form-item label="更新时间">
                 <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
               </el-form-item>
-              <el-form-item label="任务策略">
+              <el-form-item label="任务策略" v-if="isBackupTask">
                 <span>{{ props.row.policy.name }}</span>
               </el-form-item>
               <el-form-item label="作业机">
@@ -85,44 +83,69 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="task.name" label="任务名"sortable>
+        <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="task.source" label="源地址">
+        <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="task.destination" label="目标地址">
+        <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" sortable>
+        <el-table-column prop="task.state" label="状态" width="120rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
+            <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
+            <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
+            <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
+            <span v-else style="color: red">未知</span>
+          </template>
         </el-table-column>
         <el-table-column
           label="任务进度"
-          width="180rem">
+          width="150rem">
           <template slot-scope="scope">
-            <span v-if="scope.row.state && scope.row.state.state == 'success'" style="color: green">已完成</span>
-            <span v-else-if="scope.row.state && scope.row.state.state == 'start'" style="color: blue">执行中...</span>
-            <span v-else-if="scope.row.state && scope.row.state.state == 'failed'" style="color: red">失败</span>
-            <el-progress v-else-if="scope.row.state" :percentage="parseInt(scope.row.state.state)"></el-progress>
-            <span v-else style="color: #f7c410">未开始</span>
+            <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
+            <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="开始时间" sortable width="180rem">
           <template slot-scope="scope">
-            <el-button type="text" icon="edit" @click="showEditDialog(scope.$index,scope.row)">
-              <!--<i class="iconfont icon-modiffy"></i>-->
-            </el-button>
-            <el-button type="text" icon="delete" style="color:red;" @click="delTask(scope.$index,scope.row)" size="small">
-              <!--<i class="iconfont icon-delete"></i>-->
-            </el-button>
-            <el-tooltip content="立即执行" placement="top">
-              <el-button type="text" icon="information" @click="immediatelyExecute">
-              </el-button>
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="文件大小" width="100rem">
+          <template slot-scope="scope">
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="">
+
+          <template slot-scope="scope">
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)" v-if="isBackupTask">
+              <use xlink:href="#icon-modify"></use>
+            </svg>
+            <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
+              <use xlink:href="#icon-delete"></use>
+            </svg>
+            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped'" >
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
+                <use xlink:href="#icon-exec"></use>
+              </svg>
             </el-tooltip>
-            <el-tooltip content="暂停" placement="top" v-if="!isPause"><!--没暂停就显示暂停按钮-->
-              <el-button type="text" icon="information" @click="toPause(scope.$index,scope.row)">
-              </el-button>
+            <el-tooltip content="停止" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'"><!--没暂停就显示暂停按钮-->
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
+                <use xlink:href="#icon-stop"></use>
+              </svg>
             </el-tooltip>
-            <el-tooltip content="继续" placement="top" v-if="isPause">
-              <el-button type="text" icon="search" @click="toResume(scope.$index,scope.row)">
-              </el-button>
+            <el-tooltip content="恢复任务" placement="top" v-if="scope.row.task.state == 'stopped'">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
+                <use xlink:href="#icon-recover"></use>
+              </svg>
+            </el-tooltip>
+            <el-tooltip content="重新下发" placement="top" v-if="scope.row.task.state != 'stopped' && scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting'">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
+                <use xlink:href="#icon-reload"></use>
+              </svg>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -260,7 +283,7 @@
       </el-dialog>
 
       <!--任务状态框-->
-      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible">
+      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
         <el-table :data="taskStates"
                   border
                   style="margin: auto;">
@@ -276,12 +299,12 @@
           </el-table-column>
           <el-table-column label="总大小" width="120">
             <template scope="scope">
-              <span>{{ scope.row.total_size | BytesReadable }}</span>
+              <span>{{ scope.row.total_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="已备份" width="120">
             <template scope="scope">
-              <span>{{ scope.row.current_size | BytesReadable }}</span>
+              <span>{{ scope.row.current_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="更新时间" width="180">
@@ -294,8 +317,15 @@
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
               <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
-              <el-progress v-else-if="scope.row" :percentage="parseInt(scope.row.state)"></el-progress>
+              <el-progress v-else-if="scope.row && scope.row.process" :percentage="parseInt(scope.row.process)"></el-progress>
+              <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" v-if="isBackupTask">
+            <template scope="scope">
+              <!--TODO:创建恢复任务-->
+              <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -310,6 +340,33 @@
         </el-pagination>
       </el-dialog>
 
+      <!--TODO: 创建恢复任务框-->
+      <el-dialog title="创建恢复任务" v-model="createRecoverTaskFormVisible" :close-on-click-modal="false">
+        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm">
+          <el-form-item prop="worker" label="作业机">
+            <el-select v-model="createRecoverTaskForm.worker_id" placeholder="请选择">
+              <el-option
+                v-for="worker in workers"
+                :key="worker.id"
+                :label="worker.name"
+                :value="worker.id">
+              </el-option>
+            </el-select>
+            <span v-for="worker in workers"
+                  v-if="addForm.worker_id == worker.id"
+                  style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
+            </span>
+          </el-form-item>
+          <el-form-item prop="destination" label="目标地址">
+            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"></el-input>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click.native="createRecoverTaskFormVisible = false">取消</el-button>
+          <el-button type="primary" @click.native="createRecoverTask" :loading="createRecoverTaskLoading">提交</el-button>
+        </div>
+      </el-dialog>
+
     </el-col>
   </el-row>
 </template>
@@ -317,6 +374,7 @@
   import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
     reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail } from '../../api/api';
   import {bus} from '../../bus.js'
+  import util from '../../common/util'
   export default {
     data() {
       return {
@@ -337,6 +395,12 @@
         workers:[],
         volumes:[],
         policies:[],
+
+        //TODO: 创建恢复任务相关数据
+        createRecoverTaskLoading: false,
+        createRecoverTaskFormVisible: false,
+        currentWatchingTask: [],
+        createRecoverTaskForm: {},
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -389,7 +453,14 @@
         taskState_total_rows: 0,
         //操作按钮相关数据
         isPause: false,
+        intervalTask: '',
       }
+    },
+    created() {
+
+    },
+    beforeDestroy() {
+        clearInterval(this.intervalTask)
     },
     methods: {
       handleClick(tag) {
@@ -410,20 +481,12 @@
       handleCurrentChange(val) {
         //console.log(`当前 ${val} 页`)
         this.page = val;
-        if(this.task_type === 'recover') {
-          this.getTasks('recover');
-        }else {
-          this.getTasks();
-        }
+        this.getTasks(this.task_type);
       },
       handleSizeChange(val) {
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
-        if(this.task_type === 'recover') {
-          this.getTasks('recover');
-        }else {
-          this.getTasks();
-        }
+        this.getTasks(this.task_type);
       },
       //获取任务列表
       getTasks: function (type='backup') {
@@ -459,6 +522,46 @@
         });
       },
 
+      //TODO:Recover Task
+      showCreateRecoverTaskDialog: function (row) {
+        this.createRecoverTaskFormVisible = true;
+        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmm');
+        let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
+        let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
+        let source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
+        let source = this.currentWatchingTask.destination + source_suffix;
+        let description = `This is a recover task for ${this.currentWatchingTask.name} which worked in ${descript_suffix}`;
+        this.createRecoverTaskForm = {
+          name: name,
+          worker_id: '',
+          source: source,
+          destination: '',
+          description: description,
+        };
+      },
+      createRecoverTask: function () {
+        let user = {
+          user: this.sysUserName,
+        };
+        let para = Object.assign({}, this.createRecoverTaskForm);
+        para.type = 'recover';
+        para.destination = 'file:/' + para.destination;
+        console.log(para);
+        reqAddTask(user, para).then((res) => {
+          this.createRecoverTaskLoading = false;
+          //NProgress.done();
+          this.openMsg('创建成功，请前往恢复任务查看','success');
+          this.$refs['createRecoverTaskForm'].resetFields();
+          this.createRecoverTaskFormVisible = false;
+        }).catch(err=>{
+          this.createRecoverTaskLoading = false;
+          this.openMsg('添加失败','error');
+          console.log(err.message);
+          this.$refs['createRecoverTaskForm'].resetFields();
+          this.createRecoverTaskFormVisible = false;
+        });
+      },
+
       //====编辑相关====
       //处理显示
       beforeShow: function (row) {
@@ -480,7 +583,7 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-        console.log(source,destination);
+        row.task.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
         row.task.destination = destination;
@@ -496,7 +599,6 @@
         this.editFormVisible = true;
         this.beforeShow(row);
         this.editForm = Object.assign({}, row.task);
-        console.log(this.editForm);
       },
       //编辑
       editSubmit: function () {
@@ -511,7 +613,7 @@
               let para = Object.assign({}, this.editForm);
               if(para.type === "backup"){
                 para.source = 'file:/' + para.source;
-                para.destination = 'glusterfs:/' + para.destination;
+                para.destination = 'glusterfs://' + para.volumeName + para.destination;
               }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
@@ -605,7 +707,7 @@
                 message: '添加失败',
                 type: 'error'
               });
-              console.log(err.message)
+              console.log(err.message);
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
             });
@@ -629,7 +731,7 @@
               message: '删除成功',
               type: 'success'
             });
-            this.getTasks();
+            this.getTasks(this.task_type);
           });
         }).catch(() => {
           this.listLoading = false;
@@ -674,12 +776,19 @@
         this.taskStateFilter.page = val;
         this.getTaskStates(this.currTaskRow);
       },
+      closeStateDialog() {
+        this.currentWatchingTask = [];
+        this.dialogTaskStateDetailTableVisible = false;
+      },
       taskStateDetail(row) {
-        this.taskStateFilter.per_page = 10;
-        this.taskStateFilter.page = 1;
-        this.currTaskRow = row.task.id;
-        this.getTaskStates(this.currTaskRow);
-        this.currTaskStateTabTitle = row.task.name;
+        if(this.isBackupTask){
+          this.taskStateFilter.per_page = 10;
+          this.taskStateFilter.page = 1;
+          this.currTaskRow = row.task.id;
+          this.currentWatchingTask = row.task;
+          this.getTaskStates(this.currTaskRow);
+          this.currTaskStateTabTitle = row.task.name;
+        }
       },
       getTaskStates(task_id){
         var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);
@@ -704,12 +813,78 @@
             console.log(response);
           });
       },
+      //消息通知模块
+      openMsg(msgtext, type){
+          this.$message({
+              message: msgtext,
+              type: type
+          });
+      },
+      //事件通知模块
+      openNotify(title, msgtext, type){
+          this.$notify({
+              title: title,
+              message: msgtext,
+              type: type
+          });
+      },
       //TODO:操作按钮相关方法
-      immediatelyExecute: function () {
-        this.$message({
-          message: '你中计了',
-          type: 'error'
-        })
+      taskActions: function (index, row, action) {
+        let params = {
+          user: this.sysUserName,
+        };
+        let headers = {
+          'Content-Type': 'application/json;charset=UTF-8'
+        };
+        let data = ''
+        //let data = {};
+        var info = '';
+        if (action == "start") {
+          //data.start = action;
+          data = "{\"start\": \"start\"}"
+          info = "命令下发成功，正在准备执行..."
+        } else if (action == "stop") {
+          data = "{\"stop\": \"stop\"}"
+          info = "命令下发成功，从下一个任务周期停止执行..."
+        } else if (action == "resume") {
+          data = "{\"resume\": \"resume\"}"
+          info = "命令下发成功，任务正在恢复..."
+        }
+        reqTaskAction(row.task.id, data, params, headers).then(res => {
+          this.openMsg(info, 'success');
+          params.name = row.task.name;
+          reqGetTaskList(params).then(res =>{
+            this.tasks[index] = res.data.tasks[0]
+          })
+          /*
+          if (action == "start") {
+            if (row.task.state == "waiting") {
+              this.tasks[index].task.state = 'running_w'
+            }else if(row.task.state == "stopped"){
+              this.tasks[index].task.state = 'running_s'
+            }
+          } else if (action == "stop") {
+            this.tasks[index].task.state = 'stopped'
+          } else if (action == "resume") {
+            this.tasks[index].task.state = 'waiting'
+          }*/
+        }, err => {
+          if (err.response.status == 401) {
+            this.openMsg('请重新登陆', 'error');
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403) {
+            if(err.response.data.code == 403){
+              this.openMsg('命令下发失败', 'error');
+            }else if(err.response.data.code == 401) {
+              this.openMsg('没有权限', 'error');
+            }else {
+              this.openMsg('命令下发失败', 'error');
+            }
+          }else {
+            this.openMsg('请求失败', 'error');
+          }
+        });
       },
       toPause:function (index, row) {
         this.isPause = true;
@@ -740,6 +915,40 @@
         this.policies = res.data.policies;
       });
       this.getTasks();
+      // 组件创建完后获取数据，
+      // 此时 data 已经被 observed 了
+      this.intervalTask = setInterval(() => {
+        this.offset = this.per_page * (this.page - 1);
+        let params = {
+          user: this.sysUserName,
+          limit: this.per_page,
+          offset: this.offset,
+        }
+        if (this.isBackupTask){
+          params.type = 'backup';
+        }else{
+          params.type = 'recover';
+        }
+        reqGetTaskList(params).then((res) => {
+          this.total = res.data.total;
+          for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
+            this.tasks[i].task.state = res.data.tasks[i].task.state;
+            this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
+            if (res.data.tasks[i].state){
+              this.tasks[i].state.state = res.data.tasks[i].state.state;
+              this.tasks.splice(i, {'state.state': res.data.tasks[i].state.state});
+              this.tasks[i].state.process = res.data.tasks[i].state.process;
+              this.tasks.splice(i, {'state.process': res.data.tasks[i].state.process});
+              this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
+              this.tasks.splice(i, {'state.start_time': res.data.tasks[i].state.start_time});
+              this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+              this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
+            }
+          }
+        },err => {
+          console.log(error)
+        });
+      },3000)
     }
   }
 </script>

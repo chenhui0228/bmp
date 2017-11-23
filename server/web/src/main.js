@@ -5,8 +5,9 @@ import App from './App'
 import router from './router'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-default/index.css'
-import '@/assets/iconfont.css'
+//import '@/assets/iconfont.css'
 import '@/assets/styles/main.scss'
+import '@/assets/js/iconfont.js'
 
 // import Mock from './mock'
 // Mock.init()
@@ -59,12 +60,26 @@ Vue.filter("weeksFormat", function (value) {
   }
   return str;
 });
-Vue.filter("BytesReadable", function (bytes) {
+Vue.filter("pathFilter", function (path) {
+  console.log(typeof (path));
+  path = path.replace(/^\w+:\//g,'');
+  return path;
+});
+Vue.filter("dateStampFormat", function (value) {
+  var _date = new Date(value*1000);
+  if (value == 0 || value == '0' || _date == undefined){
+    return "-";
+  }
+  var _datetime = Vue.prototype.myDateFormat(_date,"yyyy-MM-dd hh:mm:ss");
+  return _datetime;
+});
+Vue.filter("Bytes", function (bytes) {
   if (bytes === 0) return '0 B';
   let k = 1024, // or 1024
     sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
     i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+  //return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
 });
 Vue.prototype.myDateFormat = function (date, fmt) {
   var o = {

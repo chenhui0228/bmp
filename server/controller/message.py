@@ -19,9 +19,8 @@ con=threading.Condition()
 
 def do_put(info):
     global q
-    global con
-    q.put(info)
     con.acquire()
+    q.put_nowait(info)
     con.notify()
     con.release()
 
@@ -45,17 +44,18 @@ class Performance:
 
 class TCPServer(BaseRequestHandler):
     def handle(self):
-        address, pid = self.client_address
+        #address, pid = self.client_address
         # while True:
         if True:
             # data = self.request.recv(4096)
             data = self.request.recv(4096)
             if len(data) > 0:
+                #print "address=", address, "pid",pid,"recv data:", data
                 cur_thread = threading.current_thread()
                 response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
                 do_put(response)
-                self.request.sendto(response, self.client_address)
+                #self.request.sendto(response, self.client_address)
                 #print "address=", address, "recv data:", data
                 self.finish()
 
@@ -102,7 +102,7 @@ class Message:
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
-        return self.q.get()
+        return self.q.get_nowait()
 
     def start_server(self):   # 监听
         global con
@@ -118,6 +118,8 @@ class Message:
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
                 server_thread.daemon = True
                 server_thread.start()
+                with open('/home/python/test/mseeageName.txt','w') as fp:
+                    fp.write(server_thread.name)
                 self.server_thread.append(server_thread)
             except Exception ,e:
                 #self.log.logger.error('start TCP listen server failed %s'%e)
@@ -166,8 +168,8 @@ class Message:
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.tcpclient.connect(info['addr'])
-                    self.tcpclient.sendto(ms, info['addr'])
-                    server_reply = self.tcpclient.recv(1024)
+                    self.tcpclient.send(ms)
+                    #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
                 except Exception, e:

@@ -61,14 +61,14 @@
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
-        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superadmin'">
+        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superrole'">
           <template slot-scope="scope">
-            <el-button size="small" @click="showEditDialog(scope.$index,scope.row)">
-              <i class="iconfont icon-modiffy"></i>
-            </el-button>
-            <el-button type="danger" @click="delWorker(scope.$index,scope.row)" size="small">
-              <i class="iconfont icon-delete"></i>
-            </el-button>
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
+              <use xlink:href="#icon-modify"></use>
+            </svg>
+            <svg class="icon" aria-hidden="true" @click="delWorker(scope.$index,scope.row)">
+              <use xlink:href="#icon-delete"></use>
+            </svg>
           </template>
         </el-table-column>
       </el-table>
