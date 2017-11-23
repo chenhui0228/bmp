@@ -61,7 +61,7 @@
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
-        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superadmin'">
+        <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superrole'">
           <template slot-scope="scope">
             <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
               <use xlink:href="#icon-modify"></use>
