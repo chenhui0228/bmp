@@ -280,26 +280,27 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def recover(self,id,do_type=False):         # need change
+    def recover(self,id):         # need change
         try:
             task = self.db.get_task(super_context, id)
             worker = task.worker
             policy = task.policy
             addr = (worker.ip, int(self.port))
-            destination = task.destination
-            vol_dir = destination.split('//')[1]
+            source = task.source
+            vol_dir = source.split('//')[1]
             new_vor_dir= vol_dir.split('/', 1)
             if len(new_vor_dir) == 0:
                 return
             elif len(new_vor_dir) == 1:
                 vol=new_vor_dir[0]
-                dir=''
+                dir='/'
             elif len(new_vor_dir)==2:
                 vol = new_vor_dir[0]
-                dir = new_vor_dir[1]
+                dir = '/'+new_vor_dir[1]
             #dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-            source = task.source.split('/', 1)[1]
-        except:
+            destination = task.destination.split('/', 1)[1]
+        except Exception,e:
+            logger.error(e.message)
             pass
         #if policy.recurring=='once':
         #    run_sub='date'
@@ -309,7 +310,7 @@ class Server:
         run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_ip':'%s','run_sub':'%s',}} " % (id, task.name, task.state, vol,  dir ,source, worker.ip,run_sub)
+               "'destination_ip':'%s','run_sub':'%s',}} " % (id, task.name, task.state, vol,  dir ,destination, worker.ip,run_sub)
         info = {}
         info['data'] = data
         info['addr'] = addr
