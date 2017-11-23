@@ -11,6 +11,8 @@ import threading
 import six
 import logging
 logger=logging.getLogger('backup')
+import eventlet
+
 
 class Singleton(type):
     _instances = {}
@@ -78,11 +80,18 @@ class Server:
         cp.read('/etc/SFbackup/client.conf')
         self.port = cp.get('server', 'port')
         self.workstate_dict={}
-        self.listen_thread = threading.Thread(target=self.listen)
-        with open('/home/python/test/name.txt','w') as fp:
+        try:
+            self.listen_thread = threading.Thread(target=self.listen)
+        except Exception,e:
+            with open('/home/python/test/name.txt', 'a') as fp:
+                fp.write(e.message)
+        with open('/home/python/test/name.txt','a') as fp:
             fp.write(self.listen_thread.name)
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
+        self.pool = eventlet.GreenPool(10000)
+        with open('/home/python/test/name.txt','a') as fp:
+            fp.write('ok\n')
 
 
     def stop(self,id):
@@ -125,117 +134,104 @@ class Server:
             self.dump(id)
 
     def update_task(self,id,isRestart=False):
-        with open('/home/python/test/update_task.txt', 'a') as tp:
-            tp.write('1\n')
-            try:
-                task = self.db.get_task(super_context,id)
-                if task.state == 'stopped':
-                    return
-                worker = task.worker
-                policy = task.policy
-                addr = (worker.ip, int(self.port))
-                destination = task.destination
-                vol_dir = destination.split('//')[1]
-                new_vor_dir = vol_dir.split('/', 1)
-                if len(new_vor_dir) == 0:
-                    return
-                elif len(new_vor_dir) == 1:
-                    vol = new_vor_dir[0]
-                    dir = ''
-                elif len(new_vor_dir) == 2:
-                    vol = new_vor_dir[0]
-                    dir = new_vor_dir[1]
-                dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-                source = task.source.split('/', 1)[1]
-                tp.write('2\n')
-                if policy.recurring=='once':
-                    run_sub='date'
-                else:
-                    run_sub='cron'
-            except:
-                pass
-            data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'," \
-                   "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
-                   "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-                   "'second':'%s','start_date':'%s'}}} " % ( id, task.name, task.state, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
-            tp.write('2.2\n')
-            try:
-                data=eval(data)
-            except Exception,e:
-                tp.write(str(e))
-                tp.write(data)
-                tp.write('2.23\n')
-            data2 = data['data']
-            tp.write('2.3\n')
-            data2['sub']=task.type
-            tp.write('2.5\n')
-            if data2['sub'] == 'dump':
-                data2['script'] == task.script_path
-            elif data2['sub'] == 'recover':
-                vol_dir = destination.split('//')[1]
-                vol = vol_dir.split('/', 1)[0]
-                dir = vol_dir.split('/', 1)[1]
-                source = task.source.split('/', 1)[1]
-                data2['source_vol']=vol
-                data2['source_address'] =dir
-                data2['destination_address']=source
-                data2['destination_ip'] = worker.ip
-            if isRestart:
-                data['type']=data2['sub']
-            tp.write(str(data))
-            info = {}
-            info['data'] = str(data)
-            info['addr'] = addr
-            self.message.issued(info)
-            tp.write('4\n')
+        logger.debug('update_task start')
+        try:
+            task = self.db.get_task(super_context,id)
+            if task.state == 'stopped':
+                return
+            worker = task.worker
+            policy = task.policy
+            addr = (worker.ip, int(self.port))
+            destination = task.destination
+            vol_dir = destination.split('//')[1]
+            new_vor_dir = vol_dir.split('/', 1)
+            if len(new_vor_dir) == 0:
+                return
+            elif len(new_vor_dir) == 1:
+                vol = new_vor_dir[0]
+                dir = ''
+            elif len(new_vor_dir) == 2:
+                vol = new_vor_dir[0]
+                dir = new_vor_dir[1]
+            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+            source = task.source.split('/', 1)[1]
+
+            if policy.recurring=='once':
+                run_sub='date'
+            else:
+                run_sub='cron'
+        except Exception,e:
+            logger.error(e.message)
+            pass
+        data = "{'type':'update','data':{'id':'%s','name':'%s','state':'%s'," \
+               "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
+               "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
+               "'second':'%s','start_date':'%s'}}} " % ( id, task.name, task.state, worker.ip,source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+
+        try:
+            data=eval(data)
+        except Exception,e:
+            logger.error(e.message)
+        data2 = data.get('data')
+        data2['sub']=task.type
+        if data2['sub'] == 'dump':
+            data2['script'] == task.script_path
+        elif data2['sub'] == 'recover':
+            vol_dir = destination.split('//')[1]
+            vol = vol_dir.split('/', 1)[0]
+            dir = vol_dir.split('/', 1)[1]
+            source = task.source.split('/', 1)[1]
+            data2['source_vol']=vol
+            data2['source_address'] =dir
+            data2['destination_address']=source
+            data2['destination_ip'] = worker.ip
+        if isRestart:
+            data['type']=data2['sub']
+
+        info = {}
+        info['data'] = str(data)
+        info['addr'] = addr
+        self.message.issued(info)
+        logger.debug('update_task send message dnow')
+
 
 
     def update_worker(self,id,isRestart=False,**kwargs):
-        with open('/home/python/test/update_worker.txt', 'w+') as tp:
-            tp.write('1\n')
-            tasks_all=self.db.get_tasks(super_context,worker_id=id)
-            tp.write('1.1\n')
-            tasks=tasks_all[0]
-            tp.write('1.2\n')
-            try:
-                worker = self.db.get_worker(super_context, id)
-            except Exception,e:
-                tp.write(e.message)
-            tp.write('ok\n')
-            if kwargs.has_key('ip'):
-                tp.write('2.1\n')
-                old_ip=kwargs['ip']
-            else:
-                old_ip=worker.ip
-            if worker.ip == old_ip:
-                tp.write('2.2\n')
-                if len(tasks)!=0:
-                    tp.write('2.21\n')
-                    for task in tasks:
-                        tp.write('2.22\n')
-                        if  isRestart:
-                            self.update_task(task.id,True)
-                            tp.write('2.221\n')
-                        else:
-                            self.update_task(task.id)
-                            tp.write('2.222\n')
-                else:
-                    tp.write('2.23\n')
-                    pass
-            else:
-                tp.write('2.3\n')
+        logger.debug('update_worker start')
+        tasks_all=self.db.get_tasks(super_context,worker_id=id)
+        tasks=tasks_all[0]
+        try:
+            worker = self.db.get_worker(super_context, id)
+        except Exception,e:
+            logger.error(e.message)
+        if kwargs.has_key('ip'):
+            old_ip=kwargs.get('ip')
+        else:
+            old_ip=worker.ip
+        if worker.ip == old_ip:
+            if len(tasks)!=0:
                 for task in tasks:
-                    if task.worker_id == id:
-                        addr = (old_ip, int(self.port))
-                        data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
-                        info = {}
-                        info['data'] = data
-                        info['addr'] = addr
-                        self.message.issued(info)
-                for task in tasks:
-                    if task.worker_id == id:
+                    if  isRestart:
+                        self.update_task(task.id,True)
+                        logger.debug('the restart msg end to updatetask')
+                    else:
                         self.update_task(task.id)
-            tp.write('3\n')
+            else:
+                logger.debug('the worker is no task')
+                pass
+        else:
+            for task in tasks:
+                if task.worker_id == id:
+                    addr = (old_ip, int(self.port))
+                    data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
+                    info = {}
+                    info['data'] = data
+                    info['addr'] = addr
+                    self.message.issued(info)
+            for task in tasks:
+                if task.worker_id == id:
+                    self.update_task(task.id)
+
 
 
     def update_policy(self,id):
@@ -356,40 +352,42 @@ class Server:
 
 
     def to_db(self,msg):
-        with open('/home/python/test/to_db.txt','w') as fp:
-            fp.write('start')
+        logger.debug('to_db start')
+        if msg.get('type') == None:
+            logger.error('msg error')
+            return
         if msg['type'] == 'return':
             with open('/home/python/test/return.txt','a') as fp:
                 fp.write('1\n')
-                dict=msg['data']
+                dict=msg.get('data')
                 fp.write(str(dict))
                 fp.write('\n')
                 bk_value = {}
-                bk_value['id'] = dict['bk_id']
-                bk_value['task_id'] = dict['id']
+                bk_value['id'] = dict.get('bk_id')
+                bk_value['task_id'] = dict.get('id')
                 typeofMessage=dict['sub']
                 if typeofMessage == 'frist':
-                    bk_value['start_time']=dict['start_time']
-                    bk_value['total_size'] = dict['total_size']
-                    bk_value['process'] = dict['process']
-                    bk_value['state'] = dict['state']
-                    self.workstate_dict[dict['bk_id']]=0
+                    bk_value['start_time']=dict.get('start_time')
+                    bk_value['total_size'] = dict.get('total_size')
+                    bk_value['process'] = dict.get('process')
+                    bk_value['state'] = dict.get('state')
                     try:
                         bk = self.db.bk_create(super_context, bk_value)
+                        self.workstate_dict[dict['bk_id']] = 0
                     except Exception,e:
                         pass
                     return
                 elif typeofMessage == 'run':
-                    bk_value['process'] = dict['process']
-                    bk_value['state'] = dict['state']
+                    bk_value['process'] = dict.get('process')
+                    bk_value['state'] = dict.get('state')
                     if not self.workstate_dict.has_key(dict['bk_id']):
                         return
                     if self.workstate_dict[dict['bk_id']]>int(dict['process']):
                         return
                 elif typeofMessage == 'last':
-                    bk_value['state'] = dict['state']
-                    bk_value['end_time'] = dict['end_time']
-                    bk_value['message'] = dict['errormessage']
+                    bk_value['state'] = dict.get('state')
+                    bk_value['end_time'] = dict.get('end_time')
+                    bk_value['message'] = dict.get('errormessage')
                     del self.workstate_dict[dict['bk_id']]
                 #if key == 'process':
                 #    if int(bk.process) < int(dict[key]):
@@ -420,68 +418,77 @@ class Server:
                 fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
-            with open('/home/python/test/initialize.txt', 'a') as tp:
-                tp.write('initialize start %s'%str(dict))
-                workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'],worker_ip=dict['ip'])[0]
-                if len(workers)==1:
-                    worker=workers[0]
-                    tp.write('t 222')
-                    worker_value={}
-                    worker_value['id'] = worker.id
-                    worker_value['ip'] = dict['ip']
-                    worker_value['version'] = dict['version']
-                    worker_value['group_id'] =dict['group']
-                    worker_value['status'] = 'Active'
-                    worker_value['start_at'] = str(time.time())
-                    try:
-                        self.db.update_worker(super_context,worker_value)
-                    except Exception,e:
-                        pass
+            workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'],worker_ip=dict['ip'])[0]
+            if len(workers)==1:
+                logger.debug('get worker')
+                worker=workers[0]
+                worker_value={}
+                worker_value['id'] = worker.id
+                worker_value['ip'] = dict['ip']
+                worker_value['version'] = dict['version']
+                worker_value['group_id'] =dict['group']
+                worker_value['status'] = 'Active'
+                worker_value['start_at'] = str(time.time())
+                try:
+                    self.db.update_worker(super_context,worker_value,True)
+                except Exception,e:
+                    pass
+                info = {}
+                info['data'] = "{'type':'show'}"
+                info['addr'] = ('10.202.125.83',11111)
+                self.message.issued(info)
+                logger.debug('send msg dnow')
+                try:
+                    self.update_worker(worker.id,True)
+                    logger.debug('update_worker end')
+                except Exception,e:
+                    logger.error(e.message)
+                    pass
+            elif len(workers)==0:
+                worker_value={}
+                worker_value['name']=dict['hostname']
+                worker_value['ip']=dict['ip']
+                worker_value['version'] = dict['version']
+                worker_value['group_id'] =dict['group']
+                worker_value['owner']=  'robot'
+                worker_value['status'] = 'Active'
+                worker_value['start_at'] = str(time.time())
+                try:
+                    worker=self.db.create_worker(super_context,worker_value)
+                except Exception ,e:
+                    logger.error(e.message)
 
-                    tp.write('t 333')
-                    info = {}
-                    info['data'] = "{'type':'show'}"
-                    info['addr'] = ('10.202.125.83',11111)
-                    self.message.issued(info)
-                    tp.write('t 44123123214')
-                    try:
-                        self.update_worker(worker.id,True)
-                    except Exception,e:
-                        pass
-                elif len(workers)==0:
-                    worker_value={}
-                    worker_value['name']=dict['hostname']
-                    worker_value['ip']=dict['ip']
-                    worker_value['version'] = dict['version']
-                    worker_value['group_id'] =dict['group']
-                    worker_value['owner']=  'robot'
-                    worker_value['status'] = 'Active'
-                    worker_value['start_at'] = str(time.time())
-                    try:
-                        worker=self.db.create_worker(super_context,worker_value)
-                    except Exception ,e:
-                        tp.write(str(e))
-                else:
-                    tp.write('more one workers')
-                tp.write('initialize end')
+            else:
+                logger.error('more than one client has same information')
 
 
 
 
 
 
-    def listen(self):  # listen msg from client
+    def listen(self):  # listen msg from clien
+        print 'listen'
+        logger.debug('listen start')
         while True:
             if self.message.con.acquire():
                 if not self.message.q.empty():
                         logger.info(self.listen_thread.name)
                         msg = self.message.get_queue()
+                        self.message.con.release()
                         msg_data = msg.split(":", 1)[1]
+                        logger.debug(msg_data)
                         date = eval(msg_data)
-                        self.to_db(date)
+                        try:
+                            self.pool.spawn_n(self.to_db,date)
+                            self.pool.waitall()
+                            logger.debug(str(self.pool.running()))
+                        except Exception,e:
+                            logger.error(e.message)
+                            pass
                 else:
-                        self.message.con.wait()
-                time.sleep(1)
-                self.message.con.release()
+                        self.message.con.wait(1)
+                        self.message.con.release()
+                #time.sleep(1)
+
 
 

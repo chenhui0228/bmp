@@ -42,21 +42,23 @@ class Work():
     def send_bk(self,sub,**kwargs):
         data={}
         data['type']='return'
-        data['sub']=sub
-        data['id']=self.arglist['id']
-        data['bk_id']=self.arglist['bk_id']
+        dict={}
+        data['data']=dict
+        dict['sub']=sub
+        dict['id']=self.arglist['id']
+        dict['bk_id']=self.arglist['bk_id']
         if sub == 'frist':
-            data['start_time']=kwargs['start_time']
-            data['total_size'] = kwargs['total_size']
-            data['process']='0'
-            data['state']='runing'
+            dict['start_time']=kwargs['start_time']
+            dict['total_size'] = kwargs['total_size']
+            dict['process']='0'
+            dict['state']='runing'
         elif sub == 'run':
-            data['process'] = kwargs['process']
-            data['current_size']=kwargs['current_size']
+            dict['process'] = kwargs['process']
+            dict['current_size']=kwargs['current_size']
         elif sub == 'last':
-            data['state'] = kwargs['state']
-            data['end_time'] = kwargs['end_time']
-            data['message']=self.errormessage
+            dict['state'] = kwargs['state']
+            dict['end_time'] = kwargs['end_time']
+            dict['message']=self.errormessage
         ret=self.message.send(str(data))
         if ret!=0:
             self.log.logger.error(ret)
