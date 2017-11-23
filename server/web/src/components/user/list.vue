@@ -87,16 +87,22 @@
           </el-select>
           <el-input v-if="userForm.role == 'superrole'" v-model="role" auto-complete="off" :disabled="dialogEditUserVisible"></el-input>
         </el-form-item>
-        <el-form-item label="随机密码" :label-width="formLabelWidth">
+        <el-form-item label="随机密码" :label-width="formLabelWidth" v-if="dialogNewUserVisible">
           <!--<el-input v-model="randomPassword" auto-complete="off"></el-input>-->
           <template>
             <el-switch v-model="randomPassword" on-text="是" off-text="否"></el-switch>
           </template>
         </el-form-item>
-        <el-form-item prop="password" label="密码" :label-width="formLabelWidth" v-if="!randomPassword">
+        <el-form-item label="修改密码" :label-width="formLabelWidth" v-if="dialogEditUserVisible">
+          <!--<el-input v-model="randomPassword" auto-complete="off"></el-input>-->
+          <template>
+            <el-switch v-model="modifyPassword" on-text="是" off-text="否"></el-switch>
+          </template>
+        </el-form-item>
+        <el-form-item prop="password" label="密码" :label-width="formLabelWidth" v-if="!randomPassword || modifyPassword">
           <el-input type="password" v-model="userForm.password" auto-complete="off"></el-input>
         </el-form-item>
-        <el-form-item prop="password2" label="密码确认" :label-width="formLabelWidth" v-if="!randomPassword">
+        <el-form-item prop="password2" label="密码确认" :label-width="formLabelWidth" v-if="!randomPassword || modifyPassword">
           <el-input type="password" v-model="userForm.password2" auto-complete="off"></el-input>
         </el-form-item>
       </el-form>
@@ -161,6 +167,7 @@
         dialogUserVisible: false,
         dialogUserTitle: '',
         randomPassword: true,
+        modifyPassword: false,
         confimUserDeleteMsg: '你确定要删除这个用户吗？',
         filter: {
           per_page: 10,   //页大小
@@ -275,6 +282,7 @@
       //新建用户
       newUser() {
         this.dialogNewUserVisible = true;
+        this.dialogEditUserVisible = false;
         this.initialUserForms();
         this.dialogUserTitle = '新建用户';
       },
@@ -285,7 +293,9 @@
       },
       editUser(index, row){
         this.dialogEditUserVisible = true;
+        this.dialogNewUserVisible = false;
         this.dialogUserTitle = '修改用户信息';
+        this.modifyPassword = false;
         this.user = row;
         this.userForm.name = row.name;
         this.userForm.role_id = row.role_id;
@@ -350,6 +360,11 @@
             this.user.password = this.userForm.password;
           }
         };
+        if(this.dialogEditUserVisible){
+          if(this.modifyPassword){
+            this.user.password = this.userForm.password;
+          }
+        }
       },
       getRoles(username){
         let params = {
