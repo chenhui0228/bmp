@@ -114,7 +114,7 @@ class WorkerPool(threading.Thread):
 
             if not self.work:
                 self.log.logger.error('work create failed %s'% (self.threadID))
-            
+
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务

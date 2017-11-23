@@ -13,9 +13,10 @@ import socket
 from apscheduler.schedulers.background import BackgroundScheduler
 from message import Message
 from singletask import SingleTask
-from workerpool import WorkerPool
+from workerpool import WorkerPool,DeletePool
 import ConfigParser
 import  uuid
+import copy
 
 class Daemon:
     def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
@@ -188,26 +189,15 @@ class Daemon:
 
 
     def deleteBackupData(self):
-        pass
-        if self.arglist['run_sub'] == 'date' or self.arglist['duration'] == '-1':
-            return 0
-        old_time=self.wait_start-timedelta(days=int(self.arglist['duration']))
-        dict=self.arglist['cron']
-        start_time=datetime.strptime(dict['start_date'], "%Y-%m-%d %H:%M:%S")
-        if start_time>old_time:
-            return 0
-        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] +"_"+self.arglist['id']+ "_" + old_time.strftime(
-                '%Y%m%d%H%M') + "/"
-        if os.path.exists('%s/%s'%(self.mount_dir, self.oldvfile)):
-            try:
-                shutil.rmtree(self.mount_dir+'/'+self.oldvfile)
-                self.log.logger.info("delete %s succeed"%self.oldvfile)
-                return 0
-            except Exception,e:
-                #print "delete failed"
-                self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
-                #self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
-                return -1
+        task_list=copy.deepcopy(self.task_list)
+        for ms in task_list:
+            task=task_list[ms]
+            msg=task.st
+            duration=msg.get('duration')
+            vol=msg.get('destination_vol')
+            dir=msg.get('destination_address')
+
+
 
 
 
@@ -380,12 +370,14 @@ class Daemon:
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
+        self.deleteq=Queue.Queue()
         for i in range(self.uc_size):
             t = WorkerPool(self.q, i,self.uc_size ,self.confip,self.log)
             self.tp.append(t)
         for i in range(self.uc_size,self.uc_size+self.ic_size):
             t = WorkerPool(self.qq, i,self.uc_size, self.confip, self.log)
             self.tp.append(t)
+        self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
             t.start()
