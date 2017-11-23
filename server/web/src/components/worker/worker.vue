@@ -14,11 +14,11 @@
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;" >
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
-                   v-if="role == 'admin' || role == 'superadmin'">
+                   v-if="role == 'admin' || role == 'superrole'">
           批量删除
         </el-button>
         <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
-                   v-if="role == 'admin' || role == 'superadmin'">新建</el-button>
+                   v-if="role == 'admin' || role == 'superrole'">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
