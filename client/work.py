@@ -305,6 +305,8 @@ class Work():
             if ret != 0:
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
+            if self.proctotal == 0:
+                self.proctotal+=1
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
