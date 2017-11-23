@@ -41,7 +41,7 @@ class Work():
 
     def send_bk(self,sub,**kwargs):
         data={}
-        data['type']='retuen'
+        data['type']='return'
         data['sub']=sub
         data['id']=self.arglist['id']
         data['bk_id']=self.arglist['bk_id']
@@ -167,7 +167,7 @@ class Work():
                     write_old = 0
                     write_now = 0
                 time.sleep(1)
-            if process.poll() == None:
+            if process.poll() != None:
                 list=pd.split('/')
                 new_file=os.path.join(vd,list[-1])
                 if self.get_file_size(pd)==self.get_file_size(new_file):
