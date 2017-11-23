@@ -60,7 +60,7 @@
         <!--</el-table-column>-->
         <el-table-column prop="description" label="描述" sortable>
         </el-table-column>
-        <el-table-column label="操作" width="250">
+        <el-table-column label="操作" width="250"  v-if="role == 'superrole'">
           <template slot-scope="scope">
             <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
               <use xlink:href="#icon-modify"></use>
@@ -120,27 +120,27 @@
       </el-dialog>
 
     </el-col>
-    <el-col :span="10"></el-col>
-    <el-col :span="24">
-      <div v-for="(group, index) in groups" style="float:left; margin-right: 10px">
-        <el-card class="box-card">
-          <div slot="header">
-            <span>{{ group.name }}</span>
-            <div style="float:right">
-              <el-button size="small" @click="showEditDialog(index, group)">
-                <i class="iconfont icon-modiffy"></i>
-              </el-button>
-              <el-button type="danger" @click="delGroup(index, group)" size="small">
-                <i class="iconfont icon-delete"></i>
-              </el-button>
-            </div>
-          </div>
-          <div>
-            {{ group.description }}
-          </div>
-        </el-card>
-      </div>
-    </el-col>
+    <!--<el-col :span="10"></el-col>-->
+    <!--<el-col :span="24">-->
+      <!--<div v-for="(group, index) in groups" style="float:left; margin-right: 10px">-->
+        <!--<el-card class="box-card">-->
+          <!--<div slot="header">-->
+            <!--<span>{{ group.name }}</span>-->
+            <!--<div style="float:right">-->
+              <!--<el-button size="small" @click="showEditDialog(index, group)">-->
+                <!--<i class="iconfont icon-modiffy"></i>-->
+              <!--</el-button>-->
+              <!--<el-button type="danger" @click="delGroup(index, group)" size="small">-->
+                <!--<i class="iconfont icon-delete"></i>-->
+              <!--</el-button>-->
+            <!--</div>-->
+          <!--</div>-->
+          <!--<div>-->
+            <!--{{ group.description }}-->
+          <!--</div>-->
+        <!--</el-card>-->
+      <!--</div>-->
+    <!--</el-col>-->
 
   </el-row>
 </template>
@@ -156,6 +156,7 @@
         filters: {
           name: ''
         },
+        role: '',
         listLoading: false,
         isVisible:true,
         groups: [],
@@ -252,8 +253,8 @@
       //====编辑相关====
       //显示编辑界面
       showEditDialog: function (index, row) {
-        this.editFormVisible = true;
-        this.editForm = Object.assign({}, row);
+          this.editFormVisible = true;
+          this.editForm = Object.assign({}, row);
       },
       //编辑
       editSubmit: function () {
@@ -400,7 +401,8 @@
       var accessInfo = sessionStorage.getItem('access-user');
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
-        this.sysUserName = accessInfo.username || '';
+        this.sysUserName = accessInfo.username;
+        this.role = accessInfo.role;
       }
       this.getGroup();
     }

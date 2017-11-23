@@ -85,7 +85,7 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" sortable width="180rem" v-if="isBackupTask">
+        <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
@@ -94,6 +94,7 @@
             <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
             <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
+            <span v-else-if="scope.row.task.state == 'end'" style="color: green">已结束</span>
             <span v-else style="color: red">未知</span>
           </template>
         </el-table-column>
@@ -101,19 +102,19 @@
           label="任务进度"
           width="150rem">
           <template slot-scope="scope">
-            <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
+            <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column label="开始时间" sortable width="180rem">
           <template slot-scope="scope">
-            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column label="文件大小" width="100rem">
           <template slot-scope="scope">
-            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'">{{ scope.row.state.total_size | Bytes  }}</span>
+            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
             <span v-else>--</span>
           </template>
         </el-table-column>
@@ -321,7 +322,7 @@
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180">
+          <el-table-column label="操作" width="180" v-if="isBackupTask">
             <template scope="scope">
               <!--TODO:创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>

@@ -17,7 +17,7 @@
         <div class="toolbar" style="float:right;">
           <el-form :inline="true" :model="searchCmds">
             <el-form-item>
-              <el-input v-model="searchCmds.name" placeholder="姓名" style="min-width: 240px;"></el-input>
+              <el-input v-model="searchCmds.name" placeholder="用户名" style="min-width: 240px;"></el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="">查询</el-button>
