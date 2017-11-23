@@ -932,9 +932,9 @@
         reqGetTaskList(params).then((res) => {
           this.total = res.data.total;
           for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
+            this.tasks[i].task.state = res.data.tasks[i].task.state;
+            this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
             if (res.data.tasks[i].state){
-              this.tasks[i].task.state = res.data.tasks[i].task.state;
-              this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
               this.tasks[i].state.state = res.data.tasks[i].state.state;
               this.tasks.splice(i, {'state.state': res.data.tasks[i].state.state});
               this.tasks[i].state.process = res.data.tasks[i].state.process;
