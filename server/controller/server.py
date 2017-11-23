@@ -357,46 +357,44 @@ class Server:
             logger.error('msg error')
             return
         if msg['type'] == 'return':
-            with open('/home/python/test/return.txt','a') as fp:
-                fp.write('1\n')
-                dict=msg.get('data')
-                fp.write(str(dict))
-                fp.write('\n')
-                bk_value = {}
-                bk_value['id'] = dict.get('bk_id')
-                bk_value['task_id'] = dict.get('id')
-                typeofMessage=dict['sub']
-                if typeofMessage == 'frist':
-                    bk_value['start_time']=dict.get('start_time')
-                    bk_value['total_size'] = dict.get('total_size')
-                    bk_value['process'] = dict.get('process')
-                    bk_value['state'] = dict.get('state')
-                    try:
-                        bk = self.db.bk_create(super_context, bk_value)
-                        self.workstate_dict[dict['bk_id']] = 0
-                    except Exception,e:
-                        pass
-                    return
-                elif typeofMessage == 'run':
-                    bk_value['process'] = dict.get('process')
-                    bk_value['state'] = dict.get('state')
-                    if not self.workstate_dict.has_key(dict['bk_id']):
-                        return
-                    if self.workstate_dict[dict['bk_id']]>int(dict['process']):
-                        return
-                elif typeofMessage == 'last':
-                    bk_value['state'] = dict.get('state')
-                    bk_value['end_time'] = dict.get('end_time')
-                    bk_value['message'] = dict.get('errormessage')
-                    del self.workstate_dict[dict['bk_id']]
-                #if key == 'process':
-                #    if int(bk.process) < int(dict[key]):
-                #        return
+
+            dict=msg.get('data')
+            logger.debug(str(dict))
+            bk_value = {}
+            bk_value['id'] = dict.get('bk_id')
+            bk_value['task_id'] = dict.get('id')
+            typeofMessage=dict['sub']
+            if typeofMessage == 'frist':
+                bk_value['start_time']=dict.get('start_time')
+                bk_value['total_size'] = dict.get('total_size')
+                bk_value['process'] = dict.get('process')
+                bk_value['state'] = dict.get('state')
                 try:
-                    self.db.bk_update(super_context,bk_value)
+                    bk = self.db.bk_create(super_context, bk_value)
+                    self.workstate_dict[dict['bk_id']] = 0
                 except Exception,e:
                     pass
-                fp.write('4\n')
+                return
+            elif typeofMessage == 'run':
+                bk_value['process'] = dict.get('process')
+                bk_value['current_size'] = dict.get('current_size')
+                if not self.workstate_dict.has_key(dict['bk_id']):
+                    return
+                if self.workstate_dict[dict['bk_id']]>int(dict['process']):
+                    return
+            elif typeofMessage == 'last':
+                bk_value['state'] = dict.get('state')
+                bk_value['end_time'] = dict.get('end_time')
+                bk_value['message'] = dict.get('errormessage')
+                del self.workstate_dict[dict['bk_id']]
+            #if key == 'process':
+            #    if int(bk.process) < int(dict[key]):
+            #        return
+            try:
+                self.db.bk_update(super_context,bk_value)
+            except Exception,e:
+                pass
+
         elif msg['type'] == 'state':
             with open('/home/python/test/state.txt','a') as fp:
                 fp.write('1\n')
