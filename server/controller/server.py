@@ -105,7 +105,7 @@ class Server:
         try:
             self.message.issued(info)
         except Exception,e:
-            pass
+            logger.error(e.message)
 
     def delete(self,id):
         task = self.db.get_task(super_context,id)
@@ -118,11 +118,20 @@ class Server:
         info = {}
         info['data'] = data
         info['addr'] = addr
-        try:
-            self.message.issued(info)
-            self.db.update_task(super_context, task_value)
-        except Exception,e:
-            pass
+        if task.state == 'waiting' or task.state == 'running_w':
+            try:
+                self.message.issued(info)
+                self.db.update_task(super_context, task_value)
+            except Exception,e:
+                logger.error(e.message)
+        else:
+            try:
+                task_value['state'] = 'deleted'
+                task_value['deleted'] = 'deleted'
+                self.db.update_task(super_context, task_value)
+            except Exception,e:
+                logger.error(e.message)
+
 
     def resume(self,id):
         task = self.db.get_task(super_context,id)
