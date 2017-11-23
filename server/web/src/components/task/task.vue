@@ -85,7 +85,7 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略" sortable width="180rem" v-if="isBackupTask">
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
@@ -126,19 +126,24 @@
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s'">
+            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped'" >
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
                 <use xlink:href="#icon-exec"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="停止" placement="top" v-if="scope.row.task.state != 'stopped'"><!--没暂停就显示暂停按钮-->
+            <el-tooltip content="停止" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'"><!--没暂停就显示暂停按钮-->
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="恢复执行" placement="top" v-if="scope.row.task.state == 'stopped'">
+            <el-tooltip content="恢复任务" placement="top" v-if="scope.row.task.state == 'stopped'">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
                 <use xlink:href="#icon-recover"></use>
+              </svg>
+            </el-tooltip>
+            <el-tooltip content="重新下发" placement="top" v-if="scope.row.task.state != 'stopped' && scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting'">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
+                <use xlink:href="#icon-reload"></use>
               </svg>
             </el-tooltip>
           </template>
@@ -497,7 +502,6 @@
         reqGetTaskList(para).then((res) => {
           this.total = res.data.total;
           this.tasks = res.data.tasks;
-//          console.log(this.tasks);
           this.listLoading = false;
           //NProgress.done();
         }).catch(err=>{
@@ -578,7 +582,6 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-//        console.log(source,destination);
         row.task.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
@@ -929,16 +932,20 @@
           this.total = res.data.total;
           for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
             this.tasks[i].task.state = res.data.tasks[i].task.state;
-            if(res.data.tasks[i].state && res.data.tasks[i].state.state) {
-              this.tasks[i].state.state = res.data.tasks[i].state.state;
-              this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
-              this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
-            }
+            this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
+            this.tasks[i].state.state = res.data.tasks[i].state.state;
+            this.tasks.splice(i, {'state.state': res.data.tasks[i].state.state});
+            this.tasks[i].state.process = res.data.tasks[i].state.process;
+            this.tasks.splice(i, {'state.process': res.data.tasks[i].state.process});
+            this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
+            this.tasks.splice(i, {'state.start_time': res.data.tasks[i].state.start_time});
+            this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+            this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
           }
         },err => {
           console.log(error)
         });
-      },5000)
+      },3000)
     }
   }
 </script>
