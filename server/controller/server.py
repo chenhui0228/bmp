@@ -488,11 +488,12 @@ class Server:
                         date = eval(msg_data)
                         try:
                             self.pool.spawn_n(self.to_db,date)
-                            self.pool.waitall()
+
                         except Exception,e:
                             logger.error(e.message)
                             pass
                 else:
+                        self.pool.waitall()
                         self.message.con.wait(1)
                         self.message.con.release()
                 #time.sleep(1)
