@@ -619,7 +619,7 @@
               let para = Object.assign({}, this.editForm);
               if(para.type === "backup"){
                 para.source = 'file:/' + para.source;
-                para.destination = 'glusterfs://' + para.volumeName + para.destination;
+                para.destination = 'glusterfs://' + this.volumeName + para.destination;
               }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
