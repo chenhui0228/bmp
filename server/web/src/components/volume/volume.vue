@@ -11,11 +11,11 @@
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
-                   v-if="role== 'superrole'">
+                   v-if="role == 'admin' || role == 'superrole'">
           批量删除
         </el-button>
         <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
-                   v-if="role== 'superrole'">新建</el-button>
+                   v-if="role == 'admin' || role == 'superrole'">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>
@@ -38,7 +38,7 @@
         <!--</el-table-column>-->
         <el-table-column prop="description" label="描述">
         </el-table-column>
-        <el-table-column label="操作" width="250" v-if="role== 'superrole'">
+        <el-table-column label="操作" width="250" v-if="role == 'admin' || role== 'superrole'">
           <template slot-scope="scope">
             <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
               <use xlink:href="#icon-modify"></use>
