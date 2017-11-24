@@ -34,12 +34,12 @@
           <el-table-column prop="group" label="属组" width="240">
           </el-table-column>
           <el-table-column prop="created_at" label="创建时间" width="240" sortable>
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.created_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作">
-            <template scope="scope">
+            <template slot-scope="scope">
               <!--<el-button type="text" icon="information" @click=""></el-button>-->
               <svg class="icon" aria-hidden="true" @click="editUser(scope.$index,scope.row)">
                 <use xlink:href="#icon-modify"></use>

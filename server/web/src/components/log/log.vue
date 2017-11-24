@@ -14,9 +14,9 @@
     <el-col el-col :span="24" class="warp-main">
       <!--列表-->
       <el-table :data="OplogList" highlight-current-row v-loading="listLoading" style="width: 100%;" max-height="750">
-        <el-table-column prop="username" label="用户名"sortable>
+        <el-table-column prop="username" label="用户名" width="180rem">
         </el-table-column>
-        <el-table-column prop="created_at" label="时间" sortable>
+        <el-table-column prop="created_at" label="时间" width="180rem" sortable>
           <template slot-scope="scope">
             <span>{{ scope.row.created_at | dateStampFormat }}</span>
           </template>

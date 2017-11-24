@@ -34,38 +34,26 @@
       <el-table :data="workers" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
                 style="width: 100%;" max-height="750">
         <el-table-column type="selection"></el-table-column>
-        <!--<el-table-column type="index" width="60">-->
-        <!--</el-table-column>-->
-        <el-table-column type="expand">
-          <template slot-scope="props">
-            <el-form label-position="left" inline class="table-expand">
-              <el-form-item label="[主机描述]">
-                <span>{{ props.row.description }}</span>
-              </el-form-item>
-              <el-form-item label="[启动时间]">
-                <span>{{ props.row.start_at | timeStamp2datetime }}</span>
-              </el-form-item>
-              <el-form-item label="[软件版本号]">
-                <span>{{ props.row.version }}</span>
-              </el-form-item>
-            </el-form>
+        <el-table-column prop="name" label="主机名">
+        </el-table-column>
+        <el-table-column prop="ip" label="IP地址">
+        </el-table-column>
+        <el-table-column label="启动时间">
+          <template slot-scope="scope">
+            <span>{{ scope.row.start_at | timeStamp2datetime }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="name" label="主机名"sortable>
-        </el-table-column>
-        <el-table-column prop="ip" label="IP地址" sortable>
         </el-table-column>
         <el-table-column prop="status" label="状态">
         </el-table-column>
-        <el-table-column prop="owner" label="用户" sortable>
+        <el-table-column prop="owner" label="属组">
         </el-table-column>
-        <!--<el-table-column prop="description" label="描述" sortable>-->
-        <!--</el-table-column>-->
+        <el-table-column prop="version" label="软件版本">
+        </el-table-column>
         <el-table-column label="操作" width="200" v-if="role == 'admin' || role == 'superrole'">
           <template slot-scope="scope">
-            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
-              <use xlink:href="#icon-modify"></use>
-            </svg>
+            <!--<svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">-->
+              <!--<use xlink:href="#icon-modify"></use>-->
+            <!--</svg>-->
             <svg class="icon" aria-hidden="true" @click="delWorker(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
