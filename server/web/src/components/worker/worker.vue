@@ -57,7 +57,7 @@
         </el-table-column>
         <el-table-column prop="status" label="状态">
         </el-table-column>
-        <el-table-column prop="user.name" label="用户" sortable>
+        <el-table-column prop="owner" label="用户" sortable>
         </el-table-column>
         <!--<el-table-column prop="description" label="描述" sortable>-->
         <!--</el-table-column>-->
