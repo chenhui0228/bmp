@@ -63,6 +63,9 @@ class Work():
         if ret!=0:
             self.log.logger.error(ret)
 
+
+
+
     def do_mount(self):
         n=len(self.arglist['ip'])
         if os.path.ismount(self.mount_dir):
@@ -81,6 +84,7 @@ class Work():
                 except  Exception,e:
                     #print ("do mount failed %s"%e)
                     #self.send_bk('message',"do mount failed %s"%e)
+
                     self.log.logger.warning("do mount failed")
                     return -1
             except Exception,e:
@@ -296,8 +300,8 @@ class Work():
 
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
-            self.vfile = self.arglist['destination_address']
-            self.pfile = self.mount+'recover'+self.arglist['source_address']
+            self.vfile = self.mount+'recover'+self.arglist['destination_address']
+            self.pfile = self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
                 return

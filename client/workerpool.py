@@ -155,7 +155,6 @@ class Delete:
         self.id=kwargs.get('id')
 
     def do_mount(self):
-        def do_mount( self ):
             n = len(self.ip)
             if n==0:
                 return -1
