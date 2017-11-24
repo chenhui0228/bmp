@@ -5,8 +5,10 @@ from datetime import *
 import time
 from work import Work
 from message import Message
-
-
+import os
+import  ConfigParser
+import shutil
+import  uuid
 
 
 class WorkerPool(threading.Thread):
@@ -47,6 +49,16 @@ class WorkerPool(threading.Thread):
     当读写操作失败时的错误处理流程，暂时未添加
 
     """
+
+    def generate_uuid( dashed=True ):
+        """Creates a random uuid string.
+        :param dashed: Generate uuid with dashes or not
+        :type dashed: bool
+        :returns: string
+        """
+        if dashed:
+            return str(uuid.uuid4())
+        return uuid.uuid4().hex
 
     def get_threadID(self):
         return  self.threadID
@@ -106,6 +118,7 @@ class WorkerPool(threading.Thread):
             """
             self.arglist['confip'] = self.confip
             self.arglist['threadId'] = self.name
+            self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
                 self.send_ta(self.arglist['id'],'running_s')
             else:
@@ -114,7 +127,7 @@ class WorkerPool(threading.Thread):
 
             if not self.work:
                 self.log.logger.error('work create failed %s'% (self.threadID))
-            
+
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
@@ -129,3 +142,102 @@ class WorkerPool(threading.Thread):
             if res > 0:
                 #print("ahua!There are still %d tasks to do" % (res))
                 self.log.logger.warning("There are still %d tasks to do" % (res))
+
+
+class Delete:
+    def __init__(self,log,**kwargs):
+        self.log=log
+        self.duration = kwargs.get('duration')
+        self.vol = kwargs.get('vol')
+        self.dir = kwargs.get('dir')
+        self.ip = kwargs.get('ip')
+        self.name=kwargs.get('name')
+        self.id=kwargs.get('id')
+
+    def do_mount(self):
+            n = len(self.ip)
+            if n==0:
+                return -1
+            if os.path.ismount(self.mount_dir):
+                self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
+                return -1
+            while n > 0:
+                self.glusterip = self.ip[n - 1]
+                try:
+                    cmd = ("mount.glusterfs %s:/%s %s 2>/dev/null" % (self.glusterip, self.vol, self.mount_dir))
+                    try:
+                        ret = os.system(cmd)
+                        # print "do mount succeed"
+                        self.log.logger.info("do mount succeed")
+                        return 0
+                    except  Exception, e:
+                        # print ("do mount failed %s"%e)
+                        # self.send_bk('message',"do mount failed %s"%e)
+                        self.log.logger.warning("do mount failed%s"%e.message)
+                        return -1
+                except Exception, e:
+                    # print ("do mount failed %s"%e)
+                    # self.send_bk('message',"do mount failed %s"%e)
+                    self.log.logger.warning("do mount failed%s"%e.message)
+                    return -1
+                n = n - 1
+
+    def close(self):
+        try:
+            cmd = ('umount %s' % (self.mount_dir))
+            ret = os.system(cmd)
+           # print "do close succeed"
+            self.log.logger.info("do close succeed")
+            return 0
+        except Exception,e:
+           # print e
+            self.log.logger.error("do close failed %s"%e)
+            return -1
+
+    def delete(self):
+        tarfilename='%s_%s'%(self.name,self.id)
+        oldtime=self.get_oldtime(self.duration)
+        tardir=os.path.join(self.mount_dir,self.dir)
+        if not os.path.exists(tardir):
+            return 0
+        filename_list=os.listdir(tardir)
+        for filename in filename_list:
+            n=len(tarfilename)
+            if filename[0:n]==tarfilename:
+                if int(filename[n+1:n+9]) < oldtime:
+                    realdir=os.path.join(tardir,filename)
+                    try:
+                        shutil.rmtree(realdir)
+                    except Exception,e:
+                        self.log.logger.error(e.message)
+                        return -1
+        return 0
+
+
+    def get_oldtime(self,dt):
+        old= time.localtime(int(time.time())-24*3600*int(dt))
+        old_timeint=int(time.strftime("%Y%m%d", old))
+        return old_timeint
+
+    def start(self):
+        if int(self.duration)==-1:
+            return
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        self.mount = cp.get('client', 'mount_dir')
+        self.mount_dir = "%sdel/" % (self.mount)
+        ret = self.do_mount()
+        if ret !=0:
+            self.log.logger.error('delete mount failed')
+            return
+        ret = self.delete()
+        if ret !=0:
+            self.close()
+            self.log.logger.error('delete mount failed')
+            return
+        ret = self.close()
+        if ret !=0:
+            self.close()
+            self.log.logger.error('delete mount failed')
+        self.log.logger.info('delete work success')
+        return
