@@ -31,7 +31,7 @@ super_context = {
 }
 
 
-def translate_date(sub,start_time,every,weekdat):
+def translate_date(sub,start_time,every,weekday):
     timestamp = int(start_time)
     time_local = datetime.fromtimestamp(timestamp)
     dict={'run_sub':'date','year':'*','month':'*','day':'*', 'week':'*','day_of_week':'*','hour':'*','minute':'*','second':'*','start_date':'%s'%str(time_local)}
@@ -52,7 +52,7 @@ def translate_date(sub,start_time,every,weekdat):
         dict['second']=time_local.second
         dict['minute']=time_local.minute
         dict['hour'] = time_local.hour
-        dict['day_of_week']=weekdat
+        dict['day_of_week']=weekday
     elif sub=='monthly':
         dict['second']=time_local.second
         dict['minute']=time_local.minute
@@ -143,7 +143,7 @@ class Server:
             self.dump(id)
 
     def update_task(self,id,isRestart=False):
-        logger.debug('update_task start')
+        logger.debug('update_task start now')
         try:
             task = self.db.get_task(super_context,id)
             if task.state == 'stopped':
@@ -489,7 +489,6 @@ class Server:
                         try:
                             self.pool.spawn_n(self.to_db,date)
                             self.pool.waitall()
-                            logger.debug(str(self.pool.running()))
                         except Exception,e:
                             logger.error(e.message)
                             pass

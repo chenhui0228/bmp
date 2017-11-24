@@ -237,7 +237,6 @@ class Work():
             self.proctotal = self.get_file_size(self.pfile)
             if self.proctotal==0:
                 self.proctotal+=1
-            print self.proctotal
             start_time=time.time()
             timeArray = time.localtime(start_time)
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
@@ -264,7 +263,6 @@ class Work():
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
-            print "end do_cloes"
             if ret != 0:
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
@@ -299,7 +297,6 @@ class Work():
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
             self.vfile = self.arglist['destination_address']
-            print self.vfile
             self.pfile = self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
