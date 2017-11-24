@@ -8,6 +8,10 @@ from  log import MyLogging
 import ConfigParser
 
 def create_dir(path):
+    cp = ConfigParser.ConfigParser()
+    cp.read('/etc/SFbackup/client.conf')
+    usually_concurrent=int(cp.get('client', 'usually_concurrent'))
+    immediately_concurrent = int(cp.get('client', 'immediately_concurrent'))
     if not os.path.exists(path):  # 创建挂载的目录
         os.makedirs(path)
     for i in range(6):
@@ -21,6 +25,28 @@ def create_dir(path):
                     os.system(cmd)
                 except:
                     pass
+
+    del_path=os.path.join(path,'del')
+    if not os.path.exists(del_path):
+        try:
+            os.mkdir(new_path)
+        except:
+            try:
+                cmd = "umount %s" % new_path
+                os.system(cmd)
+            except:
+                pass
+
+    recover_path=os.path.join(path,'recover')
+    if not os.path.exists(recover_path):
+        try:
+            os.mkdir(new_path)
+        except:
+            try:
+                cmd = "umount %s" % new_path
+                os.system(cmd)
+            except:
+                pass
 
 if __name__ == '__main__':
     if not os.path.exists('/etc/SFbackup/client.conf'):
