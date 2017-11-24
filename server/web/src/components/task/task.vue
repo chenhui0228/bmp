@@ -102,20 +102,26 @@
           label="任务进度"
           width="150rem">
           <template slot-scope="scope">
+            <span v-if="scope.row.state">
             <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
+            </span>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column label="开始时间" sortable width="180rem">
           <template slot-scope="scope">
-            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+            <span v-if="scope.row.state">
+              <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+            </span>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column label="文件大小" width="100rem">
           <template slot-scope="scope">
+          <span v-if="scope.row.state">
             <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
             <span v-else>--</span>
+          </span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="">
