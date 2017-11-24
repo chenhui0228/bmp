@@ -191,7 +191,7 @@ class Daemon:
             dir=msg.get('destination_address')
             name=msg.get('name')
             id = msg.get('id')
-            if duration!=None and vol !=None and dir!=None:
+            if duration!=None or vol !=None or dir!=None:
                 t=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=self.glusterlist,name=name,id=id)
                 t.start()
 
@@ -276,7 +276,6 @@ class Daemon:
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'],'waiting')
         elif data['type'] == "update":
-            print "do revise"
             dict = data['data']
             self.log.logger.info('change a work,the id of it is %s'%dict['id'])
             ms = dict['id']

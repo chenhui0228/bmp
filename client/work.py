@@ -297,7 +297,7 @@ class Work():
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
             self.vfile = self.arglist['destination_address']
-            self.pfile = self.arglist['source_address']
+            self.pfile = self.mount+'recover'+self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
                 return

@@ -148,8 +148,8 @@ class Delete:
     def __init__(self,log,**kwargs):
         self.log=log
         self.duration = kwargs.get('duration')
-        self.vol = kwargs.get('destination_vol')
-        self.dir = kwargs.get('destination_address')
+        self.vol = kwargs.get('vol')
+        self.dir = kwargs.get('dir')
         self.ip = kwargs.get('ip')
         self.name=kwargs.get('name')
         self.id=kwargs.get('id')
@@ -199,13 +199,20 @@ class Delete:
         tarfilename='%s_%s'%(self.name,self.id)
         oldtime=self.get_oldtime(self.duration)
         tardir=os.path.join(self.mount_dir,self.dir)
+        if not os.path.exists(tardir):
+            return 0
         filename_list=os.listdir(tardir)
         for filename in filename_list:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
                 if int(filename[n+1:n+9]) < oldtime:
                     realdir=os.path.join(tardir,filename)
-                    shutil.rmtree(realdir)
+                    try:
+                        shutil.rmtree(realdir)
+                    except Exception,e:
+                        self.log.logger.error(e.message)
+                        return -1
+        return 0
 
 
     def get_oldtime(self,dt):
