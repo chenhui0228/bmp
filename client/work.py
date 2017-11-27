@@ -80,6 +80,7 @@ class Work():
                     ret = os.system(cmd)
                     #print "do mount succeed"
                     if ret!=0:
+                        self.errormessage='mount falied'
                         return -1
                     self.log.logger.info("do mount succeed")
                     return 0
@@ -105,9 +106,13 @@ class Work():
                 cmd = ("mkdir -p %s" % dir)
                 ret = os.system(cmd)
                # print "do mkidr succeed"
+                if ret!=0:
+                    self.errormessage='mkdir failed'
+                    return -1
                 self.log.logger.info("do mkdir succeed")
                 return 0
             except Exception,e:
+                self.errormessage =e.message
                # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
                 #self.send_bk('message',"do mkidr failed %s"%e)

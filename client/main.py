@@ -14,7 +14,7 @@ def create_dir(path):
     immediately_concurrent = int(cp.get('client', 'immediately_concurrent'))
     if not os.path.exists(path):  # 创建挂载的目录
         os.makedirs(path)
-    for i in range(6):
+    for i in range(usually_concurrent+immediately_concurrent):
         new_path=os.path.join(path,str(i))
         if not os.path.exists(new_path):
             try:
@@ -29,10 +29,10 @@ def create_dir(path):
     del_path=os.path.join(path,'del')
     if not os.path.exists(del_path):
         try:
-            os.mkdir(new_path)
+            os.mkdir(del_path)
         except:
             try:
-                cmd = "umount %s" % new_path
+                cmd = "umount %s" % del_path
                 os.system(cmd)
             except:
                 pass
@@ -40,10 +40,10 @@ def create_dir(path):
     recover_path=os.path.join(path,'recover')
     if not os.path.exists(recover_path):
         try:
-            os.mkdir(new_path)
+            os.mkdir(recover_path)
         except:
             try:
-                cmd = "umount %s" % new_path
+                cmd = "umount %s" % recover_path
                 os.system(cmd)
             except:
                 pass

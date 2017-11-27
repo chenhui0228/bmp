@@ -168,7 +168,9 @@ class Delete:
                     try:
                         ret = os.system(cmd)
                         # print "do mount succeed"
-                        self.log.logger.info("do mount succeed")
+                        if ret != 0:
+                            self.log.logger.error("do mount failed ")
+                            return -1
                         return 0
                     except  Exception, e:
                         # print ("do mount failed %s"%e)
@@ -187,6 +189,9 @@ class Delete:
             cmd = ('umount %s' % (self.mount_dir))
             ret = os.system(cmd)
            # print "do close succeed"
+            if ret !=0:
+                self.log.logger.error("do close failed" )
+                return -1
             self.log.logger.info("do close succeed")
             return 0
         except Exception,e:

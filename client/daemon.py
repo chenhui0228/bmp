@@ -206,7 +206,7 @@ class Daemon:
             self.log.logger.error('message send failed %s'%ret)
 
     def send_alive(self):
-        data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version, self.group)
+        data = "{'type': 'keepalive', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version, self.group)
         try:
             self.message.send(data)
         except Exception,e:
