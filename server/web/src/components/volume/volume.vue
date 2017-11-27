@@ -34,8 +34,6 @@
         </el-table-column>
         <el-table-column prop="name" label="卷名" sortable>
         </el-table-column>
-        <!--<el-table-column prop="worker" label="所属主机" sortable>-->
-        <!--</el-table-column>-->
         <el-table-column prop="description" label="描述">
         </el-table-column>
         <el-table-column label="操作" width="250" v-if="role== 'superrole'">
@@ -69,9 +67,6 @@
           <el-form-item prop="name" label="卷名">
             <el-input v-model="editForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <!--<el-form-item prop="worker" label="所属主机">-->
-          <!--<el-input v-model="editForm.worker" auto-complete="off"></el-input>-->
-          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -88,9 +83,6 @@
           <el-form-item prop="name" label="卷名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <!--<el-form-item prop="worker" label="所属主机">-->
-          <!--<el-input v-model="addForm.worker" auto-complete="off"></el-input>-->
-          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -134,9 +126,6 @@
           worker: [
             {required: true, message: '请输入角色', trigger: 'blur'}
           ],
-          description: [
-            {required: true, message: '请输入描述', trigger: 'blur'}
-          ]
         },
         editForm: {
           id: 0,

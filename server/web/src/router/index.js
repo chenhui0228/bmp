@@ -123,13 +123,13 @@ let router = new Router({
     {
       path: '/',
       component: Home,
-      name: '日志管理',
+      name: '日志信息',
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
       iconCls: '#icon-volume', // 图标样式class
       children: [
-        {path: '/log-manage', component: Log, name: '日志管理', menuShow: true}
+        {path: '/log', component: Log, name: '日志信息', menuShow: true}
       ]
     },
   ]

@@ -27,7 +27,7 @@
           <el-table-column type="selection" width="50">
           </el-table-column>
           <el-table-column type="expand">
-            <template scope="scope">
+            <template slot-scope="scope">
               <el-form label-position="right" inline class="table-expand" label-width="100px">
                 <el-form-item label="策略名">
                   <span>{{ scope.row.name }}</span>
@@ -72,7 +72,7 @@
           <el-table-column prop="name" label="策略名" width="240" sortable>
           </el-table-column>
           <el-table-column prop="recurring" label="重复策略" width="180">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span v-if="scope.row.recurring == 'once'">仅一次</span>
               <span v-else-if="scope.row.recurring == 'hourly'">小时</span>
               <span v-else-if="scope.row.recurring == 'daily'">天</span>
@@ -81,19 +81,19 @@
             </template>
           </el-table-column>
           <el-table-column prop="start_time" label="开始时间" width="240" sortable>
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="user" label="创建用户" width="240">
           </el-table-column>
           <el-table-column prop="created_at" label="创建时间" width="240" sortable>
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.created_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作">
-            <template scope="scope">
+            <template slot-scope="scope">
               <svg class="icon" aria-hidden="true" @click="editPolicy(scope.$index, scope.row)">
                 <use xlink:href="#icon-modify"></use>
               </svg>
@@ -125,7 +125,7 @@
     <el-dialog :title="dialogPolicyTitle" :visible.sync="dialogPolicyVisible" :close-on-click-modal="!dialogPolicyVisible" @close="cancelPolicyDialog">
       <el-form :model="policyBaseForm" :rules="policyRules" ref="policyBaseForm">
         <el-form-item prop="name" label="策略名" :label-width="formLabelWidth">
-          <el-input v-model="policyBaseForm.name" auto-complete="off"></el-input>
+          <el-input v-model="policyBaseForm.name" auto-complete="off" :disabled="!dialogNewPolicyVisible"></el-input>
         </el-form-item>
         <el-form-item label="描述" :label-width="formLabelWidth">
           <el-input v-model="policyBaseForm.description" auto-complete="off"></el-input>
@@ -409,11 +409,13 @@
       },
       newPolicy(){
         this.dialogNewPolicyVisible = true;
+        this.dialogEditPolicyVisible = false;
         this.initialPolicyForms();
         this.dialogPolicyTitle = '新建策略';
       },
       editPolicy(index, row){
         this.dialogEditPolicyVisible = true;
+        this.dialogNewPolicyVisible = false;
         this.dialogPolicyTitle = '修改策略';
         this.policy = row;
         this.policyBaseForm.name = row.name;

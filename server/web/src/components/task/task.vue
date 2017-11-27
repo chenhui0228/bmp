@@ -244,6 +244,14 @@
                 :value="policy.id">
               </el-option>
             </el-select>
+            <span v-for="policy in policies"
+                  v-if="addForm.policy_id == policy.id"
+                  style="margin-left:10px; color:#99a9bf">
+              <span v-for="group in groups"
+                    v-if="policy.group_id == group.id"
+                    style="margin-left:10px; color:#99a9bf">属组：{{ group.name }}
+              </span>
+            </span>
           </el-form-item>
           <el-form-item prop="worker" label="作业机">
             <el-select v-model="addForm.worker_id" placeholder="请选择">
@@ -294,27 +302,27 @@
                   border
                   style="margin: auto;">
           <el-table-column label="开始时间" width="180">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column label="结束时间" width="180">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.end_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column label="总大小" width="120">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.total_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="已备份" width="120">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.current_size | Bytes }}</span>
             </template>
           </el-table-column>
           <el-table-column label="更新时间" width="180">
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.updated_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
@@ -322,14 +330,16 @@
             <template slot-scope="scope">
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
-              <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">失败</span>
+              <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">
+                <el-button type="text" @click="failedMsgbox(scope.row)">失败</el-button>
+              </span>
               <el-progress v-else-if="scope.row && scope.row.process" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="180" v-if="isBackupTask">
-            <template scope="scope">
+            <template slot-scope="scope">
               <!--TODO:创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
             </template>
@@ -378,7 +388,7 @@
 </template>
 <script>
   import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
-    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail } from '../../api/api';
+    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList } from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
   export default {
@@ -460,6 +470,7 @@
         //操作按钮相关数据
         isPause: false,
         intervalTask: '',
+        groups: [],
       }
     },
     created() {
@@ -677,7 +688,17 @@
           this.volumeName = volume.name;
         }
       },
-
+      failedMsgbox(row){
+        var errMsg;
+        if(row.message){
+          errMsg = row.message;
+        }else{
+          errMsg = "未知错误";
+        }
+        this.$alert(errMsg,'错误日志',{
+          callback: action =>{}
+        });
+      },
       addSubmit: function () {
         this.$refs.addForm.validate((valid) => {
           if (valid) {
@@ -858,22 +879,10 @@
         }
         reqTaskAction(row.task.id, data, params, headers).then(res => {
           this.openMsg(info, 'success');
-          params.name = row.task.name;
+          params.task_id = row.task.id;
           reqGetTaskList(params).then(res =>{
             this.tasks[index] = res.data.tasks[0]
           })
-          /*
-          if (action == "start") {
-            if (row.task.state == "waiting") {
-              this.tasks[index].task.state = 'running_w'
-            }else if(row.task.state == "stopped"){
-              this.tasks[index].task.state = 'running_s'
-            }
-          } else if (action == "stop") {
-            this.tasks[index].task.state = 'stopped'
-          } else if (action == "resume") {
-            this.tasks[index].task.state = 'waiting'
-          }*/
         }, err => {
           if (err.response.status == 401) {
             this.openMsg('请重新登陆', 'error');
@@ -914,6 +923,9 @@
       reqGetWorkerList(para).then(res=>{
         this.workers = res.data.workers;
       });
+      reqGetGroupList(para).then(res=>{
+        this.groups = res.data.groups;
+      });
       reqGetVolumeList(para).then(res=>{
         this.volumes = res.data.volumes;
       });
@@ -937,22 +949,26 @@
         }
         reqGetTaskList(params).then((res) => {
           this.total = res.data.total;
-          for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
-            this.tasks[i].task.state = res.data.tasks[i].task.state;
-            this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
-            if (res.data.tasks[i].state){
-              this.tasks[i].state.state = res.data.tasks[i].state.state;
-              this.tasks.splice(i, {'state.state': res.data.tasks[i].state.state});
-              this.tasks[i].state.process = res.data.tasks[i].state.process;
-              this.tasks.splice(i, {'state.process': res.data.tasks[i].state.process});
-              this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
-              this.tasks.splice(i, {'state.start_time': res.data.tasks[i].state.start_time});
-              this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
-              this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
+          if(this.tasks.length != res.data.tasks.length){
+            this.tasks = res.data.tasks;
+          }else{
+            for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
+              this.tasks[i].task.state = res.data.tasks[i].task.state;
+              this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
+              if (res.data.tasks[i].state && this.tasks[i].state){
+                this.tasks[i].state.state = res.data.tasks[i].state.state;
+                this.tasks.splice(i, {'state.state': res.data.tasks[i].state.state});
+                this.tasks[i].state.process = res.data.tasks[i].state.process;
+                this.tasks.splice(i, {'state.process': res.data.tasks[i].state.process});
+                this.tasks[i].state.start_time = res.data.tasks[i].state.start_time;
+                this.tasks.splice(i, {'state.start_time': res.data.tasks[i].state.start_time});
+                this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
+                this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
+              }
             }
           }
         },err => {
-          console.log(error)
+          console.log(err)
         });
       },3000)
     }

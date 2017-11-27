@@ -35,7 +35,7 @@ module.exports = {
       {
         test: /\.js$/,
         loader: 'babel-loader',
-        include: [resolve('src'), resolve('test')]
+        include: [resolve('src'), resolve('test'),resolve('node_modules/element-ui/packages/col/src/col.js')]
       },
       {
         test: /\.(png|jpe?g|gif|svg)(\?.*)?$/,
