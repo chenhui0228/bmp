@@ -312,11 +312,18 @@
             if (this.dialogNewUserVisible){
                 console.log(params, this.user);
                 reqPostUser(params, this.user).then(res => {
-                  this.openMsg(this.dialogUserTitle+'成功', 'success');
-                  if(this.randomPassword){
-                    this.$alert(this.user.name+'的密码是' + this.user.password + '，登陆后可修改！', '用户密码', {
-                      confirmButtonText: '确定',
+                  if(res.data.exist && res.data.exist === 'True') {
+                    this.$message({
+                      message: `添加失败, 用户名 ${res.data.user.name} 已存在`,
+                      type: 'error'
                     });
+                  }else{
+                    this.openMsg(this.dialogUserTitle+'成功', 'success');
+                    if(this.randomPassword){
+                      this.$alert(this.user.name+'的密码是' + this.user.password + '，登陆后可修改！', '用户密码', {
+                        confirmButtonText: '确定',
+                      });
+                    }
                   }
                 },err => {
                   if (err.response.status == 401) {

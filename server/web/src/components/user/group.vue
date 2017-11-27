@@ -91,7 +91,7 @@
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="组名">
-            <el-input v-model="editForm.name" auto-complete="off"></el-input>
+            <el-input v-model="editForm.name" :disabled="true"></el-input>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
@@ -322,10 +322,17 @@
             reqAddGroup(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
-              this.$message({
-                message: '提交成功',
-                type: 'success'
-              });
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 组 ${res.data.group.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                this.$message({
+                  message: '添加成功',
+                  type: 'success'
+                });
+              }
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getGroup();

@@ -455,7 +455,14 @@
               };
               if (this.dialogNewPolicyVisible){
                 reqPostPolicy(params, this.policy).then(res => {
-                  this.openMsg(this.dialogPolicyTitle+'成功', 'success');
+                  if(res.data.exist && res.data.exist === 'True') {
+                    this.$message({
+                      message: `添加失败, 策略 ${res.data.policy.name} 已存在`,
+                      type: 'error'
+                    });
+                  }else{
+                    this.openMsg(this.dialogPolicyTitle+'成功', 'success');
+                  }
                 },err => {
                   if (err.response.status == 401) {
                     this.openMsg('请重新登陆', 'error');

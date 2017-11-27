@@ -307,11 +307,18 @@
             let para = Object.assign({}, this.addForm);
             reqAddWorker(user, para).then((res) => {
               this.addLoading = false;
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 主机 ${res.data.worker.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                this.$message({
+                  message: '添加成功',
+                  type: 'success'
+                });
+              }
               //NProgress.done();
-              this.$message({
-                message: '提交成功',
-                type: 'success'
-              });
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getWorker();
