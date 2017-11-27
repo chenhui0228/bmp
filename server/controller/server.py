@@ -498,7 +498,7 @@ class Server:
                 try:
                     self.db.update_worker(super_context,worker_value)
                 except Exception,e:
-                    pass
+                    logger.error(e.message)
                 info = {}
                 info['data'] = "{'type':'show'}"
                 info['addr'] = ('10.202.125.83',11111)

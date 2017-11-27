@@ -405,7 +405,7 @@ class Daemon:
         #self.delete_thread = threading.Thread(target=self.do_delete)
         #self.delete_thread.setDaemon(True)
         #self.delete_thread.start()
-    #    ret = self.scheduler.add_job(self.deleteBackupData, 'cron', hour='17', minute='2', second='0')
+        ret = self.scheduler.add_job(self.deleteBackupData, 'cron', hour='0', minute='0', second='0')
         self.scheduler.start()
         #print "start threadpool over"
         self.log.logger.debug("start threadpool over")
