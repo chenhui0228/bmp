@@ -79,19 +79,71 @@ class Server:
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/SFbackup/client.conf')
         self.port = cp.get('server', 'port')
+        self.timer_interval =int(cp.get('server','timer_interval'))
         self.workstate_dict={}
         try:
             self.listen_thread = threading.Thread(target=self.listen)
         except Exception,e:
-            with open('/home/python/test/name.txt', 'a') as fp:
-                fp.write(e.message)
-        with open('/home/python/test/name.txt','a') as fp:
-            fp.write(self.listen_thread.name)
+            logger.error(e.message)
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
         self.pool = eventlet.GreenPool(10000)
-        with open('/home/python/test/name.txt','a') as fp:
-            fp.write('ok\n')
+        self.lock=Lock()
+        self.workeralivedict={}
+        self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.start()
+
+
+    def keeplaive(self):
+        logger.debug('start sned keepalive %s'%str(self.workstate_dict))
+        workers=self.db.get_workers(super_context)
+        workersnum=workers[1]
+        workerslist=workers[0]
+        for i in range(workersnum):
+            worker=workerslist[i]
+            worker_id=worker.id
+            worker_ip=worker.ip
+            data = "{'type':'keepalive'}"
+            info = {}
+            addr=(worker.ip, int(self.port))
+            info['data'] = data
+            info['addr'] = addr
+            if self.workeralivedict.has_key(worker_id):
+                if worker.status == 'Active':
+                    self.lock.acquire()
+                    self.workeralivedict[worker_id]+=1
+                    self.lock.release()
+                    if self.workeralivedict[worker_id]>=4:
+                        worker_value={}
+                        worker_value['id']=worker.id
+                        worker_value['status']='Offline'
+                        try:
+                            self.db.update_worker(super_context, worker_value)
+                        except Exception,e:
+                            logger.error(e.message)
+                        logger.warning('the worker %s is onffline'%worker.id)
+                elif worker.status == 'Offline':
+                    if self.workeralivedict[worker_id]<4:
+                        worker_value={}
+                        worker_value['id']=worker.id
+                        worker_value['status']='Active'
+                        try:
+                            self.db.update_worker(super_context, worker_value)
+                        except Exception,e:
+                            logger.error(e.message)
+                self.message.issued(info)
+            else:
+                self.lock.acquire()
+                self.workeralivedict[worker_id] =0
+                self.lock.release()
+                self.message.issued(info)
+        self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.start()
+
+
+
+
+
 
 
     def stop(self,id):
@@ -252,7 +304,6 @@ class Server:
 
 
 
-
     def backup(self,id,do_type=False):
         try:
             task = self.db.get_task(super_context,id)
@@ -360,6 +411,9 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
+    def revckeepalive(self):
+        pass
+
 
     def to_db(self,msg):
         logger.debug('to_db start')
@@ -367,7 +421,6 @@ class Server:
             logger.error('msg error')
             return
         if msg['type'] == 'return':
-
             dict=msg.get('data')
             logger.debug(str(dict))
             bk_value = {}
@@ -426,7 +479,10 @@ class Server:
                 fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
-            workers=self.db.get_workers(super_context,name=dict['hostname'],group_id=dict['group'],worker_ip=dict['ip'])[0]
+            try:
+                workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
+            except Exception,e:
+                logger.error(e.message)
             if len(workers)==1:
                 logger.debug('get worker')
                 worker=workers[0]
@@ -434,11 +490,13 @@ class Server:
                 worker_value['id'] = worker.id
                 worker_value['ip'] = dict['ip']
                 worker_value['version'] = dict['version']
-                worker_value['group_id'] =dict['group']
+                group=self.db.group_get_by_name(super_context,dict['group'])
+                worker_value['group_id'] =group.id
+                worker_value['group_name'] = group.name
                 worker_value['status'] = 'Active'
                 worker_value['start_at'] = str(time.time())
                 try:
-                    self.db.update_worker(super_context,worker_value,True)
+                    self.db.update_worker(super_context,worker_value)
                 except Exception,e:
                     pass
                 info = {}
@@ -457,18 +515,30 @@ class Server:
                 worker_value['name']=dict['hostname']
                 worker_value['ip']=dict['ip']
                 worker_value['version'] = dict['version']
-                worker_value['group_id'] =dict['group']
-                worker_value['owner']=  'robot'
+                group=self.db.group_get_by_name(super_context,dict['group'])
+                worker_value['group_id'] =group.id
+                worker_value['group_name']=  group.name
                 worker_value['status'] = 'Active'
                 worker_value['start_at'] = str(time.time())
                 try:
                     worker=self.db.create_worker(super_context,worker_value)
                 except Exception ,e:
                     logger.error(e.message)
-
             else:
                 logger.error('more than one client has same information')
-
+        elif msg['type'] == 'keepalive':
+            try:
+                workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
+            except Exception,e:
+                logger.error(e.message)
+            if  len(workers) == 1:
+                worker=workers[0]
+                if self.workeralivedict.has_key(worker.id):
+                    self.lock.acquire()
+                    self.workeralivedict[worker.id]=0
+                    self.lock.release()
+            else:
+                logger.error('more than one client has same information')
 
 
 
@@ -488,12 +558,12 @@ class Server:
                         date = eval(msg_data)
                         try:
                             self.pool.spawn_n(self.to_db,date)
-
+                            self.pool.waitall()
                         except Exception,e:
                             logger.error(e.message)
                             pass
                 else:
-                        self.pool.waitall()
+
                         self.message.con.wait(1)
                         self.message.con.release()
                 #time.sleep(1)

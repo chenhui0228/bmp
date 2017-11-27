@@ -205,6 +205,12 @@ class Daemon:
         if ret!=0:
             self.log.logger.error('message send failed %s'%ret)
 
+    def send_alive(self):
+        data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version, self.group)
+        try:
+            self.message.send(data)
+        except Exception,e:
+            self.log.logger.error(e.message)
 
     def _timer_func( self ):
         # print "timer running at:",datetime.now()
@@ -294,7 +300,6 @@ class Daemon:
                     pass
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
             dict=data['data']
@@ -338,6 +343,9 @@ class Daemon:
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
+        elif data['type'] == 'keepalive':
+            self.log.logger.info('keepalive')
+            self.send_alive()
         else:
             self.log.logger.error("get some messages which is to server")
 

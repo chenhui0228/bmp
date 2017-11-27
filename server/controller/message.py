@@ -210,21 +210,4 @@ class Message:
             # server.shutdown()
 
 
-# class BackupClient(Message):
 
-
-'''
-if __name__ == '__main__':
-    ms=Message("tcp")
-    ms.start_server()
-    # ===============for test========
-    addr=('10.202.14.197',1024)
-    data="test client is ok?"
-    info={}
-    info['data']=data
-    info['addr']=addr
-    #ms.send(info)
-    #===============================
-    while True:
-        pass
-'''

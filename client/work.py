@@ -79,12 +79,13 @@ class Work():
                 try:
                     ret = os.system(cmd)
                     #print "do mount succeed"
+                    if ret!=0:
+                        return -1
                     self.log.logger.info("do mount succeed")
                     return 0
                 except  Exception,e:
                     #print ("do mount failed %s"%e)
                     #self.send_bk('message',"do mount failed %s"%e)
-
                     self.log.logger.warning("do mount failed")
                     return -1
             except Exception,e:
