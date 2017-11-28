@@ -91,11 +91,12 @@ class Server:
         self.lock=Lock()
         self.workeralivedict={}
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.setDaemon(True)
         self.t.start()
 
 
     def keeplaive(self):
-        logger.debug('start sned keepalive %s'%str(self.workstate_dict))
+        logger.debug('start sned keepalive %s'%str(self.workeralivedict))
         workers=self.db.get_workers(super_context)
         workersnum=workers[1]
         workerslist=workers[0]
@@ -123,7 +124,7 @@ class Server:
                             logger.error(e.message)
                         logger.warning('the worker %s is onffline'%worker.id)
                 elif worker.status == 'Offline':
-                    if self.workeralivedict[worker_id]<4:
+                    if self.workeralivedict[worker_id]<1:
                         worker_value={}
                         worker_value['id']=worker.id
                         worker_value['status']='Active'
@@ -136,8 +137,10 @@ class Server:
                 self.lock.acquire()
                 self.workeralivedict[worker_id] =0
                 self.lock.release()
+                logger.info('workeralivedict add one')
                 self.message.issued(info)
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.setDaemon(True)
         self.t.start()
 
 
@@ -436,7 +439,7 @@ class Server:
                     bk = self.db.bk_create(super_context, bk_value)
                     self.workstate_dict[dict['bk_id']] = 0
                 except Exception,e:
-                    pass
+                    logger.error(e.message)
                 return
             elif typeofMessage == 'run':
                 bk_value['process'] = dict.get('process')
@@ -450,33 +453,40 @@ class Server:
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('errormessage')
                 del self.workstate_dict[dict['bk_id']]
+            elif typeofMessage== 'delete':
+                logger.info('delete a kackupstate which id is')
+                backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
+                for line in backupstate_list:
+                    logger.info(line.id)
+                    if line.start_time == dict['start_time']:
+                        logger.info('find backupstate')
+                        try:
+                            self.db.bk_delete(super_context, line.id)
+                        except Exception, e:
+                            logger.error(e.message)
+                        logger.info(str(bk_value))
+                        return
             #if key == 'process':
             #    if int(bk.process) < int(dict[key]):
             #        return
             try:
                 self.db.bk_update(super_context,bk_value)
             except Exception,e:
-                pass
+                logger.error(e.message)
 
         elif msg['type'] == 'state':
-            with open('/home/python/test/state.txt','a') as fp:
-                fp.write('1\n')
                 dict = msg['data']
-                fp.write(str(dict))
-                fp.write('\n')
                 try:
                     task=self.db.get_task(super_context,dict['id'])
-                    fp.write('2\n')
                     task_dict={}
                     task_dict['id']=dict['id']
                     task_dict['state']=dict['state']
                     if dict['state'] == 'deleted':
                         task_dict['deleted'] == 'deleted'
                     self.db.update_task(super_context,task_dict)
-                    fp.write('3\n')
+                    logger.info('change task state')
                 except:
                     pass
-                fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
             try:
@@ -527,6 +537,7 @@ class Server:
             else:
                 logger.error('more than one client has same information')
         elif msg['type'] == 'keepalive':
+            dict = msg['data']
             try:
                 workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
             except Exception,e:
@@ -537,8 +548,9 @@ class Server:
                     self.lock.acquire()
                     self.workeralivedict[worker.id]=0
                     self.lock.release()
+                    logger.info('the worker is alive which id is %s'%worker.id)
             else:
-                logger.error('more than one client has same information')
+                logger.error('more than one client has same information or has no client')
 
 
 

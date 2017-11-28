@@ -11,6 +11,12 @@
     margin-bottom: 0;
     width: 46%;
   }
+  .custom_size .el-dialog {
+    width: 85%;
+  }
+  .el-table-row {
+    cursor: pointer;
+  }
 </style>
 <template>
   <el-row class="warp">
@@ -51,7 +57,8 @@
                 v-loading="listLoading"
                 @selection-change="selsChange"
                 @row-dblclick="taskStateDetail"
-                style="width: 100%;" max-height="750">
+                style="width: 100%;" max-height="750"
+                row-class-name="el-table-row">
         <el-table-column type="selection"></el-table-column>
         <el-table-column type="expand">
           <template slot-scope="props">
@@ -83,7 +90,7 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
+        <el-table-column prop="task.name" label="任务名"sortable width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
         <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
@@ -281,7 +288,9 @@
             </el-select>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="addForm.destination" auto-complete="off"></el-input>
+            <el-input v-model="addForm.destination" auto-complete="off">
+              <!--<template slot="prepend">{{ destination_prefix}}</template>-->
+            </el-input>
           </el-form-item>
           <el-form-item prop="script_path" label="脚本地址">
             <el-input v-model="addForm.script_path" auto-complete="off"></el-input>
@@ -297,16 +306,16 @@
       </el-dialog>
 
       <!--任务状态框-->
-      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
+      <el-dialog  class="custom_size" :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
         <el-table :data="taskStates"
                   border
                   style="margin: auto;">
-          <el-table-column label="开始时间" width="180">
+          <el-table-column label="开始时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="结束时间" width="180">
+          <el-table-column label="结束时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.end_time | timeStamp2datetime }}</span>
             </template>
@@ -321,12 +330,12 @@
               <span>{{ scope.row.current_size | Bytes }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="更新时间" width="180">
+          <el-table-column label="更新时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.updated_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="任务状态" min-width="180">
+          <el-table-column label="任务状态" width="180">
             <template slot-scope="scope">
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
@@ -338,7 +347,7 @@
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" v-if="isBackupTask">
+          <el-table-column label="操作" min-width="180" v-if="isBackupTask">
             <template slot-scope="scope">
               <!--TODO:创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
@@ -352,7 +361,8 @@
           :page-sizes="[10, 15]"
           :page-size="taskStateFilter.per_page"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="taskState_total_rows">
+          :total="taskState_total_rows"
+          style="margin: 5px;float: right;">
         </el-pagination>
       </el-dialog>
 
@@ -400,6 +410,8 @@
         },
         listLoading: false,
         isBackupTask:true,
+//        destination_prefix: 'glusterfs://',
+        taskname_label_width: '180rem',
         tasks:[],
         total: 0,
         page: 1,
@@ -488,9 +500,11 @@
         if(tag.index === '1') {
           this.task_type = 'recover';
           this.isBackupTask = false;
+          this.taskname_label_width = '250rem';
           this.getTasks('recover');
         }else{
           this.task_type = 'backup';
+          this.taskname_label_width = '180rem';
           this.isBackupTask = true;
           this.getTasks();
         }
@@ -542,7 +556,7 @@
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
         this.createRecoverTaskFormVisible = true;
-        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmm');
+        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmmss');
         let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
         let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
         let source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
@@ -588,10 +602,13 @@
         let desArr = destination.split('/');
         let volumeName = desArr[2];
         //destination = destination.match(/\/(\S*)/)[1];
-        let volume = {};
-        volume = this.volumes.find((volume)=>{
+        let volume = this.volumes.find((volume)=>{
           return volume.name === volumeName;
         });
+        if(!volume) {
+//          console.log('volume is null');
+          volume = this.volumes[0];
+        }
         if(row.task.type === 'backup'){
           source = source.replace(/file:\//i,'');
           var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
@@ -600,8 +617,10 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-        row.task.volumeName = volume.name;
-        row.task.volume_id = volume.id;
+        if(volume) {
+          this.volumeName = volume.name;
+          row.task.volume_id = volume.id;
+        }
         row.task.source = source;
         row.task.destination = destination;
       },
@@ -679,13 +698,14 @@
         this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
-        console.log(value);
+//        console.log(value);
+//        this.destination_prefix = "glusterfs://";
         if(typeof(value) !== "undefined"){
-          let volume = {};
-          volume = this.volumes.find((volume)=>{
+          let volume = this.volumes.find((volume)=>{
             return volume.id === value;
           });
           this.volumeName = volume.name;
+//          this.destination_prefix = this.destination_prefix + this.volumeName;
         }
       },
       failedMsgbox(row){
@@ -715,8 +735,6 @@
               para.source = 'file:/' + para.source;
               para.destination = 'glusterfs://' + this.volumeName + para.destination;
             }
-//            console.log("!!!####!!!");
-//            console.log(para);
 
             reqAddTask(user, para).then((res) => {
               this.addLoading = false;

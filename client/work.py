@@ -247,10 +247,10 @@ class Work():
             self.proctotal = self.get_file_size(self.pfile)
             if self.proctotal==0:
                 self.proctotal+=1
-            start_time=time.time()
+            start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
-            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M", timeArray) + "/"  # 添加时间戳
+            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
 
@@ -258,22 +258,26 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 #print "mount failed"
+                self.errormessage = 'mount failed'
                 self.send_bk('last', state='failed',end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "mkdir failed"
+                self.errormessage = 'mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "work failed"
+                self.errormessage = 'backup failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             if ret != 0:
+                self.errormessage = 'umont failed'
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
@@ -286,17 +290,20 @@ class Work():
             path=self.arglist['script']
             ret = self.do_mount()
             if ret != 0:
+                self.errormessage = 'mount failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret=os.system(path)
             if ret!=0:
                 self.do_close()
+                self.errormessage = 'dump failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
                 time.sleep(2)
+                self.errormessage = 'umount failed'
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
@@ -318,17 +325,20 @@ class Work():
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 self.do_close()
+                self.errormessage='mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             #self.vfile=os.path.join(self.vfile)
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
+                self.errormessage = 'recover failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             time.sleep(2)
             ret = self.do_close()
             if ret != 0:
+                self.errormessage = 'umont failed'
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
