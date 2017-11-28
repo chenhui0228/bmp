@@ -153,6 +153,22 @@ class Delete:
         self.ip = kwargs.get('ip')
         self.name=kwargs.get('name')
         self.id=kwargs.get('id')
+        ms = Message("tcp")
+        self.message=ms
+
+    def send_bk(self,sub,**kwargs):
+        data={}
+        data['type']='return'
+        dict={}
+        data['data']=dict
+        dict['sub']=sub
+        dict['id']=kwargs['id']
+        dict['name'] = kwargs['name']
+        dict['start_time'] = kwargs['start_time']
+
+        ret=self.message.send(str(data))
+        if ret!=0:
+            self.log.logger.error(ret)
 
     def do_mount(self):
             n = len(self.ip)
@@ -211,8 +227,10 @@ class Delete:
             if filename[0:n]==tarfilename:
                 if int(filename[n+1:n+9]) < oldtime:
                     realdir=os.path.join(tardir,filename)
+                    start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
                         shutil.rmtree(realdir)
+                        self.send_bk('delete',start_time=start_time,id=self.id,name=self.name)
                     except Exception,e:
                         self.log.logger.error(e.message)
                         return -1
@@ -245,4 +263,5 @@ class Delete:
             self.close()
             self.log.logger.error('delete mount failed')
         self.log.logger.info('delete work success')
+
         return

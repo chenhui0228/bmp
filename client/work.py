@@ -247,10 +247,10 @@ class Work():
             self.proctotal = self.get_file_size(self.pfile)
             if self.proctotal==0:
                 self.proctotal+=1
-            start_time=time.time()
+            start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
-            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M", timeArray) + "/"  # 添加时间戳
+            self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
 

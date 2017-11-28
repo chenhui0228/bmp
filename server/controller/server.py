@@ -436,7 +436,7 @@ class Server:
                     bk = self.db.bk_create(super_context, bk_value)
                     self.workstate_dict[dict['bk_id']] = 0
                 except Exception,e:
-                    pass
+                    logger.error(e.message)
                 return
             elif typeofMessage == 'run':
                 bk_value['process'] = dict.get('process')
@@ -450,13 +450,26 @@ class Server:
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('errormessage')
                 del self.workstate_dict[dict['bk_id']]
+            elif typeofMessage== 'delete':
+                logger.info('delete a kackupstate which id is')
+                backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
+                for line in backupstate_list:
+                    logger.info(line.id)
+                    if line.start_time == dict['start_time']:
+                        logger.info('find backupstate')
+                        try:
+                            self.db.bk_delete(super_context, line.id)
+                        except Exception, e:
+                            logger.error(e.message)
+                        logger.info(str(bk_value))
+                        return
             #if key == 'process':
             #    if int(bk.process) < int(dict[key]):
             #        return
             try:
                 self.db.bk_update(super_context,bk_value)
             except Exception,e:
-                pass
+                logger.error(e.message)
 
         elif msg['type'] == 'state':
             with open('/home/python/test/state.txt','a') as fp:
