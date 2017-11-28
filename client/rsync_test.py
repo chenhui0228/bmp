@@ -3,32 +3,25 @@
 import os
 import time
 import subprocess
-size=4189598250
-write_all=0
-write_old=0
-write_now=0
-#f = os.popen("rsync -avlP /usr/include /mnt/sdb 2>&1")
-cmd="rsync -avlP /zyt/bigbig.txt /zyt/"
-fp=open('/tmp/1','w+')
-process = subprocess.Popen(cmd, shell=True,stdout = fp)
+
+import threading
+def asd():
+    print 'asd'
+    timer=threading.Timer(2.0,asd)
+    timer.setDaemon(True)
+    timer.start()
+
+timer=threading.Timer(2.0,asd)
+timer.setDaemon(True)
+
+timer.start()
 while True:
-        lines = fp.readlines()
-        for line in lines:
-            s=line
-            if len(s)<=1:
-                continue
-            list=s.split()
-            if list[0].isdigit():
-                write_old=write_now
-                write_now=int(list[0])
-                write_all=write_all+(write_now-write_old)
-                print 'the size of file is %d'%(int((write_all*100)/size))
-            else:
-                write_old = 0
-                write_now = 0
-        if process.poll()==0:
-            break
-        #fp.truncate()
-fp.close()
-print 'finished'
+    time.sleep(1)
+
+
+
+
+
+
+
 
