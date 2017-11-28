@@ -8,17 +8,19 @@
     </el-col>
 
     <el-col :span="24" class="warp-main">
-      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="新密码" prop="newPwd">
-          <el-input type="password" v-model="form.newPwd"></el-input>
-        </el-form-item>
-        <el-form-item label="确认新密码" prop="confirmPwd">
-          <el-input type="password" v-model="form.confirmPwd"></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="default" @click="submitUserProfile">提交</el-button>
-        </el-form-item>
-      </el-form>
+      <div style="width:25rem;">
+        <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+          <el-form-item label="新密码" prop="newPwd">
+            <el-input type="password" v-model="form.newPwd"></el-input>
+          </el-form-item>
+          <el-form-item label="确认新密码" prop="confirmPwd">
+            <el-input type="password" v-model="form.confirmPwd"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="default" @click="submitUserProfile">提交</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </el-col>
   </el-row>
 </template>

@@ -11,6 +11,12 @@
     margin-bottom: 0;
     width: 46%;
   }
+  .custom_size .el-dialog {
+    width: 85%;
+  }
+  .el-table-row {
+    cursor: pointer;
+  }
 </style>
 <template>
   <el-row class="warp">
@@ -51,7 +57,8 @@
                 v-loading="listLoading"
                 @selection-change="selsChange"
                 @row-dblclick="taskStateDetail"
-                style="width: 100%;" max-height="750">
+                style="width: 100%;" max-height="750"
+                row-class-name="el-table-row">
         <el-table-column type="selection"></el-table-column>
         <el-table-column type="expand">
           <template slot-scope="props">
@@ -281,7 +288,9 @@
             </el-select>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="addForm.destination" auto-complete="off"></el-input>
+            <el-input v-model="addForm.destination" auto-complete="off">
+              <!--<template slot="prepend">{{ destination_prefix}}</template>-->
+            </el-input>
           </el-form-item>
           <el-form-item prop="script_path" label="脚本地址">
             <el-input v-model="addForm.script_path" auto-complete="off"></el-input>
@@ -297,16 +306,16 @@
       </el-dialog>
 
       <!--任务状态框-->
-      <el-dialog :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
+      <el-dialog  class="custom_size" :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
         <el-table :data="taskStates"
                   border
                   style="margin: auto;">
-          <el-table-column label="开始时间" width="180">
+          <el-table-column label="开始时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="结束时间" width="180">
+          <el-table-column label="结束时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.end_time | timeStamp2datetime }}</span>
             </template>
@@ -321,12 +330,12 @@
               <span>{{ scope.row.current_size | Bytes }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="更新时间" width="180">
+          <el-table-column label="更新时间" width="200">
             <template slot-scope="scope">
               <span>{{ scope.row.updated_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="任务状态" min-width="180">
+          <el-table-column label="任务状态" width="180">
             <template slot-scope="scope">
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
@@ -338,7 +347,7 @@
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" v-if="isBackupTask">
+          <el-table-column label="操作" min-width="180" v-if="isBackupTask">
             <template slot-scope="scope">
               <!--TODO:创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
@@ -352,7 +361,8 @@
           :page-sizes="[10, 15]"
           :page-size="taskStateFilter.per_page"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="taskState_total_rows">
+          :total="taskState_total_rows"
+          style="margin: 5px;float: right;">
         </el-pagination>
       </el-dialog>
 
@@ -400,6 +410,7 @@
         },
         listLoading: false,
         isBackupTask:true,
+//        destination_prefix: 'glusterfs://',
         taskname_label_width: '180rem',
         tasks:[],
         total: 0,
@@ -606,8 +617,10 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-        this.volumeName = volume.name;
-        row.task.volume_id = volume.id;
+        if(volume) {
+          this.volumeName = volume.name;
+          row.task.volume_id = volume.id;
+        }
         row.task.source = source;
         row.task.destination = destination;
       },
@@ -686,11 +699,13 @@
       },
       handleChange: function (value) {
 //        console.log(value);
+//        this.destination_prefix = "glusterfs://";
         if(typeof(value) !== "undefined"){
           let volume = this.volumes.find((volume)=>{
             return volume.id === value;
           });
           this.volumeName = volume.name;
+//          this.destination_prefix = this.destination_prefix + this.volumeName;
         }
       },
       failedMsgbox(row){
