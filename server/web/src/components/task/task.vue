@@ -83,7 +83,7 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="task.name" label="任务名"sortable width="180rem" show-overflow-tooltip>
+        <el-table-column prop="task.name" label="任务名"sortable width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
         <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
@@ -400,6 +400,7 @@
         },
         listLoading: false,
         isBackupTask:true,
+        taskname_label_width: '180rem',
         tasks:[],
         total: 0,
         page: 1,
@@ -488,9 +489,11 @@
         if(tag.index === '1') {
           this.task_type = 'recover';
           this.isBackupTask = false;
+          this.taskname_label_width = '250rem';
           this.getTasks('recover');
         }else{
           this.task_type = 'backup';
+          this.taskname_label_width = '180rem';
           this.isBackupTask = true;
           this.getTasks();
         }
@@ -588,10 +591,13 @@
         let desArr = destination.split('/');
         let volumeName = desArr[2];
         //destination = destination.match(/\/(\S*)/)[1];
-        let volume = {};
-        volume = this.volumes.find((volume)=>{
+        let volume = this.volumes.find((volume)=>{
           return volume.name === volumeName;
         });
+        if(!volume) {
+//          console.log('volume is null');
+          volume = this.volumes[0];
+        }
         if(row.task.type === 'backup'){
           source = source.replace(/file:\//i,'');
           var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
@@ -600,7 +606,7 @@
           source = source.replace(/glusterfs:\//i,'');
           destination = destination.replace(/file:\//i,'');
         }
-        row.task.volumeName = volume.name;
+        this.volumeName = volume.name;
         row.task.volume_id = volume.id;
         row.task.source = source;
         row.task.destination = destination;
@@ -679,10 +685,9 @@
         this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
-        console.log(value);
+//        console.log(value);
         if(typeof(value) !== "undefined"){
-          let volume = {};
-          volume = this.volumes.find((volume)=>{
+          let volume = this.volumes.find((volume)=>{
             return volume.id === value;
           });
           this.volumeName = volume.name;
@@ -715,8 +720,6 @@
               para.source = 'file:/' + para.source;
               para.destination = 'glusterfs://' + this.volumeName + para.destination;
             }
-//            console.log("!!!####!!!");
-//            console.log(para);
 
             reqAddTask(user, para).then((res) => {
               this.addLoading = false;
