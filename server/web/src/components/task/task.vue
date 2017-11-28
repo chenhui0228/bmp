@@ -14,8 +14,11 @@
   .custom_size .el-dialog {
     width: 85%;
   }
-  .el-table-row {
+  .el-table-backup {
     cursor: pointer;
+  }
+  .el-table-recover {
+    cursor: default;
   }
 </style>
 <template>
@@ -58,7 +61,7 @@
                 @selection-change="selsChange"
                 @row-dblclick="taskStateDetail"
                 style="width: 100%;" max-height="750"
-                row-class-name="el-table-row">
+                :row-class-name="tableRowClassName">
         <el-table-column type="selection"></el-table-column>
         <el-table-column type="expand">
           <template slot-scope="props">
@@ -519,6 +522,14 @@
         //console.log(`每页 ${val} 条`)
         this.per_page = val;
         this.getTasks(this.task_type);
+      },
+      tableRowClassName: function(){
+        if(this.isBackupTask)
+        {
+          return 'el-table-backup';
+        }else {
+          return 'el-table-recover';
+        }
       },
       //获取任务列表
       getTasks: function (type='backup') {
