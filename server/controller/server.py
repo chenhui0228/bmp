@@ -91,11 +91,12 @@ class Server:
         self.lock=Lock()
         self.workeralivedict={}
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.setDaemon(True)
         self.t.start()
 
 
     def keeplaive(self):
-        logger.debug('start sned keepalive %s'%str(self.workstate_dict))
+        logger.debug('start sned keepalive %s'%str(self.workeralivedict))
         workers=self.db.get_workers(super_context)
         workersnum=workers[1]
         workerslist=workers[0]
@@ -123,7 +124,7 @@ class Server:
                             logger.error(e.message)
                         logger.warning('the worker %s is onffline'%worker.id)
                 elif worker.status == 'Offline':
-                    if self.workeralivedict[worker_id]<4:
+                    if self.workeralivedict[worker_id]<1:
                         worker_value={}
                         worker_value['id']=worker.id
                         worker_value['status']='Active'
@@ -136,8 +137,10 @@ class Server:
                 self.lock.acquire()
                 self.workeralivedict[worker_id] =0
                 self.lock.release()
+                logger.info('workeralivedict add one')
                 self.message.issued(info)
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
+        self.t.setDaemon(True)
         self.t.start()
 
 
@@ -540,6 +543,7 @@ class Server:
             else:
                 logger.error('more than one client has same information')
         elif msg['type'] == 'keepalive':
+            dict = msg['data']
             try:
                 workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
             except Exception,e:
@@ -550,8 +554,9 @@ class Server:
                     self.lock.acquire()
                     self.workeralivedict[worker.id]=0
                     self.lock.release()
+                    logger.info('the worker is alive which id is %s'%worker.id)
             else:
-                logger.error('more than one client has same information')
+                logger.error('more than one client has same information or has no client')
 
 
 
