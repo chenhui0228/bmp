@@ -475,24 +475,18 @@ class Server:
                 logger.error(e.message)
 
         elif msg['type'] == 'state':
-            with open('/home/python/test/state.txt','a') as fp:
-                fp.write('1\n')
                 dict = msg['data']
-                fp.write(str(dict))
-                fp.write('\n')
                 try:
                     task=self.db.get_task(super_context,dict['id'])
-                    fp.write('2\n')
                     task_dict={}
                     task_dict['id']=dict['id']
                     task_dict['state']=dict['state']
                     if dict['state'] == 'deleted':
                         task_dict['deleted'] == 'deleted'
                     self.db.update_task(super_context,task_dict)
-                    fp.write('3\n')
+                    logger.info('change task state')
                 except:
                     pass
-                fp.write('4\n')
         elif msg['type'] == 'initialize':
             dict = msg['data']
             try:
