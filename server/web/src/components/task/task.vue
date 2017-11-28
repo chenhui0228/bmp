@@ -542,7 +542,7 @@
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
         this.createRecoverTaskFormVisible = true;
-        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmm');
+        let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmmss');
         let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
         let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
         let source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
