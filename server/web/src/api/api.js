@@ -144,3 +144,7 @@ export const reqGetOplogList = params => {
   return axios.get(`${base}/backup/oplogs`, {params: params} )
 };
 
+export const reqGetSummaries = params => {
+  return axios.get(`${base}/backup/summaries`, {params: params} )
+};
+
