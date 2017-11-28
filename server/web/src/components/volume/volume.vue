@@ -15,7 +15,7 @@
           批量删除
         </el-button>
         <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
-                   v-if="role== 'superrole'">新建</el-button>
+                   v-if="role== 'superrole'">添加</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>

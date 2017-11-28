@@ -37,7 +37,7 @@
         <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px" v-if="role == 'superrole'">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="组名" style="min-width: 240px;"></el-input>

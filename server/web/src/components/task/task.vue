@@ -66,7 +66,7 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
-              <el-form-item label="任务描述">
+              <el-form-item v-if="props.row.task.description" label="任务描述">
                 <span>{{ props.row.task.description }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
@@ -90,7 +90,7 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column prop="task.name" label="任务名"sortable width="taskname_label_width" show-overflow-tooltip>
+        <el-table-column prop="task.name" label="任务名" width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
         <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
@@ -130,6 +130,8 @@
             <span v-else>--</span>
           </span>
           </template>
+        </el-table-column>
+        <el-table-column prop="user" label="创建人" width="150rem">
         </el-table-column>
         <el-table-column label="操作" width="">
 
@@ -410,7 +412,6 @@
         },
         listLoading: false,
         isBackupTask:true,
-//        destination_prefix: 'glusterfs://',
         taskname_label_width: '180rem',
         tasks:[],
         total: 0,

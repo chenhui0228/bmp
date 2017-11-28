@@ -17,8 +17,8 @@
                    v-if="role == 'admin' || role == 'superrole'">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
-                   v-if="role == 'admin' || role == 'superrole'">新建</el-button>
+        <!--<el-button type="primary" @click="showAddDialog" style="margin-left: 5px"-->
+                   <!--v-if="role == 'admin' || role == 'superrole'">新建</el-button>-->
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
