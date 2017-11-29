@@ -109,6 +109,8 @@
             <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
             <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
+            <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'
+                             " style="color: red">失败</span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
           </template>
@@ -472,7 +474,7 @@
               </el-option>
             </el-select>
             <span v-for="worker in workers"
-                  v-if="addForm.worker_id == worker.id"
+                  v-if="createRecoverTaskForm.worker_id == worker.id"
                   style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
             </span>
           </el-form-item>
