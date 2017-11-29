@@ -86,7 +86,8 @@ class Server:
         self.workstate_dict={}
         self.message = Message('tcp',self.port)
         self.message.start_server()
-        self.lock=threading.Lock()
+        self.alivelock=threading.Lock()
+        self.workstatelock = threading.Lock()
         self.workeralivedict={}
         self.create_workerpool()
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
@@ -122,9 +123,9 @@ class Server:
             info['addr'] = addr
             if self.workeralivedict.has_key(worker_id):
                 if worker.status == 'Active':
-                    self.lock.acquire()
+                    self.alivelock.acquire()
                     self.workeralivedict[worker_id]+=1
-                    self.lock.release()
+                    self.alivelock.release()
                     if self.workeralivedict[worker_id]>=4:
                         worker_value={}
                         worker_value['id']=worker.id
@@ -145,9 +146,9 @@ class Server:
                             logger.error(e.message)
                 self.message.issued(info)
             else:
-                self.lock.acquire()
+                self.alivelock.acquire()
                 self.workeralivedict[worker_id] =0
-                self.lock.release()
+                self.alivelock.release()
                 logger.info('workeralivedict add one')
                 self.message.issued(info)
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
@@ -234,6 +235,7 @@ class Server:
             elif len(new_vor_dir) == 2:
                 vol = new_vor_dir[0]
                 dir = new_vor_dir[1]
+            logger.log(task.start_time)
             dict=translate_date(policy.recurring,task.start_time,policy.recurring_options_every,policy.recurring_options_week)
             source = task.source.split('/', 1)[1]
 
@@ -329,35 +331,33 @@ class Server:
 
 
     def backup(self,id,do_type=False):
-        try:
-            task = self.db.get_task(super_context,id)
-            worker = task.worker
-            policy = task.policy
-            addr = (worker.ip, int(self.port))
-            if worker.ip=='10.202.127.11':
-                addr = (worker.ip, 22222)
-            destination = task.destination
-            vol_dir = destination.split('//')[1]
-            new_vor_dir= vol_dir.split('/', 1)
-            if len(new_vor_dir) == 0:
-                return
-            elif len(new_vor_dir) == 1:
-                vol=new_vor_dir[0]
-                dir=''
-            elif len(new_vor_dir)==2:
-                vol = new_vor_dir[0]
-                dir = new_vor_dir[1]
-            dict=translate_date(policy.recurring,task.start_time,policy.recurring_options_every,policy.recurring_options_week)
-            source = task.source.split('/', 1)[1]
-            if policy.recurring=='once':
-                run_sub='date'
-            else:
-                run_sub='cron'
-            if do_type:
-                run_sub='immediately'
-        except Exception,e:
-            logger.error(e.message)
+
+        task = self.db.get_task(super_context,id)
+        worker = task.worker
+        policy = task.policy
+        addr = (worker.ip, int(self.port))
+        if worker.ip=='10.202.127.11':
+            addr = (worker.ip, 22222)
+        destination = task.destination
+        vol_dir = destination.split('//')[1]
+        new_vor_dir= vol_dir.split('/', 1)
+        if len(new_vor_dir) == 0:
             return
+        elif len(new_vor_dir) == 1:
+            vol=new_vor_dir[0]
+            dir=''
+        elif len(new_vor_dir)==2:
+            vol = new_vor_dir[0]
+            dir = new_vor_dir[1]
+        dict=translate_date(policy.recurring,task.start_time,policy.recurring_options_every,policy.recurring_options_week)
+        source = task.source.split('/', 1)[1]
+        if policy.recurring=='once':
+            run_sub='date'
+        else:
+            run_sub='cron'
+        if do_type:
+            run_sub='immediately'
+
         data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
@@ -436,7 +436,9 @@ class Server:
                 bk_value['state'] = dict.get('state')
                 try:
                     bk = self.db.bk_create(super_context, bk_value)
+                    self.workstatelock.acquire()
                     self.workstate_dict[dict['bk_id']] = 0
+                    self.workstatelock.release()
                 except Exception,e:
                     logger.error(e.message)
                 return
@@ -448,6 +450,11 @@ class Server:
                     return
                 if self.workstate_dict[dict['bk_id']]>int(dict['process']):
                     return
+                else:
+                    self.workstatelock.acquire()
+                    self.workstate_dict[dict['bk_id']]=int(dict['process'])
+                    self.workstatelock.release()
+
                 try:
                     self.db.bk_update(super_context, bk_value)
                 except Exception, e:
@@ -462,11 +469,13 @@ class Server:
                     self.db.bk_update(super_context, bk_value)
                 except Exception, e:
                     logger.error(e.message)
-                return
+                    return
                 if not self.workstate_dict.has_key(dict['bk_id']):
                     logger.error('some messages order is wrong  ')
                     return
+                self.workstatelock.acquire()
                 del self.workstate_dict[dict['bk_id']]
+                self.workstatelock.release()
             elif typeofMessage== 'delete':
                 logger.info('delete a kackupstate which id is')
                 backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
@@ -558,9 +567,9 @@ class Server:
             if  len(workers) == 1:
                 worker=workers[0]
                 if self.workeralivedict.has_key(worker.id):
-                    self.lock.acquire()
+                    self.alivelock.acquire()
                     self.workeralivedict[worker.id]=0
-                    self.lock.release()
+                    self.alivelock.release()
                     logger.info('the worker is alive which id is %s'%worker.id)
             else:
                 logger.error('more than one client has same information or has no client')

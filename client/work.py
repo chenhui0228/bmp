@@ -258,21 +258,25 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 #print "mount failed"
-                self.errormessage = 'mount failed'
+                if self.errormessage == "":
+                    self.errormessage = 'backup failed'
                 self.send_bk('last', state='failed',end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "mkdir failed"
-                self.errormessage = 'mkdir failed'
+                self.log.logger.error('mkdir failed')
+                if self.errormessage == "":
+                    self.errormessage = 'mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
                 #print "work failed"
-                self.errormessage = 'backup failed'
+                if self.errormessage == "":
+                    self.errormessage = 'backup failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
@@ -284,16 +288,29 @@ class Work():
         elif self.op=='dump':
             #if self.arglist.has_key('destination _ip'):
             #    self.arglist['ip'].append(self.arglist['source_ip'])
+            start_time=float(int(time.time()))
+            timeArray = time.localtime(start_time)
+            self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
             self.mount_dir =  "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
-            self.vfile=self.arglist['destination_address']
+            self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             path=self.arglist['source_address']
+
             ret = self.do_mount()
             if ret != 0:
                 self.errormessage = 'mount failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            cmd='sh %s'%path
+
+            ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
+            if ret != 0:
+                self.do_close()
+                #print "mkdir failed"
+                if self.errormessage == "":
+                    self.errormessage = 'mkdir failed'
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
+            cmd = './%s %s/%s' % (path, self.mount_dir, self.vfile)
             ret=os.system(cmd)
             if ret!=0:
                 self.do_close()
