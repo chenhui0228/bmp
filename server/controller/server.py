@@ -64,35 +64,44 @@ def translate_date(sub,start_time,every,weekday):
 
 @six.add_metaclass(Singleton)
 class Server:
-    def __init__(self):
-        self.message = Message('tcp')
-        self.message.start_server()
-        conf = {
-            'driver': 'mysql',
-            'user': 'backup',
-            'password': '123456',
-            'host': '10.202.127.11',
-            'database': 'test'
-
-        }
-        self.db= db_api.get_database(conf)
-        cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
-        self.port = cp.get('server', 'port')
-        self.timer_interval =int(cp.get('server','timer_interval'))
-        self.workstate_dict={}
+    def __init__(self,conf):
+        mysqlconf = conf.get('database')
         try:
-            self.listen_thread = threading.Thread(target=self.listen)
+            self.db= db_api.get_database(mysqlconf)
         except Exception,e:
             logger.error(e.message)
-        self.listen_thread.setDaemon(True)
-        self.listen_thread.start()
-        self.pool = eventlet.GreenPool(10000)
-        self.lock=Lock()
+            return
+        server_dict=conf.get('servercontroller')
+        logger.info(str(server_dict))
+        self.port=server_dict['port']
+        self.worker_size=server_dict['worker_size']
+        self.timer_interval=server_dict['timer_interval']
+        if self.port==None or self.timer_interval == None or self.worker_size == None:
+            logger.error('conf is lost')
+            logger.error(str(conf))
+            return
+        else:
+            logger.info('get right conf')
+
+        self.workstate_dict={}
+        self.message = Message('tcp',self.port)
+        self.message.start_server()
+        self.lock=threading.Lock()
         self.workeralivedict={}
+        self.create_workerpool()
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
         self.t.setDaemon(True)
         self.t.start()
+
+
+    def create_workerpool(self):
+        for i in range(int(self.worker_size)):
+            t=Workerpool(self.message,i,self)
+            t.setDaemon(True)
+            try:
+                t.start()
+            except Exception,e:
+                logger.error(e.message)
 
 
     def keeplaive(self):
@@ -107,6 +116,8 @@ class Server:
             data = "{'type':'keepalive'}"
             info = {}
             addr=(worker.ip, int(self.port))
+            if worker.ip=='10.202.127.11':
+                addr = (worker.ip, 22222)
             info['data'] = data
             info['addr'] = addr
             if self.workeralivedict.has_key(worker_id):
@@ -153,10 +164,13 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = task.worker
         addr = (worker.ip, int(self.port))
+        if worker.ip == '10.202.127.11':
+            addr = (worker.ip, 22222)
         data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
+
         try:
             self.message.issued(info)
         except Exception,e:
@@ -166,6 +180,8 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = task.worker
         addr = (worker.ip, int(self.port))
+        if worker.ip == '10.202.127.11':
+            addr = (worker.ip, 22222)
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'
@@ -194,8 +210,7 @@ class Server:
             self.backup(id)
         elif task.type=='recover':
             self.recover(id)
-        elif task.type =='dump':
-            self.dump(id)
+
 
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
@@ -206,6 +221,8 @@ class Server:
             worker = task.worker
             policy = task.policy
             addr = (worker.ip, int(self.port))
+            if worker.ip=='10.202.127.11':
+                addr = (worker.ip, 22222)
             destination = task.destination
             vol_dir = destination.split('//')[1]
             new_vor_dir = vol_dir.split('/', 1)
@@ -217,7 +234,7 @@ class Server:
             elif len(new_vor_dir) == 2:
                 vol = new_vor_dir[0]
                 dir = new_vor_dir[1]
-            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+            dict=translate_date(policy.recurring,task.start_time,policy.recurring_options_every,policy.recurring_options_week)
             source = task.source.split('/', 1)[1]
 
             if policy.recurring=='once':
@@ -238,9 +255,7 @@ class Server:
             logger.error(e.message)
         data2 = data.get('data')
         data2['sub']=task.type
-        if data2['sub'] == 'dump':
-            data2['script'] == task.script_path
-        elif data2['sub'] == 'recover':
+        if data2['sub'] == 'recover':
             vol_dir = destination.split('//')[1]
             vol = vol_dir.split('/', 1)[0]
             dir = vol_dir.split('/', 1)[1]
@@ -251,12 +266,16 @@ class Server:
             data2['destination_ip'] = worker.ip
         if isRestart:
             data['type']=data2['sub']
+            if task.source.split('/', 1)[0] == 'shell:':
+                data['type'] = 'dump'
+        if task.source.split('/', 1)[0] == 'shell:':
+            data2['sub']='dump'
+
 
         info = {}
         info['data'] = str(data)
         info['addr'] = addr
         self.message.issued(info)
-        logger.debug('update_task send message dnow')
 
 
 
@@ -287,7 +306,9 @@ class Server:
             for task in tasks:
                 if task.worker_id == id:
                     addr = (old_ip, int(self.port))
-                    data = "{'typr':'delete','data':{'id':'%s'}}" % task.id
+                    if worker.ip == '10.202.127.11':
+                        addr = (worker.ip, 22222)
+                    data = "{'typr':'delete','data':{'id':'%s','changeworker':'yes'}}" % task.id
                     info = {}
                     info['data'] = data
                     info['addr'] = addr
@@ -313,6 +334,8 @@ class Server:
             worker = task.worker
             policy = task.policy
             addr = (worker.ip, int(self.port))
+            if worker.ip=='10.202.127.11':
+                addr = (worker.ip, 22222)
             destination = task.destination
             vol_dir = destination.split('//')[1]
             new_vor_dir= vol_dir.split('/', 1)
@@ -324,7 +347,7 @@ class Server:
             elif len(new_vor_dir)==2:
                 vol = new_vor_dir[0]
                 dir = new_vor_dir[1]
-            dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
+            dict=translate_date(policy.recurring,task.start_time,policy.recurring_options_every,policy.recurring_options_week)
             source = task.source.split('/', 1)[1]
             if policy.recurring=='once':
                 run_sub='date'
@@ -332,14 +355,22 @@ class Server:
                 run_sub='cron'
             if do_type:
                 run_sub='immediately'
-        except:
-            pass
+        except Exception,e:
+            logger.error(e.message)
+            return
         data = "{'type':'backup','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name, task.state, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.state, worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
+        data=eval(data)
+        try:
+            if task.source.split('/', 1)[0] == 'shell:':
+                data['type']='dump'
+        except Exception,e:
+            logger.error(e.message)
+            return
         info = {}
-        info['data'] = data
+        info['data'] = str(data)
         info['addr'] = addr
         self.message.issued(info)
 
@@ -349,6 +380,8 @@ class Server:
             worker = task.worker
             policy = task.policy
             addr = (worker.ip, int(self.port))
+            if worker.ip=='10.202.127.11':
+                addr = (worker.ip, 22222)
             source = task.source
             vol_dir = source.split('//')[1]
             new_vor_dir= vol_dir.split('/', 1)
@@ -380,40 +413,6 @@ class Server:
         self.message.issued(info)
 
 
-
-    def dump(self,id,do_type=False):
-        task = self.db.get_task(super_context, id)
-        worker = task.worker
-        policy = task.policy
-        addr = (worker.ip, int(self.port))
-        destination = task.destination
-        vol_dir = destination.split('//')[1]
-        new_vor_dir= vol_dir.split('/', 1)
-        if len(new_vor_dir) == 0:
-            return
-        elif len(new_vor_dir) == 1:
-            vol=new_vor_dir[0]
-            dir=''
-        elif len(new_vor_dir)==2:
-            vol = new_vor_dir[0]
-            dir = new_vor_dir[1]
-        dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
-        source=task.source.split('/',1)[1]
-        if policy.recurring=='once':
-            run_sub='date'
-        else:
-            run_sub='cron'
-        if do_type:
-            run_sub='immediately'
-        data = "{'type':'backup','data':{'id':'%s','name':'%s','script':'%s','state':'%s'" \
-               "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
-               "'second':'%s','start_date':'%s'}}} " % (id, task.name,task.script_path, task.state,worker.ip, source, dir, vol, policy.protection,run_sub,dict['year'],dict['month'],dict['day'],dict['week'],dict['day_of_week'],dict['hour'],dict['minute'],dict['second'],dict['start_date'])
-        info = {}
-        info['data'] = data
-        info['addr'] = addr
-        self.message.issued(info)
-
     def revckeepalive(self):
         pass
 
@@ -444,14 +443,29 @@ class Server:
             elif typeofMessage == 'run':
                 bk_value['process'] = dict.get('process')
                 bk_value['current_size'] = dict.get('current_size')
+                logger.info(str(self.workstate_dict))
                 if not self.workstate_dict.has_key(dict['bk_id']):
                     return
                 if self.workstate_dict[dict['bk_id']]>int(dict['process']):
                     return
+                try:
+                    self.db.bk_update(super_context, bk_value)
+                except Exception, e:
+                    logger.error(e.message)
+                return
             elif typeofMessage == 'last':
                 bk_value['state'] = dict.get('state')
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('errormessage')
+
+                try:
+                    self.db.bk_update(super_context, bk_value)
+                except Exception, e:
+                    logger.error(e.message)
+                return
+                if not self.workstate_dict.has_key(dict['bk_id']):
+                    logger.error('some messages order is wrong  ')
+                    return
                 del self.workstate_dict[dict['bk_id']]
             elif typeofMessage== 'delete':
                 logger.info('delete a kackupstate which id is')
@@ -469,10 +483,7 @@ class Server:
             #if key == 'process':
             #    if int(bk.process) < int(dict[key]):
             #        return
-            try:
-                self.db.bk_update(super_context,bk_value)
-            except Exception,e:
-                logger.error(e.message)
+
 
         elif msg['type'] == 'state':
                 dict = msg['data']
@@ -509,9 +520,12 @@ class Server:
                     self.db.update_worker(super_context,worker_value)
                 except Exception,e:
                     logger.error(e.message)
+                addr=(worker.ip,int(self.port))
+                if worker.ip == '10.202.127.11':
+                    addr = (worker.ip, 22222)
                 info = {}
                 info['data'] = "{'type':'show'}"
-                info['addr'] = ('10.202.125.83',11111)
+                info['addr'] =addr
                 self.message.issued(info)
                 logger.debug('send msg dnow')
                 try:
@@ -519,7 +533,6 @@ class Server:
                     logger.debug('update_worker end')
                 except Exception,e:
                     logger.error(e.message)
-                    pass
             elif len(workers)==0:
                 worker_value={}
                 worker_value['name']=dict['hostname']
@@ -554,28 +567,31 @@ class Server:
 
 
 
+class Workerpool(threading.Thread):
+    def __init__(self,message,i,server):
+        threading.Thread.__init__(self)
+        self.message=message
+        self.name=i
+        self.s=server
 
 
-    def listen(self):  # listen msg from clien
-        print 'listen'
-        logger.debug('listen start')
+
+    def run(self):  # listen msg from clien
+        logger.debug('workerpool  %s start'%self.name)
+
         while True:
             if self.message.con.acquire():
                 if not self.message.q.empty():
-                        logger.info(self.listen_thread.name)
                         msg = self.message.get_queue()
                         self.message.con.release()
                         msg_data = msg.split(":", 1)[1]
-                        logger.debug(msg_data)
+                        #logger.debug(self.name,'get meg',str(msg_data))
                         date = eval(msg_data)
                         try:
-                            self.pool.spawn_n(self.to_db,date)
-                            self.pool.waitall()
+                            self.s.to_db(date)
                         except Exception,e:
-                            logger.error(e.message)
-                            pass
+                            logger.error(e)
                 else:
-
                         self.message.con.wait(1)
                         self.message.con.release()
                 #time.sleep(1)

@@ -77,15 +77,19 @@ class UDPServer(BaseRequestHandler):
 
 
 class Message:
-    def __init__(self, ms_type,port):
+    def __init__(self, ms_type):
         global q
+        cp = ConfigParser.ConfigParser()
+        cp.read('/etc/SFbackup/client.conf')
+        server_ip = cp.get('server', 'ip')
+        server_port = cp.get('server', 'port')
         # self.locahost=socket.gethostname
         #mylogger = MyLogging()
         hostname = str(socket.gethostname())
         ip = socket.gethostbyname(hostname)
         self.local_ip = ip
-        self.port = int(port)
-        self.send_ip=ip
+        self.port = int(server_port)
+        self.send_ip=server_ip
         self.recv_state = "stop"
         self.send_status = "stop"
         self.ms_type = ms_type

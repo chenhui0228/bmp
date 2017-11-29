@@ -284,16 +284,17 @@ class Work():
         elif self.op=='dump':
             #if self.arglist.has_key('destination _ip'):
             #    self.arglist['ip'].append(self.arglist['source_ip'])
-            self.mount_dir =  self.arglist['source_address']
+            self.mount_dir =  "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address']
-            path=self.arglist['script']
+            path=self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
                 self.errormessage = 'mount failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            ret=os.system(path)
+            cmd='sh %s'%path
+            ret=os.system(cmd)
             if ret!=0:
                 self.do_close()
                 self.errormessage = 'dump failed'

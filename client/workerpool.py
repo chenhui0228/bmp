@@ -131,8 +131,8 @@ class WorkerPool(threading.Thread):
             self.log.logger.info('todo work:%s' % (self.threadID))
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
-            if self.arglist['op'] == 'backup':
-                if self.name>=self.allcron and self.arglist['state']=='stoped':
+            if self.arglist['op'] == 'backup' or self.arglist['op'] == 'dump':
+                if self.name>=self.allcron and (self.arglist['state']=='stoped' or self.arglist['state']=='running_s'):
                     self.send_ta(self.arglist['id'],'stopped')
                 else:
                     self.send_ta(self.arglist['id'], 'waiting')
