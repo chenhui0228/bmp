@@ -179,6 +179,28 @@
           </el-col>
         </el-row>
       </section>
+
+      <el-container>
+        <el-col :span="15">
+          <div id="chartTaskStateSummary" style="margin:5px; width: 100%; height: 480px; border: 1px solid #1f2d3d;border-radius:5px"></div>
+        </el-col>
+        <el-col :span="8">
+          <div style="margin:5px 10px; padding:10px 10px 0px; width: 100%; height: 470px; border: 1px solid #1f2d3d;border-radius:5px">
+            <el-table :data="OplogList" highlight-current-row style="width: 100%;" max-height="470" >
+              <el-table-column prop="username" label="用户名" width="100rem">
+              </el-table-column>
+              <el-table-column prop="created_at" label="时间" width="180rem" show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <span>{{ scope.row.created_at | dateStampFormat }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="message" label="日志">
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-col>
+      </el-container>
+
     </el-col>
 
   </el-row>
@@ -268,7 +290,7 @@
 
 <script>
   import echarts from 'echarts'
-  import { reqGetTaskList, reqGetVolumeList, reqGetWorkerList, reqGetPolicyList, reqGetGroupList, reqGetSummaries } from '../api/api';
+  import { reqGetTaskList, reqGetVolumeList, reqGetWorkerList, reqGetPolicyList, reqGetGroupList, reqGetSummaries, reqGetOplogList } from '../api/api';
   export default {
     data() {
       return {
@@ -277,13 +299,15 @@
           chartBackupSummary: '',
           chartRecoverySummary: '',
           chartWorkerSummary: '',
+          chartTaskStateSummary: '',
           intervalTask: '',
           sumaries: {
             task_num: 0,
             user_num: 0,
             worker_num: 0,
             group_num: 0,
-            volume_num: 0
+            volume_num: 0,
+            taskstate_num:0,
           },
           backupTaskSummary: {
             total: 0,
@@ -304,7 +328,16 @@
             total: 0,
             currActive: 0,
             currOffline: 0,
-          }
+          },
+          taskStateSummary: {
+            total: 0,
+            taskname: [],
+            success: [],
+            failed: [],
+            running: [],
+            unknown: [],
+          },
+          OplogList: [],
       };
     },
     methods: {
@@ -327,6 +360,42 @@
           currEnd: 0
 
         }
+      },
+      initializeTaskStateSummary(data){
+        this.taskStateSummary.taskname = [];
+        this.taskStateSummary.success = [];
+        this.taskStateSummary.failed = [];
+        this.taskStateSummary.running = [];
+        this.taskStateSummary.unknown = [];
+        this.taskStateSummary.total = data.total;
+        for(var i in data){
+          if(typeof(data[i].name) !== "undefined"){
+            this.taskStateSummary.taskname.push(data[i].name);
+          }
+          if(typeof(data[i]) !== 'number'){
+            if(typeof(data[i].success) !== "undefined"){
+              this.taskStateSummary.success.push(data[i].success);
+            }else{
+              this.taskStateSummary.success.push(0);
+            }
+            if(typeof(data[i].runing) !== "undefined"){
+              this.taskStateSummary.running.push(data[i].runing);
+            }else {
+              this.taskStateSummary.running.push(0);
+            }
+            if(typeof(data[i].failed) !== "undefined"){
+              this.taskStateSummary.failed.push(data[i].failed);
+            }else{
+              this.taskStateSummary.failed.push(0);
+            }
+            if(typeof(data[i].null) !== "undefined"){
+              this.taskStateSummary.unknown.push(data[i].null);
+            }else{
+              this.taskStateSummary.unknown.push(0);
+            }
+          }
+        }
+        // console.log(this.taskStateSummary)
       },
       chartBackupSummaryFunc(data){
         this.initializeBackupTaskSummary();
@@ -412,6 +481,7 @@
             }
           ]
         });
+        window.onresize = this.chartBackupSummary.resize;
       },
       chartRecoverySummaryFunc(data){
         this.initializeRecoveryTaskSummary();
@@ -497,6 +567,7 @@
             }
           ]
         });
+        window.onresize = this.chartRecoverySummary.resize;
       },
       chartWorkerSummaryFunc(data){
         if(data.total != null){
@@ -560,16 +631,115 @@
             }
           ]
         });
+        window.onresize = this.chartWorkerSummary.resize;
+      },
+      chartTaskStateSummaryFunc(data) {
+        this.initializeTaskStateSummary(data);
+        // console.log(this.taskStateSummary.taskname);
+        this.chartTaskStateSummary.setOption({
+          tooltip : {
+            trigger: 'axis',
+            axisPointer : {            // 坐标轴指示器，坐标轴触发有效
+              type : 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+            }
+          },
+          title: {
+            show: true,
+            text: '任务执行状况概览',
+          },
+          legend: {
+            data: ['执行中','成功','失败','未知']
+          },
+          color:['#00BFFF','#98F898','#FF4500','grey'],
+
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '28%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'category',
+            data: this.taskStateSummary.taskname,
+            axisLabel:{
+              interval:0,//横轴信息全部显示
+              rotate:-20,//-30度角倾斜显示
+            }
+          },
+          yAxis: {
+            show: true,
+            type: 'value'
+          },
+          dataZoom: [
+            {   // 这个dataZoom组件，默认控制x轴。
+              type: 'slider', // 这个 dataZoom 组件是 slider 型 dataZoom 组件
+              startValue: 0,      // 左边在 0% 的位置。
+              endValue: 5         // 右边在 80% 的位置。
+            }
+          ],
+          series: [
+            {
+              name: '执行中',
+              type: 'bar',
+              stack: '总数',
+              label: {
+                normal: {
+                  show: false,
+                  position: 'inside'
+                }
+              },
+              data: this.taskStateSummary.running
+            },
+            {
+              name: '成功',
+              type: 'bar',
+              stack: '总数',
+              label: {
+                normal: {
+                  show: false,
+                  position: 'inside'
+                }
+              },
+              data: this.taskStateSummary.success
+            },
+            {
+              name: '失败',
+              type: 'bar',
+              stack: '总数',
+              label: {
+                normal: {
+                  show: false,
+                  position: 'inside'
+                }
+              },
+              data: this.taskStateSummary.failed
+            },
+            {
+              name: '未知',
+              type: 'bar',
+              stack: '总数',
+              label: {
+                normal: {
+                  show: false,
+                  position: 'inside'
+                }
+              },
+              data: this.taskStateSummary.unknown
+            },
+          ]
+        });
+        window.onresize = this.chartTaskStateSummary.resize;
       },
       getSummaries(){
         let params = {
           user: this.sysUserName,
         };
         reqGetSummaries(params).then(res => {
+          // console.log(res.data.users);
           this.sumaries.task_num = res.data.tasks.total;
-          this.sumaries.worker_num = res.data.workers.total;
           this.sumaries.user_num = res.data.users.total;
           this.sumaries.group_num = res.data.groups.total;
+          this.sumaries.worker_num = res.data.workers.total;
           if(res.data.tasks.backup != null){
             this.chartBackupSummaryFunc(res.data.tasks.backup);
           }
@@ -578,6 +748,10 @@
           }
           if(res.data.workers != null){
             this.chartWorkerSummaryFunc(res.data.workers);
+          }
+          if(res.data.backupstates != null){
+            this.sumaries.taskstate_num = res.data.backupstates.total;
+            this.chartTaskStateSummaryFunc(res.data.backupstates);
           }
         },err => {
           if (err.response.status == 401) {
@@ -594,7 +768,33 @@
             });
           }
         });
-      }
+      },
+      getOplogList: function () {
+        let para = {
+          user: this.sysUserName,
+          limit: 10,
+          offset: 0,
+        };
+        reqGetOplogList(para).then((res) => {
+          this.total = res.data.total;
+          this.OplogList = res.data.oplogs;
+          //NProgress.done();
+        }).catch((err) => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/login' });
+          }else{
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
+        })
+      },
     },
     beforeDestroy() {
         clearInterval(this.intervalTask)
@@ -613,10 +813,13 @@
       this.chartBackupSummary = echarts.init(document.getElementById('chartBackupSummary'));
       this.chartRecoverySummary = echarts.init(document.getElementById('chartRecoverySummary'));
       this.chartWorkerSummary = echarts.init(document.getElementById('chartWorkerSummary'));
+      this.chartTaskStateSummary = echarts.init(document.getElementById('chartTaskStateSummary'));
       this.getSummaries();
+      this.getOplogList();
       this.intervalTask = setInterval(() => {
         this.getSummaries();
-      },30000);
+        this.getOplogList();
+      },1000);
     }
   }
 
