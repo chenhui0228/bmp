@@ -180,7 +180,7 @@
           </div>
         </el-card>
       </el-col>
-      <!--工具条-->
+      <!--页脚-->
       <el-col :span="24" class="toolbar" style="margin-top: 5px;">
         <el-pagination
           layout="total, sizes, prev, pager, next, jumper"
@@ -224,24 +224,63 @@
                   style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
             </span>
           </el-form-item>
-          <el-form-item prop="source" label="源地址">
-            <el-input v-model="editForm.source" auto-complete="off"></el-input>
+          <el-row>
+            <el-col :span="5">
+              <el-form-item prop="delay" label="指定开始日期">
+                <template>
+                  <el-switch v-model="editForm.delay" on-text="是" off-text="否"></el-switch>
+                </template>
+              </el-form-item>
+            </el-col>
+            <el-col :span="19">
+              <el-form-item style="margin-left: -100px">
+                <template>
+                  <el-date-picker
+                    v-model="editForm.start_date"
+                    type="date"
+                    :picker-options="pickerOptionsForDate" :disabled="!editForm.delay">
+                  </el-date-picker>
+
+                </template>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item prop="start_time" label="开始时间">
+            <template>
+              <el-time-picker
+                v-model="editForm.start_time">
+              </el-time-picker>
+            </template>
           </el-form-item>
-          <el-form-item prop="volume" label="卷">
-            <el-select v-model="editForm.volume_id" placeholder="请选择" @change="handleChange">
+          <el-form-item prop="source" label="源">
+            <el-col :span="3">
+            <el-select v-model="editForm.source_type" placeholder="请选择类型">
               <el-option
-                v-for="volume in volumes"
-                :key="volume.id"
-                :label="volume.name"
-                :value="volume.id">
+                v-for="type in sourceTypes"
+                :key="type.value"
+                :label="type.label"
+                :value="type.value">
               </el-option>
             </el-select>
+            </el-col>
+            <el-col :span="21" style="padding-left:2px">
+            <el-input v-model="editForm.source" auto-complete="off"></el-input>
+            </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="editForm.destination" auto-complete="off"></el-input>
-          </el-form-item>
-          <el-form-item prop="script_path" label="脚本地址">
-            <el-input v-model="editForm.script_path" auto-complete="off"></el-input>
+            <el-col :span="3">
+              <el-select v-model="editForm.volume_id" placeholder="请选择卷" @change="handleChange">
+                <el-option
+                  v-for="volume in volumes"
+                  :key="volume.id"
+                  :label="volume.name"
+                  :value="volume.id">
+                </el-option>
+              </el-select>
+            </el-col>
+            <el-col :span="21" style="padding-left:2px">
+              <el-input v-model="editForm.destination" auto-complete="off"></el-input>
+            </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="2"></el-input>
@@ -291,26 +330,63 @@
                   style="margin-left:10px; color:#99a9bf">IP: {{ worker.ip }}
             </span>
           </el-form-item>
-          <el-form-item prop="source" label="源地址">
-            <el-input v-model="addForm.source" auto-complete="off"></el-input>
+          <el-row>
+            <el-col :span="5">
+              <el-form-item prop="delay" label="指定开始日期">
+                <template>
+                  <el-switch v-model="addForm.delay" on-text="是" off-text="否"></el-switch>
+                </template>
+              </el-form-item>
+            </el-col>
+            <el-col :span="19">
+              <el-form-item style="margin-left: -100px">
+                <template>
+                  <el-date-picker
+                    v-model="addForm.start_date"
+                    type="date"
+                    :picker-options="pickerOptionsForDate" :disabled="!addForm.delay">
+                  </el-date-picker>
+
+                </template>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item prop="start_time" label="开始时间">
+            <template>
+              <el-time-picker
+                v-model="addForm.start_time">
+              </el-time-picker>
+            </template>
           </el-form-item>
-          <el-form-item prop="volume" label="卷">
-            <el-select v-model="addForm.volume_id" placeholder="请选择" @change="handleChange">
-              <el-option
-                v-for="volume in volumes"
-                :key="volume.id"
-                :label="volume.name"
-                :value="volume.id">
-              </el-option>
-            </el-select>
+          <el-form-item prop="source" label="源">
+            <el-col :span="3">
+              <el-select v-model="addForm.source_type" placeholder="请选择类型">
+                <el-option
+                  v-for="type in sourceTypes"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value">
+                </el-option>
+              </el-select>
+            </el-col>
+            <el-col :span="21" style="padding-left:2px">
+              <el-input v-model="addForm.source" auto-complete="off"></el-input>
+            </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="addForm.destination" auto-complete="off">
-              <!--<template slot="prepend">{{ destination_prefix}}</template>-->
-            </el-input>
-          </el-form-item>
-          <el-form-item prop="script_path" label="脚本地址">
-            <el-input v-model="addForm.script_path" auto-complete="off"></el-input>
+            <el-col :span="3">
+              <el-select v-model="addForm.volume_id" placeholder="请选择卷" @change="handleChange">
+                <el-option
+                  v-for="volume in volumes"
+                  :key="volume.id"
+                  :label="volume.name"
+                  :value="volume.id">
+                </el-option>
+              </el-select>
+            </el-col>
+            <el-col :span="21" style="padding-left:2px">
+              <el-input v-model="addForm.destination" auto-complete="off"></el-input>
+            </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="2"></el-input>
@@ -421,6 +497,28 @@
   import util from '../../common/util'
   export default {
     data() {
+      var checkStarTime = (rule, value, callback) => {
+        if (this.dialogNewPolicyVisible && !this.policyTimeForm.delay) {
+          var nowTime = new Date(new Date().getTime() + 5*60*1000).getTime();
+          var valueTime = new Date(value).getTime();
+          if (valueTime < nowTime) {
+            callback(new Error('起始时间必须设置在当前时刻5分钟以后'));
+            //this.checkStarTimeError = true;
+            //callback();
+          } else {
+            callback();
+          }
+        } else if (this.dialogEditPolicyVisible) {
+          callback();
+        } else {
+          callback();
+        }
+      };
+      var checkStarTimeAgain = (rule, value, callback) => {
+        this.formCheckErrorMsgForStarTime = !this.formCheckErrorMsgForStarTime;
+        this.checkStarTimeError = false;
+        callback();
+      };
       return {
         sysUserName: '',
         filters: {
@@ -439,6 +537,15 @@
         task_type: 'backup',
         volumeName: '',
         sels: [], //列表选中列
+        sourceTypes: [
+        {
+          label: '本地文件',
+          value: '1'
+        },
+        {
+          label: 'shell脚本',
+          value: '2'
+        }],
         workers:[],
         volumes:[],
         policies:[],
@@ -448,7 +555,11 @@
         createRecoverTaskFormVisible: false,
         currentWatchingTask: [],
         createRecoverTaskForm: {},
-
+        pickerOptionsForDate: {
+          disabledDate(time) {
+            return time.getTime() < Date.now() - 8.64e7;
+          }
+        },
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
@@ -464,28 +575,31 @@
 //          ],
 //          description: [
 //            {required: true, message: '请输入描述', trigger: 'blur'}
-//          ]
+//          ],
+//            start_time: [
+//            { required: true, validator: checkStarTime, trigger: 'blur' }
+//            ],
+//            delay : [
+//              { type: 'array',  validator: checkStarTimeAgain, trigger: 'change' }
+//            ],
         },
         editForm: {
           name: '',
           policy_id: '',
           worker_id: '',
+          source_type: '',
           source: '',
           destination: '',
           description: '',
+          start_time: '',
+          delay: false,
+          start_date: ''
         },
 
         //新增数据相关
         addFormVisible: false,
         addLoading: false,
         addForm: {
-//          name: '',
-//          source: '',
-//          destination: '',
-//          policy_id: '',
-//          description: '',
-//          worker_id: '',
-//          volume: '',
         },
 
         //任务详情相关数据
@@ -551,6 +665,7 @@
         }else {
           return 'el-table-recover';
         }
+      },
       getTags(){
         let params = {
           user: this.sysUserName,
@@ -643,19 +758,22 @@
       beforeShow: function (row) {
         let source = row.task.source;
         let destination = row.task.destination;
-        //source = source.match(/\/\/(\S*)/)[1];
         let desArr = destination.split('/');
         let volumeName = desArr[2];
-        //destination = destination.match(/\/(\S*)/)[1];
         let volume = this.volumes.find((volume)=>{
           return volume.name === volumeName;
         });
         if(!volume) {
-//          console.log('volume is null');
           volume = this.volumes[0];
         }
         if(row.task.type === 'backup'){
-          source = source.replace(/file:\//i,'');
+          if(source.search("file:") >= 0){
+            row.task.source_type = '1';
+            source = source.replace(/file:\//i,'');
+          }else if (source.search("shell:") >= 0){
+            row.task.source_type = '2';
+            source = source.replace(/shell:\//i,'');
+          }
           var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
           destination = destination.replace(re,'');
         }else{
@@ -668,6 +786,8 @@
         }
         row.task.source = source;
         row.task.destination = destination;
+        row.task.start_date = new Date(row.task.start_time*1000);
+        row.task.start_time = new Date(row.task.start_time*1000);
       },
       //取消编辑
       cancelEdit: function () {
@@ -693,9 +813,20 @@
               };
               let para = Object.assign({}, this.editForm);
               if(para.type === "backup"){
-                para.source = 'file:/' + para.source;
+                if(para.source_type == '1'){
+                  para.source = 'file:/' + para.source;
+                }else if(para.source_type == '2'){
+                  para.source = 'shell:/' + para.source;
+                }
                 para.destination = 'glusterfs://' + this.volumeName + para.destination;
               }
+              if (this.editForm.start_date !== "" &&  this.editForm.start_date !== undefined && this.editForm.start_date !== null){
+              var dateStr = this.editForm.start_date.toDateString();
+              var timeStr = this.editForm.start_time.toTimeString();
+              para.start_time = parseInt(new Date(dateStr+' '+timeStr).getTime()/1000).toString();
+            } else {
+              para.start_time = parseInt(this.editForm.start_time.getTime()/1000).toString();
+            }
               reqEditTask(para.id, user_para, para).then((res) => {
                 this.editLoading = false;
                 //NProgress.done();
@@ -732,9 +863,13 @@
           name: '',
           policy_id: '',
           worker_id: '',
+          source_type: '',
           source: '',
           destination: '',
           description: '',
+          start_time: '',
+          delay: false,
+          start_date: '',
         };
       },
       //取消提交
@@ -773,11 +908,20 @@
               user: this.sysUserName,
             };
             let para = Object.assign({}, this.addForm);
-//            console.log(this.addForm);
             para.type = this.task_type;
-
+            if (this.addForm.start_date !== "" &&  this.addForm.start_date !== undefined && this.addForm.start_date !== null){
+              var dateStr = this.addForm.start_date.toDateString();
+              var timeStr = this.addForm.start_time.toTimeString();
+              para.start_time = parseInt(new Date(dateStr+' '+timeStr).getTime()/1000).toString();
+            } else {
+              para.start_time = parseInt(this.addForm.start_time.getTime()/1000).toString();
+            }
             if(para.type === "backup"){
-              para.source = 'file:/' + para.source;
+              if(para.source_type == '1'){
+                para.source = 'file:/' + para.source;
+              }else if(para.source_type == '2'){
+                para.source = 'shell:/' + para.source;
+              }
               para.destination = 'glusterfs://' + this.volumeName + para.destination;
             }
 

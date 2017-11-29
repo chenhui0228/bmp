@@ -35,9 +35,6 @@
                 <el-form-item label="策略说明" v-if="scope.row.description">
                   <span>{{ scope.row.description }}</span>
                 </el-form-item>
-                <el-form-item label="开始时间">
-                  <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
-                </el-form-item>
                 <el-form-item label="重复策略">
                   <span v-if="scope.row.recurring == 'once'">仅一次</span>
                   <span v-else-if="scope.row.recurring == 'hourly'">小时</span>
@@ -78,11 +75,6 @@
               <span v-else-if="scope.row.recurring == 'daily'">天</span>
               <span v-else-if="scope.row.recurring == 'weekly'">周</span>
               <span v-else="scope.row.recurring == 'monthly'">月</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="start_time" label="开始时间" width="240" sortable>
-            <template slot-scope="scope">
-              <span>{{ scope.row.start_time | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="user" label="创建用户" width="240">
@@ -132,38 +124,6 @@
         </el-form-item>
       </el-form>
       <!--<div class="line"></div>-->
-      <el-form :model="policyTimeForm" :rules="policyRules" ref="policyTimeForm">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="delay" label="指定开始日期" :label-width="formLabelWidth">
-              <template>
-                <el-switch v-model="policyTimeForm.delay" on-text="是" off-text="否"></el-switch>
-              </template>
-            </el-form-item>
-          </el-col>
-          <el-col :span="19">
-            <el-form-item :label-width="formLabelWidth" style="margin-left: -100px">
-              <template>
-                <el-date-picker
-                  v-model="policyTimeForm.start_date"
-                  type="date"
-                  :picker-options="pickerOptionsForDate" :disabled="!policyTimeForm.delay">
-                </el-date-picker>
-
-              </template>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item prop="start_time" label="开始时间" :label-width="formLabelWidth"
-                      :show-message="formCheckErrorMsgForStarTime">
-          <template>
-            <el-time-picker
-              v-model="policyTimeForm.start_time">
-            </el-time-picker>
-            <div class="el-form-item__error" v-if="checkStarTimeError">起始时间必须设置在当前时刻5分钟以后</div>
-          </template>
-        </el-form-item>
-      </el-form>
       <!--<div class="line"></div>-->
       <el-form :model="policyRecurringForm" :rules="policyRules" ref="policyRecurringForm">
         <el-form-item label="重复策略" :label-width="formLabelWidth">
@@ -225,28 +185,6 @@
   export default{
     //props: ["roles", "groups"],
     data(){
-      var checkStarTime = (rule, value, callback) => {
-        if (this.dialogNewPolicyVisible && !this.policyTimeForm.delay) {
-          var nowTime = new Date(new Date().getTime() + 5*60*1000).getTime();
-          var valueTime = new Date(value).getTime();
-          if (valueTime < nowTime) {
-            callback(new Error('起始时间必须设置在当前时刻5分钟以后'));
-            //this.checkStarTimeError = true;
-            //callback();
-          } else {
-            callback();
-          }
-        } else if (this.dialogEditPolicyVisible) {
-          callback();
-        } else {
-          callback();
-        }
-      };
-      var checkStarTimeAgain = (rule, value, callback) => {
-        this.formCheckErrorMsgForStarTime = !this.formCheckErrorMsgForStarTime;
-        this.checkStarTimeError = false;
-        callback();
-      };
       var checkOptionsEvery = (rule, value, callback) => {
         if (this.policyRecurringForm.recurring != 'once') {
           if (this.policyRecurringForm.recurring_options_every == null || this.policyRecurringForm.recurring_options_every == "undefined") {
@@ -282,11 +220,6 @@
           name: '',
           description: ''
         },
-        policyTimeForm: {
-          start_time: '',
-          delay: false,
-          start_date: ''
-        },
         policyRecurringForm: {
           recurring: 'once',
           recurring_options_every: '',
@@ -305,11 +238,6 @@
         dialogPolicyTitle: '',
         formLabelWidth: '120px',
         confimPolicyDeleteMsg: '您确定要删除这个策略吗？',
-        pickerOptionsForDate: {
-          disabledDate(time) {
-            return time.getTime() < Date.now() - 8.64e7;
-          }
-        },
         filter: {
           per_page: 10,   //页大小
           page: 1   //当前页
@@ -318,12 +246,6 @@
         policyRules: {
           name: [
             { required: true, message: '请输入策略名称', trigger: 'blur' }
-          ],
-          start_time: [
-            { required: true, validator: checkStarTime, trigger: 'blur' }
-          ],
-          delay : [
-            { type: 'array',  validator: checkStarTimeAgain, trigger: 'change' }
           ],
           recurring_options_every: [
             { validator: checkOptionsEvery, trigger: 'change' }
@@ -355,9 +277,9 @@
       initialPolicyForms() {
         this.policyBaseForm.name = '';
         this.policyBaseForm.description = '';
-        this.policyTimeForm.start_time = '';
-        this.policyTimeForm.delay = false;
-        this.policyTimeForm.start_date = '';
+        //this.policyTimeForm.start_time = '';
+        //this.policyTimeForm.delay = false;
+        //this.policyTimeForm.start_date = '';
         this.policyRecurringForm.recurring = 'once';
         this.policyRecurringForm.recurring_options_every = '';
         this.policyRecurringForm.recurring_options_week = [];
@@ -420,9 +342,9 @@
         this.policy = row;
         this.policyBaseForm.name = row.name;
         this.policyBaseForm.description = row.description;
-        this.policyTimeForm.delay = false;
-        this.policyTimeForm.start_date = new Date(row.start_time*1000);
-        this.policyTimeForm.start_time = new Date(row.start_time*1000);
+        //this.policyTimeForm.delay = false;
+        //this.policyTimeForm.start_date = new Date(row.start_time*1000);
+        // this.policyTimeForm.start_time = new Date(row.start_time*1000);
         this.policyRecurringForm.recurring = row.recurring;
         this.policyRecurringForm.recurring_options_every = row.recurring_options_every;
         if (row.recurring_options_week !== null && row.recurring_options_week !== "" && row.recurring_options_week != 0) {
@@ -516,13 +438,13 @@
           }
           //this.policy.recurring_options_week = this.policyRecurringForm.recurring_options_week;
         }
+        /*
         if (this.policyTimeForm.start_date !== "" &&  this.policyTimeForm.start_date !== undefined && this.policyTimeForm.start_date !== null){
           var dateStr = this.policyTimeForm.start_date.toDateString();
-          var timeStr = this.policyTimeForm.start_time.toTimeString();
-          this.policy.start_time = new Date(dateStr + ' ' + timeStr).getTime()/1000;
+          this.policy.start_time = new Date(dateStr).getTime()/1000;
         } else {
           this.policy.start_time = this.policyTimeForm.start_time.getTime()/1000;
-        }
+        }*/
         switch(this.policyProtectionForm.protectionType){
           case '1':
             this.policy.protection = this.policyProtectionForm.protection;
