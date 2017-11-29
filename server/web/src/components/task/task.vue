@@ -34,6 +34,7 @@
       <el-tabs value="backup" @tab-click="handleClick">
         <el-tab-pane label="备份任务" name="backup"></el-tab-pane>
         <el-tab-pane label="恢复任务" name="recover"></el-tab-pane>
+        <el-tab-pane label="标签管理" name="tags"></el-tab-pane>
       </el-tabs>
     </el-col>
 
@@ -44,6 +45,7 @@
           批量删除
         </el-button>
         <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag" style="margin-left: 5px">新建</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -56,11 +58,14 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="tasks" highlight-current-row
+      <el-table :data="tasks"
+                highlight-current-row
                 v-loading="listLoading"
                 @selection-change="selsChange"
                 @row-dblclick="taskStateDetail"
-                style="width: 100%;" max-height="750"
+                style="width: 100%;"
+                max-height="750"
+                v-if="!isTags"
                 :row-class-name="tableRowClassName">
         <el-table-column type="selection"></el-table-column>
         <el-table-column type="expand">
@@ -126,7 +131,7 @@
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="文件大小" width="100rem">
+        <el-table-column label="文件大小" width="120rem">
           <template slot-scope="scope">
           <span v-if="scope.row.state">
             <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
@@ -168,7 +173,13 @@
           </template>
         </el-table-column>
       </el-table>
-
+      <!--标签列表-->
+      <el-col :span="4" class="" v-if="isTags && (role == 'superrole' || role == 'admin')">
+        <el-card class="box-card">
+          <div>
+          </div>
+        </el-card>
+      </el-col>
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="margin-top: 5px;">
         <el-pagination
@@ -178,6 +189,7 @@
           :page-sizes="[10, 15, 20, 30]"
           :page-size="per_page"
           :current-page="page"
+          v-if="!isTags"
           :total="total" style="float:right;margin-right: 5px">
         </el-pagination>
       </el-col>
@@ -403,7 +415,8 @@
 </template>
 <script>
   import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
-    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList } from '../../api/api';
+    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList,
+     reqGetTags} from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
   export default {
@@ -413,8 +426,10 @@
         filters: {
           name: ''
         },
+        role: '',
         listLoading: false,
         isBackupTask:true,
+        isTags: false,
         taskname_label_width: '180rem',
         tasks:[],
         total: 0,
@@ -504,12 +519,18 @@
         if(tag.index === '1') {
           this.task_type = 'recover';
           this.isBackupTask = false;
+          this.isTags = false;
           this.taskname_label_width = '250rem';
           this.getTasks('recover');
+        }else if(tag.index === '2'){
+          this.isTags = true;
+          this.isBackupTask = false;
+          this.getTags();
         }else{
           this.task_type = 'backup';
           this.taskname_label_width = '180rem';
           this.isBackupTask = true;
+          this.isTags = false;
           this.getTasks();
         }
       },
@@ -530,6 +551,18 @@
         }else {
           return 'el-table-recover';
         }
+      getTags(){
+        let params = {
+          user: this.sysUserName,
+        };
+        reqGetTags(params).then(res => {
+          console.log(res.log)
+        },err => {
+
+        });
+      },
+      newTag(){
+
       },
       //获取任务列表
       getTasks: function (type='backup') {
@@ -946,6 +979,7 @@
       if (accessInfo) {
         accessInfo = JSON.parse(accessInfo);
         this.sysUserName = accessInfo.username || '';
+        this.role = accessInfo.role;
       }
       let para = {
         user: this.sysUserName

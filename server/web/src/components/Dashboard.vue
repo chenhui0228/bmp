@@ -308,8 +308,28 @@
       };
     },
     methods: {
+      initializeBackupTaskSummary(){
+        this.backupTaskSummary = {
+          total: 0,
+          currWaiting: 0,
+          currStopped: 0,
+          currRunning: 0,
+          currEnd: 0
+
+        }
+      },
+      initializeRecoveryTaskSummary(){
+        this.recoveryTaskSummary = {
+          total: 0,
+          currWaiting: 0,
+          currStopped: 0,
+          currRunning: 0,
+          currEnd: 0
+
+        }
+      },
       chartBackupSummaryFunc(data){
-        this.backupTaskSummary.total = 0;
+        this.initializeBackupTaskSummary();
         if(data.waiting != null){
           this.backupTaskSummary.currWaiting = data.waiting;
           this.backupTaskSummary.total = this.backupTaskSummary.total + this.backupTaskSummary.currWaiting;
@@ -394,7 +414,7 @@
         });
       },
       chartRecoverySummaryFunc(data){
-        this.recoveryTaskSummary.total = 0;
+        this.initializeRecoveryTaskSummary();
         if(data.waiting != null){
           this.recoveryTaskSummary.currWaiting = data.waiting;
           this.recoveryTaskSummary.total = this.recoveryTaskSummary.total + this.recoveryTaskSummary.currWaiting;

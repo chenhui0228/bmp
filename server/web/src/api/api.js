@@ -148,3 +148,6 @@ export const reqGetSummaries = params => {
   return axios.get(`${base}/backup/summaries`, {params: params} )
 };
 
+export const reqGetTags = params => {
+  return axios.get(`${base}/backup/tags`, {params: params} )
+};
