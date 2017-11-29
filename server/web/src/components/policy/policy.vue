@@ -368,52 +368,50 @@
         }
       },
       savePolicy(policyBaseForm, policyTimeForm, policyRecurringForm, policyProtectionForm){
-        this.$refs[policyBaseForm].validate((valid1) => {
-          this.$refs[policyTimeForm].validate((valid2) => {
-            if (valid1 && valid2) {
-              this.mergePolicyForm();
-              let params = {
-                user: this.sysUserName,
-              };
-              if (this.dialogNewPolicyVisible){
-                reqPostPolicy(params, this.policy).then(res => {
-                  if(res.data.exist && res.data.exist === 'True') {
-                    this.$message({
-                      message: `添加失败, 策略 ${res.data.policy.name} 已存在`,
-                      type: 'error'
-                    });
-                  }else{
-                    this.openMsg(this.dialogPolicyTitle+'成功', 'success');
-                  }
-                },err => {
-                  if (err.response.status == 401) {
-                    this.openMsg('请重新登陆', 'error');
-                    sessionStorage.removeItem('access-user');
-                    this.$router.push({ path: '/' });
-                  } else {
-                    this.openMsg(this.dialogPolicyTitle+'失败', 'error');
-                  }
-                });
-              }
-              if (this.dialogEditPolicyVisible){
-                reqPutPolicy(params, this.policy).then(res => {
+        this.$refs[policyBaseForm].validate((valid) => {
+          if (valid) {
+            this.mergePolicyForm();
+            let params = {
+              user: this.sysUserName,
+            };
+            if (this.dialogNewPolicyVisible){
+              reqPostPolicy(params, this.policy).then(res => {
+                if(res.data.exist && res.data.exist === 'True') {
+                  this.$message({
+                    message: `添加失败, 策略 ${res.data.policy.name} 已存在`,
+                    type: 'error'
+                  });
+                }else{
                   this.openMsg(this.dialogPolicyTitle+'成功', 'success');
-                },err => {
-                  if (err.response.status == 401) {
-                    this.openMsg('请重新登陆', 'error');
-                    sessionStorage.removeItem('access-user');
-                    this.$router.push({ path: '/' });
-                  } else {
-                    this.openMsg(this.dialogPolicyTitle+'失败', 'error');
-                  }
-                });
-              }
-              this.cancelPolicyDialog();
-              this.getPolicys(this.sysUserName);
-            }else{
-              this.openMsg('信息输入不正确，请检查格式！', 'error')
+                }
+              },err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg(this.dialogPolicyTitle+'失败', 'error');
+                }
+              });
             }
-          });
+            if (this.dialogEditPolicyVisible){
+              reqPutPolicy(params, this.policy).then(res => {
+                this.openMsg(this.dialogPolicyTitle+'成功', 'success');
+              },err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg(this.dialogPolicyTitle+'失败', 'error');
+                }
+              });
+            }
+            this.cancelPolicyDialog();
+            this.getPolicys(this.sysUserName);
+          }else{
+            this.openMsg('信息输入不正确，请检查格式！', 'error')
+          }
         });
       },
       cancelPolicyDialog(){
