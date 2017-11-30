@@ -274,7 +274,7 @@
         };
       },
       export2excel(){
-        var file_save_name = 'users',
+        var file_save_name = 'users';
         file_save_name = file_save_name+(new Date().getTime().toString());
         let params = {
           user: this.sysUserName,
