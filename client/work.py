@@ -315,7 +315,8 @@ class Work():
             ret=os.system(cmd)
             if ret!=0:
                 self.do_close()
-                self.errormessage = 'dump failed'
+                if self.errormessage == "":
+                    self.errormessage = 'dump failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.send_bk('run', process=100, current_size=self.get_file_size(self.mount_dir+'/'+self.vfile))
@@ -323,7 +324,8 @@ class Work():
             #print "end do_cloes"
             if ret != 0:
                 time.sleep(2)
-                self.errormessage = 'umount failed'
+                if self.errormessage == "":
+                    self.errormessage = 'umount failed'
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
@@ -345,20 +347,23 @@ class Work():
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 self.do_close()
-                self.errormessage='mkdir failed'
+                if self.errormessage == "":
+                    self.errormessage='mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             #self.vfile=os.path.join(self.vfile)
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
-                self.errormessage = 'recover failed'
+                if self.errormessage == "":
+                    self.errormessage = 'recover failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             time.sleep(2)
             ret = self.do_close()
             if ret != 0:
-                self.errormessage = 'umont failed'
+                if self.errormessage == "":
+                    self.errormessage = 'umont failed'
                 self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
