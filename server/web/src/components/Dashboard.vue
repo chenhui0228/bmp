@@ -180,12 +180,12 @@
         </el-row>
       </section>
 
-      <el-container>
+      <el-col :span="24">
         <el-col :span="15">
           <div id="chartTaskStateSummary" style="margin:5px; width: 100%; height: 480px; border: 1px solid #1f2d3d;border-radius:5px"></div>
         </el-col>
         <el-col :span="8">
-          <div style="margin:5px 10px; padding:10px 10px 0px; width: 100%; height: 470px; border: 1px solid #1f2d3d;border-radius:5px">
+          <div style="margin:5px 15px; padding:10px 10px 0px; width: 100%; height: 470px; border: 1px solid #1f2d3d;border-radius:5px">
             <el-table :data="OplogList" highlight-current-row style="width: 100%;" max-height="470" >
               <el-table-column prop="username" label="用户名" width="100rem">
               </el-table-column>
@@ -199,7 +199,7 @@
             </el-table>
           </div>
         </el-col>
-      </el-container>
+      </el-col>
 
     </el-col>
 
@@ -240,7 +240,7 @@
   .bar-card {
     border:1px solid #333744;
     border-radius:4px;overflow:hidden;
-    margin: 3px 3px;
+    margin: 5px 5px;
     height: 280px;
     /*background-color: #333744*/
   }
@@ -673,8 +673,8 @@
           dataZoom: [
             {   // 这个dataZoom组件，默认控制x轴。
               type: 'slider', // 这个 dataZoom 组件是 slider 型 dataZoom 组件
-              startValue: 0,      // 左边在 0% 的位置。
-              endValue: 5         // 右边在 80% 的位置。
+              startValue: 0,      // 左边 第一条 的位置。
+              endValue: 6         // 右边 第八条 的位置。
             }
           ],
           series: [
@@ -819,7 +819,7 @@
       this.intervalTask = setInterval(() => {
         this.getSummaries();
         this.getOplogList();
-      },1000);
+      },30000);
     }
   }
 
