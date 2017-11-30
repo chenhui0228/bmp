@@ -290,7 +290,7 @@ class Work():
             #    self.arglist['ip'].append(self.arglist['source_ip'])
             start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
-            self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
+            self.send_bk('frist',total_size=-1,start_time=str(start_time))
             self.mount_dir =  "%s%s" % (self.mount,self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
@@ -317,6 +317,7 @@ class Work():
                 self.errormessage = 'dump failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
+            self.send_bk('run', process=100, current_size=self.get_file_size(self.mount_dir+'/'+self.vfile))
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:

@@ -158,9 +158,6 @@ class Server:
 
 
 
-
-
-
     def stop(self,id):
         task = self.db.get_task(super_context,id)
         worker = task.worker

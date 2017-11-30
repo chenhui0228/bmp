@@ -215,7 +215,7 @@ class Delete:
             self.log.logger.error("do close failed %s"%e)
             return -1
 
-    def delete(self):
+    def delete(self,delAll):
         tarfilename='%s_%s'%(self.name,self.id)
         oldtime=self.get_oldtime(self.duration)
         tardir=os.path.join(self.mount_dir,self.dir)
@@ -225,7 +225,7 @@ class Delete:
         for filename in filename_list:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
-                if int(filename[n+1:n+9]) < oldtime:
+                if int(filename[n+1:n+9]) < oldtime or delAll :
                     realdir=os.path.join(tardir,filename)
                     start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
@@ -242,7 +242,7 @@ class Delete:
         old_timeint=int(time.strftime("%Y%m%d", old))
         return old_timeint
 
-    def start(self):
+    def start(self,delAll=False):
         if int(self.duration)==-1:
             return
         cp = ConfigParser.ConfigParser()
@@ -253,7 +253,7 @@ class Delete:
         if ret !=0:
             self.log.logger.error('delete mount failed')
             return
-        ret = self.delete()
+        ret = self.delete(delAll)
         if ret !=0:
             self.close()
             self.log.logger.error('delete mount failed')

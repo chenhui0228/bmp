@@ -178,9 +178,6 @@ class Daemon:
 
 
 
-    def do_delete(self):
-        ret = self.scheduler.add_job(self.deleteBackupData, 'cron', hour='0', minute='0', second='0')
-
     def deleteBackupData(self):
         task_list=self.task_list
         for ms in task_list:
@@ -195,6 +192,18 @@ class Daemon:
                 t=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=self.glusterlist,name=name,id=id)
                 t.start()
 
+    def deleteAllDataOfaWork(self,id):
+        task_list = self.task_list
+        task = task_list[id]
+        msg = task.st
+        duration = msg.get('duration')
+        vol = msg.get('destination_vol')
+        dir = msg.get('destination_address')
+        name = msg.get('name')
+        id = msg.get('id')
+        if duration != None or vol != None or dir != None:
+            t = Delete(self.log, duration=duration, vol=vol, dir=dir, ip=self.glusterlist, name=name, id=id)
+            t.start(True)
 
 
 
@@ -316,6 +325,8 @@ class Daemon:
             dict = data['data']
             self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
             ms = dict['id']
+            if dict.has_key('delete'):
+                self.deleteAllDataOfaWork(dict['id'])
             if self.task_list.has_key(ms):
                 self.task_list[ms].do_remove_job()
                 del self.task_list[ms]
@@ -348,6 +359,10 @@ class Daemon:
         elif data['type'] == 'keepalive':
             self.log.logger.info('keepalive')
             self.send_alive()
+        elif data['type'] == 'stop':
+            dict = data['data']
+            ms=dict['id']
+            self.task_list[ms].stop_job()
         else:
             self.log.logger.error("get some messages which is to server")
 
