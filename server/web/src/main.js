@@ -73,6 +73,9 @@ Vue.filter("dateStampFormat", function (value) {
   return _datetime;
 });
 Vue.filter("Bytes", function (bytes) {
+  if (bytes === -1) {
+    return '--';
+  }
   if (bytes === 0) return '0 B';
   let k = 1024, // or 1024
     sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
