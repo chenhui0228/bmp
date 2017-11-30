@@ -12,7 +12,7 @@ import  uuid
 
 
 class WorkerPool(threading.Thread):
-    def __init__(self, workq, i,n ,cip,log):
+    def __init__(self, workq, i,n ,workpool_workid_dict,log):
         # self.logger = logging.getLogger(__name__)
         threading.Thread.__init__(self)
         self.log = log
@@ -26,8 +26,10 @@ class WorkerPool(threading.Thread):
         self.name = str(i)
         self.threadID = i
         self.allcron=n
-        self.confip = cip
+        self.workpool_workid_dict = workpool_workid_dict
         self.arglist = {}
+        if self.workpool_workid_dict.has_key(self.name):
+            del self.workpool_workid_dict[self.name]
 
     """
     将json 格式的数据转换为字典
@@ -79,9 +81,6 @@ class WorkerPool(threading.Thread):
 
 
     def run(self):
-
-        if not self.confip:
-            return 1
         now = datetime.now()
         while not self.thread_stop:  # do forever
             time.sleep(1)
@@ -116,7 +115,6 @@ class WorkerPool(threading.Thread):
             """
             建立工作实例，Work 类提供了对glusterfs 的各种操作，此时开始进行读写等操作
             """
-            self.arglist['confip'] = self.confip
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
@@ -129,6 +127,7 @@ class WorkerPool(threading.Thread):
                 self.log.logger.error('work create failed %s'% (self.threadID))
 
             self.log.logger.info('todo work:%s' % (self.threadID))
+            self.workpool_workid_dict[self.name]=self.arglist['id']
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
             if self.arglist['op'] == 'backup' or self.arglist['op'] == 'dump':
@@ -138,10 +137,15 @@ class WorkerPool(threading.Thread):
                     self.send_ta(self.arglist['id'], 'waiting')
             else:
                 self.send_ta(self.arglist['id'], 'end')
+            if self.workpool_workid_dict.has_key(self.name):
+                del self.workpool_workid_dict[self.name]
             res = self.queue.qsize()  # 判断消息队列大小
             if res > 0:
                 #print("ahua!There are still %d tasks to do" % (res))
                 self.log.logger.warning("There are still %d tasks to do" % (res))
+
+    def stopwork(self):
+        self.work.stop()
 
 
 class Delete:

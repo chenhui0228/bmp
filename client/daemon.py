@@ -43,12 +43,12 @@ class Daemon:
         self.port = cp.get('server', 'port')
         self.info_l = ""
         self.glusterlist = eval(cp.get('client', 'glusterip'))
-        self.confip = '10.202.125.83:80'
         self.task_sum = 0  # 当前任务数
         self.task_list = {}
         self.tp = []
         self.hostname = str(socket.gethostname())
         self.ip = socket.gethostbyname(self.hostname)
+        self.workpool_workid_dict={}
 
         # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
 
@@ -247,7 +247,7 @@ class Daemon:
             self.tp.remove(t)
 
             # self.logger.warning(
-            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.confip,self.log)
+            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.workpool_workid_dict,self.log)
             self.tp.append(newthread)
             newthread.setDaemon(True)
             newthread.start()
@@ -269,7 +269,7 @@ class Daemon:
             return
         dict['op'] =data['type']
         self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
-        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.log)
         new_task.start(do_type)
         self.task_list[ms] = new_task
         self.task_sum = self.task_sum + 1
@@ -300,7 +300,7 @@ class Daemon:
                     del self.task_list[ms]
                     self.task_sum = self.task_sum - 1
                     dict['op'] = dict['sub']
-                    new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                    new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.log)
                     new_task.start(dict['run_sub'])
                     self.task_list[ms] = new_task
                     self.task_sum = self.task_sum + 1
@@ -362,7 +362,16 @@ class Daemon:
         elif data['type'] == 'stop':
             dict = data['data']
             ms=dict['id']
-            self.task_list[ms].stop_job()
+            for t in self.tp:
+                if self.workpool_workid_dict.has_key(t.name):
+                    if self.workpool_workid_dict[t.name] == ms:
+                        try:
+                            t.stop()
+                        except Exception,e:
+                            self.log.logger.error(e.message)
+                        break
+
+
         else:
             self.log.logger.error("get some messages which is to server")
 
@@ -392,10 +401,10 @@ class Daemon:
         self.qq = Queue.Queue(self.qdpth)
         self.deleteq=Queue.Queue()
         for i in range(self.uc_size):
-            t = WorkerPool(self.q, i,self.uc_size ,self.confip,self.log)
+            t = WorkerPool(self.q, i,self.uc_size ,self.workpool_workid_dict,self.log)
             self.tp.append(t)
         for i in range(self.uc_size,self.uc_size+self.ic_size):
-            t = WorkerPool(self.qq, i,self.uc_size, self.confip, self.log)
+            t = WorkerPool(self.qq, i,self.uc_size, self.workpool_workid_dict, self.log)
             self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)

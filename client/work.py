@@ -28,10 +28,8 @@ class Work():
         cp.read('/etc/SFbackup/client.conf')
         self.mount = cp.get('client', 'mount_dir')
         self.errormessage=""
-        #print "work arglist is:", self.arglist, " time at:", datetime.now()
-        #self.log.logger.info("work arglist is:", self.Z, " time at:", datetime.now())
-        #self.log.logger.debug('work arglist is ' + str(self.arglist))
-        # self.max_size = 4194304  # 4M
+        self.process=''
+        self.pause=False
         if self.arglist is None:
             #print "arg is NULL ?"
             self.log.logger.warning('arg is NULL!')
@@ -158,7 +156,7 @@ class Work():
         cmd = ('rsync -avlP %s %s' % (pd, vd))
         #print cmd
         fp = tempfile.TemporaryFile(mode='w+t')
-        process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
+        self.process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
         while True:
             lines = fp.readlines()
             for line in lines:
@@ -179,7 +177,7 @@ class Work():
                     write_old = 0
                     write_now = 0
                 time.sleep(1)
-            if process.poll() != None:
+            if self.process.poll() != None:
                 list=pd.split('/')
                 new_file=os.path.join(vd,list[-1])
                 if self.get_file_size(pd)==self.get_file_size(new_file):
@@ -192,12 +190,12 @@ class Work():
                     return -1
                 break
         fp.close()
-        outdata, errdata = process.communicate()
+        outdata, errdata = self.process.communicate()
         if  len(errdata) != 0:
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
             self.log.logger.error(errdata)
-            self.errormessage=str(errdata)
+            self.errormessage=errdata
             return -1
        # print write_all
        # print 'finished'
@@ -278,7 +276,10 @@ class Work():
                 #print "work failed"
                 if self.errormessage == "":
                     self.errormessage = 'backup failed'
-                self.send_bk('last', state='failed', end_time=str(time.time()))
+                if self.pause:
+                    self.send_bk('last', state='aborted', end_time=str(time.time()))
+                else:
+                    self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_close()
             if ret != 0:
@@ -357,7 +358,10 @@ class Work():
                 self.do_close()
                 if self.errormessage == "":
                     self.errormessage = 'recover failed'
-                self.send_bk('last', state='failed', end_time=str(time.time()))
+                if self.pause:
+                    self.send_bk('last', state='aborted', end_time=str(time.time()))
+                else:
+                    self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             time.sleep(2)
             ret = self.do_close()
@@ -374,3 +378,9 @@ class Work():
         self.send_bk('last', state='success', end_time=str(time.time()))
         self.log.logger.info("the work %s is success"%self.arglist['name'])
         return
+
+    def stop(self):
+        if self.process!='':
+            self.pause=True
+            self.process.kill()
+

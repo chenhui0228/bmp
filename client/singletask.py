@@ -8,7 +8,7 @@ import uuid
 
 
 class SingleTask():
-    def __init__( self, name, schd, info, q, glusterip, confip,log):
+    def __init__( self, name, schd, info, q, glusterip,log):
         # self.logger = logging.getLogger(__name__)
         self.log = log
         ms = Message("tcp")
@@ -25,7 +25,6 @@ class SingleTask():
         self.gluster = glusterip
         self.police = {}
         self.st["date"] = ""
-        self.confip = confip
         self.stop = False
 
 
