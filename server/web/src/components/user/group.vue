@@ -34,10 +34,10 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px" v-if="role == 'superrole'">新建</el-button>
+        <el-button type="primary" @click="batchDelete" v-if="groups.length != 0">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px" v-if="role == 'superrole'">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="组名" style="min-width: 240px;"></el-input>
@@ -49,7 +49,7 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="groups" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="groups" highlight-current-row v-loading="listLoading" @selection-change="handleSelectionChange"
                 style="width: 100%;">
         <el-table-column type="selection" width="50"></el-table-column>
         <el-table-column type="index" width="60">
@@ -164,7 +164,7 @@
         page: 1,
         per_page: 10,
         offset: 0,
-        sels: [], //列表选中列
+        multipleSelection: [],
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -376,31 +376,38 @@
           });
         });
       },
-      //勾选
-      selsChange: function (sels) {
-        this.sels = sels;
+      handleSelectionChange(val){
+        this.multipleSelection = val;
       },
       //批量删除
-      batchDelete: function () {
-        var ids = this.sels.map(item => item.id).toString();
-        this.$confirm('确认删除选中记录吗？', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.listLoading = true;
-          //NProgress.start();
-          let para = {ids: ids};
-          reqBatchDelGroup(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          this.$confirm('将删除选中的'+this.multipleSelection.length+'个组？','提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            for (var i = 0; i < this.multipleSelection.length; ++i){
+              let para = {user: this.sysUserName};
+              reqDelGroup(this.multipleSelection[i].id, para).then((res) => {
+                this.listLoading = false;
+                //NProgress.done();
+                this.$message({
+                  message: '删除成功',
+                  type: 'success'
+                });
+                this.getGroup();
+              });
+            }
+          }).catch(() => {
             this.$message({
-              message: '删除成功',
-              type: 'success'
+              type: 'info',
+              message: '已取消删除'
             });
-            this.getGroup();
           });
-        }).catch(() => {
-
-        });
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
+        }
       },
 
     },

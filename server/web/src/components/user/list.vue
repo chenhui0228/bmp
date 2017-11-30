@@ -12,7 +12,7 @@
         <!--工具条-->
         <div class="toolbar" style="float:left;margin-left: 10px;">
           <el-button type="primary" @click="newUser">新建</el-button>
-          <el-button type="primary" @click="batchDelete">批量删除</el-button>
+          <el-button type="primary" @click="batchDelete" v-if="users.length !=0">批量删除</el-button>
           <el-button type="primary" @click="confirmExport">导出用户数据</el-button>
         </div>
         <div class="toolbar" style="float:right;">
@@ -647,6 +647,6 @@
 
 <style>
   .export-dialog .el-dialog {
-    width: 25%
+    width: 35%
   }
 </style>

@@ -11,7 +11,9 @@
         <!--工具条-->
         <div class="toolbar" style="float:left;margin-left: 10px;">
           <el-button type="primary" @click="newPolicy">新建</el-button>
-          <el-button type="primary" @click="">批量删除</el-button>
+          <el-button type="primary" @click="batchDelete" v-if="policies.length !=0">
+            批量删除
+          </el-button>
         </div>
         <div class="toolbar" style="float:right;">
           <el-form :inline="true" :model="searchCmds">
@@ -23,7 +25,7 @@
             </el-form-item>
           </el-form>
         </div>
-        <el-table :data="policies" highlight-current-row v-loading="loading" style="width: 100%;">
+        <el-table :data="policies" highlight-current-row v-loading="loading" @selection-change="handleSelectionChange" style="width: 100%;">
           <el-table-column type="selection" width="50">
           </el-table-column>
           <el-table-column type="expand">
@@ -238,6 +240,7 @@
         dialogPolicyTitle: '',
         formLabelWidth: '120px',
         confimPolicyDeleteMsg: '您确定要删除这个策略吗？',
+        multipleSelection: [],
         filter: {
           per_page: 10,   //页大小
           page: 1   //当前页
@@ -483,6 +486,30 @@
             this.openMsg('请求失败', 'error');
           }
         });
+      },
+      //勾选
+      handleSelectionChange: function (multipleSelection) {
+        this.multipleSelection = multipleSelection;
+      },
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          this.$confirm('将删除选中的'+this.multipleSelection.length+'个策略？','提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            for (var i = 0; i < this.multipleSelection.length; ++i){
+              this.deletePolicy(i,this.multipleSelection[i])
+            }
+          }).catch(e => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除'
+            });
+          });
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
+        }
       },
       confirmDeleteMsgbox(func, index, row, mymsg){
         const h = this.$createElement;

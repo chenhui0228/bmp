@@ -41,11 +41,11 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
-          批量删除
-        </el-button>
         <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags != 0">
+          批量删除
+        </el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -61,7 +61,7 @@
       <el-table :data="tasks"
                 highlight-current-row
                 v-loading="listLoading"
-                @selection-change="selsChange"
+                @selection-change="handleSelectionChange"
                 @row-dblclick="taskStateDetail"
                 style="width: 100%;"
                 max-height="750"
@@ -532,13 +532,13 @@
         isTags: false,
         taskname_label_width: '180rem',
         tasks:[],
+        tags:[],
         total: 0,
         page: 1,
         per_page: 10,
         offset: 0,
         task_type: 'backup',
         volumeName: '',
-        sels: [], //列表选中列
         sourceTypes: [
         {
           label: '本地文件',
@@ -551,7 +551,7 @@
         workers:[],
         volumes:[],
         policies:[],
-
+        multipleSelection: [],
         //TODO: 创建恢复任务相关数据
         createRecoverTaskLoading: false,
         createRecoverTaskFormVisible: false,
@@ -562,6 +562,7 @@
             return time.getTime() < Date.now() - 8.64e7;
           }
         },
+        multipleSelection: [],
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
@@ -978,30 +979,53 @@
         });
       },
       //勾选
-      selsChange: function (sels) {
-        this.sels = sels;
+      handleSelectionChange: function (multipleSelection) {
+        this.multipleSelection = multipleSelection;
       },
       //批量删除
-      batchDelete: function () {
-//        var ids = this.sels.map(item => item.id).toString();
-//        this.$confirm('确认删除选中记录吗？', '提示', {
-//          type: 'warning'
-//        }).then(() => {
-//          this.listLoading = true;
-//          //NProgress.start();
-//          let para = {ids: ids};
-//          reqBatchDelWorker(para).then((res) => {
-//            this.listLoading = false;
-//            //NProgress.done();
-//            this.$message({
-//              message: '删除成功',
-//              type: 'success'
-//            });
-//            this.getTasks();
-//          });
-//        }).catch(() => {
-//
-//        });
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          if(this.isTags){
+
+          }else{
+            this.$confirm('将删除选中的'+this.multipleSelection.length+'个任务？','提示',{
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }).then(() => {
+              for (var i = 0; i < this.multipleSelection.length; ++i){
+                let para = {user: this.sysUserName};
+                reqDelTask(this.multipleSelection[i].task.id, para).then((res) => {
+                  this.listLoading = false;
+                  //NProgress.done();
+                  this.openMsg('删除成功','success');
+                  this.getTasks();
+                }).catch((err) => {
+                  this.listLoading = false;
+                  if (err.response.status == 401) {
+                    this.openMsg('请重新登陆', 'error');
+                    sessionStorage.removeItem('access-user');
+                    this.$router.push({ path: '/' });
+                  }else if(err.response.data.code === 403) {
+                    this.openMsg('删除失败', 'error');
+                  }else if(err.response.data.code === 401) {
+                    this.openMsg('没有权限', 'error');
+                  }else {
+                    this.openMsg('请求失败', 'error');
+                  }
+                });
+              }
+            }).catch(() => {
+              this.$message({
+                type: 'info',
+                message: '已取消删除'
+              });
+            });
+          }
+
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
+        }
       },
       //任务状态详情
       taskStateHandleSizeChange: function (val) {
