@@ -403,7 +403,7 @@ class Server:
         run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
-               "'destination_ip':'%s','run_sub':'%s',}} " % (id, task.name, task.state, vol,  dir ,destination, worker.ip,run_sub)
+               "'destination_ip':'%s','run_sub':'%s'}} " % (id, task.name, task.state, vol,  dir ,destination, worker.ip,run_sub)
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -440,12 +440,12 @@ class Server:
                     logger.error(e.message)
                 return
             elif typeofMessage == 'run':
-                bk_value['process'] = dict.get('process')
-                bk_value['current_size'] = dict.get('current_size')
+                bk_value['process'] = int(dict.get('process'))
+                bk_value['current_size'] = int(dict.get('current_size'))
                 logger.info(str(self.workstate_dict))
                 if not self.workstate_dict.has_key(dict['bk_id']):
                     return
-                if self.workstate_dict[dict['bk_id']]>int(dict['process']):
+                if int(self.workstate_dict[dict['bk_id']])>int(dict['process']):
                     return
                 else:
                     self.workstatelock.acquire()
@@ -460,7 +460,7 @@ class Server:
             elif typeofMessage == 'last':
                 bk_value['state'] = dict.get('state')
                 bk_value['end_time'] = dict.get('end_time')
-                bk_value['message'] = dict.get('errormessage')
+                bk_value['message'] = dict.get('message')
 
                 try:
                     self.db.bk_update(super_context, bk_value)

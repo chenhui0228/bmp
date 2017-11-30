@@ -196,7 +196,8 @@ class Work():
         if  len(errdata) != 0:
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
-            self.errormessage=errdata
+            self.log.logger.error(errdata)
+            self.errormessage=str(errdata)
             return -1
        # print write_all
        # print 'finished'
