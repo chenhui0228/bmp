@@ -152,22 +152,22 @@
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-            <el-tooltip content="立即执行" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped'" >
+            <el-tooltip content="立即执行" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask" >
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
                 <use xlink:href="#icon-exec"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="停止" placement="top" v-if="scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'"><!--没暂停就显示暂停按钮-->
+            <el-tooltip content="停止" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask"><!--没暂停就显示暂停按钮-->
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="恢复任务" placement="top" v-if="scope.row.task.state == 'stopped'">
+            <el-tooltip content="恢复任务" placement="top" v-if="scope.row.task.state == 'stopped' && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
                 <use xlink:href="#icon-recover"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="重新下发" placement="top" v-if="scope.row.task.state != 'stopped' && scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting'">
+            <el-tooltip content="重新下发" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting' && !isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
                 <use xlink:href="#icon-reload"></use>
               </svg>
