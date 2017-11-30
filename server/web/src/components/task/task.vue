@@ -46,6 +46,7 @@
         <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags != 0">
           批量删除
         </el-button>
+        <el-button type="primary" @click="confirmExport">导出任务数据</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
@@ -109,8 +110,9 @@
             <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
             <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
-            <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'
-                             " style="color: red">失败</span>
+            <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'">
+              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
+            </span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
           </template>
@@ -434,8 +436,8 @@
             <template slot-scope="scope">
               <span v-if="scope.row && scope.row.state == 'success'" style="color: green">已完成</span>
               <span v-else-if="scope.row && scope.row.state == 'start'" style="color: blue">执行中...</span>
-              <span v-else-if="scope.row && scope.row.state == 'failed'" style="color: red">
-                <el-button type="text" @click="failedMsgbox(scope.row)">失败</el-button>
+              <span v-else-if="scope.row && scope.row.state == 'failed'">
+                <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
               </span>
               <el-progress v-else-if="scope.row && scope.row.process" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
@@ -489,14 +491,49 @@
       </el-dialog>
 
     </el-col>
+    <el-dialog title="导出数据" :visible.sync="dialogExportVisible" class="export-dialog">
+      <el-form :model="exportConds">
+        <el-col :span="8">
+          <el-form-item label="自定义数据范围">
+            <el-checkbox v-model="exportConds.customize"></el-checkbox>
+          </el-form-item>
+        </el-col>
+        <el-col :span="16" v-if="exportConds.customize">
+          <el-col :span="4" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+            导出第
+          </el-col>
+          <el-col :span="3">
+            <el-form-item label="">
+              <el-input v-model="exportConds.from" auto-complete="off" style="height: 24px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+            页，至
+          </el-col>
+          <el-col :span="3">
+            <el-form-item label="">
+              <el-input v-model="exportConds.to" auto-complete="off" style="height: 24px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+            页数据
+          </el-col>
+        </el-col>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="cancelExport">取 消</el-button>
+        <el-button type="primary" @click="export2excel">确 定</el-button>
+      </div>
+    </el-dialog>
   </el-row>
 </template>
 <script>
-  import { reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
+  import { reqGetTaskDetailList, reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
     reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList,
      reqGetTags} from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
+  import export2Excel from '../../common/export2Excel'
   export default {
     data() {
       var checkStarTime = (rule, value, callback) => {
@@ -555,6 +592,12 @@
         //TODO: 创建恢复任务相关数据
         createRecoverTaskLoading: false,
         createRecoverTaskFormVisible: false,
+        dialogExportVisible:false,
+        exportConds: {
+          customize: false,
+          from: 1,
+          to: 1,
+        },
         currentWatchingTask: [],
         createRecoverTaskForm: {},
         pickerOptionsForDate: {
@@ -690,11 +733,10 @@
           type: type,
           limit: this.per_page,
           offset: this.offset,
-//          ip: this.filters.ip
         };
         this.listLoading = true;
         //NProgress.start();
-        reqGetTaskList(para).then((res) => {
+        reqGetTaskDetailList(para).then((res) => {
           this.total = res.data.total;
           this.tasks = res.data.tasks;
           this.listLoading = false;
@@ -715,7 +757,67 @@
           }
         });
       },
+      confirmExport(){
+        this.dialogExportVisible = true;
+      },
+      cancelExport(){
+        this.dialogExportVisible = false;
+        this.exportConds = {
+          customize: false,
+          from: 1,
+          to: 1,
+        };
+      },
+      export2excel(){
+        if(this.exportConds.customize){
+          var page_offset = this.filter.per_page * (this.exportConds.from - 1);
+          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
+          params.offset = page_offset;
+        }
+        var file_save_name;
+        if(this.dialogTaskStateDetailTableVisible){
+          file_save_name = 'task_states';
+        }else{
+          file_save_name = 'tasks';
+          file_save_name = file_save_name+(new Date().getTime().toString());
+          let params = {
+            user: this.sysUserName,
+          };
+          reqGetTaskList(params).then(res => {
+            let { status, data } = res;
+            if (data == null) {
+              this.$message({
+                message: "未获取到信息",
+                type: 'error'
+              });
+            } else {
+              export2Excel.export2Excel(data.tasks,'sheets',file_save_name);
+            }
+            this.cancelExport();
+          },err => {
+            if (err.response.status == 401) {
+              this.$message({
+                message: "请重新登陆",
+                type: 'error'
+              });
+              sessionStorage.removeItem('access-user');
+              this.$router.push({ path: '/' });
+            } else if (err.response.status == 403){
+              this.$message({
+                message: "没有权限",
+                type: 'error'
+              });
+            } else {
+              this.$message({
+                message: "请求异常",
+                type: 'error'
+              });
+            }
+            this.cancelExport();
+          });
+        }
 
+      },
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
         this.createRecoverTaskFormVisible = true;
@@ -1113,7 +1215,7 @@
         reqTaskAction(row.task.id, data, params, headers).then(res => {
           this.openMsg(info, 'success');
           params.task_id = row.task.id;
-          reqGetTaskList(params).then(res =>{
+          reqGetTaskDetailList(params).then(res =>{
             this.tasks[index] = res.data.tasks[0]
           })
         }, err => {
@@ -1181,7 +1283,7 @@
         }else{
           params.type = 'recover';
         }
-        reqGetTaskList(params).then((res) => {
+        reqGetTaskDetailList(params).then((res) => {
           this.total = res.data.total;
           if(this.tasks.length != res.data.tasks.length){
             this.tasks = res.data.tasks;
