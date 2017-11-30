@@ -404,6 +404,7 @@
 
       <!--任务状态框-->
       <el-dialog  class="custom_size" :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
+
         <el-table :data="taskStates"
                   border
                   style="margin: auto;">
@@ -451,6 +452,7 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-button type="primary" @click="confirmExport" style="margin-top:5px">导出状态信息</el-button>
         <el-pagination
           @size-change="taskStateHandleSizeChange"
           @current-change="taskStateHandleCurrentChange"
@@ -769,6 +771,9 @@
         };
       },
       export2excel(){
+        let params = {
+          user: this.sysUserName,
+        };
         if(this.exportConds.customize){
           var page_offset = this.filter.per_page * (this.exportConds.from - 1);
           params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
@@ -776,13 +781,44 @@
         }
         var file_save_name;
         if(this.dialogTaskStateDetailTableVisible){
-          file_save_name = 'task_states';
+          file_save_name = 'task_states_';
+          file_save_name = file_save_name+(new Date().getTime().toString());
+          params.task_id = this.currTaskRow;
+          reqBackupStates(params).then(res => {
+            let { status, data } = res;
+            if (data == null) {
+              this.$message({
+                message: "未获取到信息",
+                type: 'error'
+              });
+            } else {
+              export2Excel.export2Excel(data.states,'task_state',file_save_name);
+            }
+            this.cancelExport();
+          },err => {
+            if (err.response.status == 401) {
+              this.$message({
+                message: "请重新登陆",
+                type: 'error'
+              });
+              sessionStorage.removeItem('access-user');
+              this.$router.push({ path: '/' });
+            } else if (err.response.status == 403){
+              this.$message({
+                message: "没有权限",
+                type: 'error'
+              });
+            } else {
+              this.$message({
+                message: "请求异常",
+                type: 'error'
+              });
+            }
+            this.cancelExport();
+          });
         }else{
           file_save_name = 'tasks';
           file_save_name = file_save_name+(new Date().getTime().toString());
-          let params = {
-            user: this.sysUserName,
-          };
           reqGetTaskList(params).then(res => {
             let { status, data } = res;
             if (data == null) {
@@ -791,7 +827,7 @@
                 type: 'error'
               });
             } else {
-              export2Excel.export2Excel(data.tasks,'sheets',file_save_name);
+              export2Excel.export2Excel(data.tasks,'tasks',file_save_name);
             }
             this.cancelExport();
           },err => {
