@@ -359,7 +359,7 @@ class Daemon:
         elif data['type'] == 'keepalive':
             self.log.logger.info('keepalive')
             self.send_alive()
-        elif data['type'] == 'stop':
+        elif data['type'] == 'pause':
             dict = data['data']
             ms=dict['id']
             for t in self.tp:

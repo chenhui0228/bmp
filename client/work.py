@@ -139,12 +139,42 @@ class Work():
 
                 if os.path.isdir(filepath):
                     ret=self.do_write_dir(filepath,vd,filename)
+                    if ret!=0:
+                        return ret
+
                 else:
                     ret=self.do_write_file(filepath,vd)
+                    if ret != 0:
+                        return ret
         else:
             #print "0\n"
             ret=self.do_write_file(pd,vd)
         return ret
+
+
+    def do_dump(self,cmd):
+        write_now = 0
+        self.log.logger.info('do dump')
+        self.process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        while True:
+            write_now=self.get_file_size(self.mount_dir+'/'+self.vfile)
+            self.send_bk('run', process=str(0), current_size=str(write_now))
+            time.sleep(1)
+            if self.process.poll() != None:
+                write_now = self.get_file_size(self.mount_dir+'/'+self.vfile)
+                self.send_bk('run', process=str(0), current_size=str(write_now))
+                break
+        outdata, errdata = self.process.communicate()
+        if self.process.poll() != 0:
+            # print 'error info:%s' % error
+            self.log.logger.error("dump work failed" )
+            self.log.logger.error(errdata)
+            self.errormessage = errdata
+            return -1
+            # print write_all
+            # print 'finished'
+        self.log.logger.info("dump work finished" )
+        return 0
 
 
 
@@ -187,6 +217,7 @@ class Work():
                         self.send_bk('run',process=str(pro),current_size=str(write_all))
                         self.sendpro=pro
                 else:
+                    self.errormessage = 'file not complete'
                     return -1
                 break
         fp.close()
@@ -278,6 +309,7 @@ class Work():
                     self.errormessage = 'backup failed'
                 if self.pause:
                     self.send_bk('last', state='aborted', end_time=str(time.time()))
+                    self.errormessage = 'backup aborted'
                 else:
                     self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
@@ -301,9 +333,12 @@ class Work():
             ret = self.do_mount()
             if ret != 0:
                 self.errormessage = 'mount failed'
-                self.send_bk('last', state='failed', end_time=str(time.time()))
+                self.log.logger.error('mount failed')
                 return
-
+            self.proctotal = self.get_file_size((self.mount_dir + self.vfile))
+            if self.proctotal == 0:
+                self.proctotal+=1
+            self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 self.do_close()
@@ -313,7 +348,7 @@ class Work():
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             cmd = './%s %s/%s' % (path, self.mount_dir, self.vfile)
-            ret=os.system(cmd)
+            ret=self.do_dump(cmd)
             if ret!=0:
                 self.do_close()
                 if self.errormessage == "":
