@@ -168,6 +168,10 @@ class Work():
                 self.send_bk('run', process=200, current_size=str(write_now))
                 break
         outdata, errdata = self.process.communicate()
+        if self.pause:
+            self.log.logger.info('dump is pause')
+            self.errormessage='dump is pause'
+            return -1
         if self.process.poll() != 0:
             # print 'error info:%s' % error
             self.log.logger.error("dump work failed" )
@@ -225,7 +229,11 @@ class Work():
                 break
         fp.close()
         outdata, errdata = self.process.communicate()
-        if  len(errdata) != 0:
+        if self.pause:
+            self.log.logger.info('the work is pause')
+            self.errormessage='the work is pause'
+            return -1
+        if  self.process.poll() != 0:
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
             self.log.logger.error(errdata)
@@ -310,7 +318,6 @@ class Work():
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
-
                 #print "work failed"
                 if self.errormessage == "":
                     self.errormessage = 'backup failed'
