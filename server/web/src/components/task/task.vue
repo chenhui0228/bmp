@@ -446,7 +446,10 @@
               <span v-else-if="scope.row && scope.row.state == 'failed'">
                 <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
               </span>
-              <span style="color: dodgerblue" v-else-if="parseInt(scope.row.process) > 100" >正在dump...</span>
+              <span v-else-if="scope.row && scope.row.state == 'aborted'">
+                <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
+              </span>
+              <span style="color: dodgerblue" v-else-if="scope.row && parseInt(scope.row.process) > 100" >正在dump...</span>
               <el-progress v-else-if="scope.row && scope.row.process && scope.row.process !== '200'" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
