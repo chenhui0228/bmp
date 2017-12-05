@@ -122,7 +122,8 @@
           width="150rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
-            <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process" :percentage="parseInt(scope.row.state.process)"></el-progress>
+              <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" >正在dump...</span>
+              <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process !== '200'" :percentage="parseInt(scope.row.state.process)"></el-progress>
             </span>
             <span v-else>--</span>
           </template>
@@ -445,14 +446,15 @@
               <span v-else-if="scope.row && scope.row.state == 'failed'">
                 <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
               </span>
-              <el-progress v-else-if="scope.row && scope.row.process" :percentage="parseInt(scope.row.process)"></el-progress>
+              <span style="color: dodgerblue" v-else-if="parseInt(scope.row.process) > 100" >正在dump...</span>
+              <el-progress v-else-if="scope.row && scope.row.process && scope.row.process !== '200'" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" min-width="180" v-if="isBackupTask">
             <template slot-scope="scope">
-              <!--TODO:创建恢复任务-->
+              <!--创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
             </template>
           </el-table-column>
@@ -859,14 +861,20 @@
         }
 
       },
-      //TODO:Recover Task
+      //Recover Task
       showCreateRecoverTaskDialog: function (row) {
         this.createRecoverTaskFormVisible = true;
         let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmmss');
         let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
         let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
-        let source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
-        let source = this.currentWatchingTask.destination + source_suffix;
+        let source_prefix = this.currentWatchingTask.destination; //恢复任务源地址前面一部分是该备份任务的目的地址
+        let source_suffix = '';
+        if(source_prefix.charAt(source_prefix.length -1) === '/'){
+          source_suffix =  this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
+        }else{
+          source_suffix = '/' + this.currentWatchingTask.name + '_' + this.currentWatchingTask.id + '_' +task_suffix;
+        }
+        let source = source_prefix + source_suffix;
         let description = `This is a recover task for ${this.currentWatchingTask.name} which worked in ${descript_suffix}`;
         this.createRecoverTaskForm = {
           name: name,
