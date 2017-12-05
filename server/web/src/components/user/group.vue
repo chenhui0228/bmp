@@ -35,7 +35,7 @@
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
         <el-button type="primary" @click="showAddDialog" style="margin-left: 5px" v-if="role == 'superrole'">新建</el-button>
-        <el-button type="primary" @click="batchDelete" v-if="groups.length != 0">
+        <el-button type="primary" @click="batchDelete" v-if="groups.length != 0 && role == 'superrole'">
           批量删除
         </el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
@@ -120,27 +120,6 @@
       </el-dialog>
 
     </el-col>
-    <!--<el-col :span="10"></el-col>-->
-    <!--<el-col :span="24">-->
-      <!--<div v-for="(group, index) in groups" style="float:left; margin-right: 10px">-->
-        <!--<el-card class="box-card">-->
-          <!--<div slot="header">-->
-            <!--<span>{{ group.name }}</span>-->
-            <!--<div style="float:right">-->
-              <!--<el-button size="small" @click="showEditDialog(index, group)">-->
-                <!--<i class="iconfont icon-modiffy"></i>-->
-              <!--</el-button>-->
-              <!--<el-button type="danger" @click="delGroup(index, group)" size="small">-->
-                <!--<i class="iconfont icon-delete"></i>-->
-              <!--</el-button>-->
-            <!--</div>-->
-          <!--</div>-->
-          <!--<div>-->
-            <!--{{ group.description }}-->
-          <!--</div>-->
-        <!--</el-card>-->
-      <!--</div>-->
-    <!--</el-col>-->
 
   </el-row>
 </template>

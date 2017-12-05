@@ -159,7 +159,12 @@
                 <use xlink:href="#icon-exec"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="停止" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask"><!--没暂停就显示暂停按钮-->
+            <el-tooltip content="终止当前执行" placement="top" v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' && isBackupTask">
+              <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'pause')">
+                <use xlink:href="#icon-stop_2"></use>
+              </svg>
+            </el-tooltip>
+            <el-tooltip content="停止" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
@@ -774,6 +779,11 @@
         let params = {
           user: this.sysUserName,
         };
+        if (this.isBackupTask){
+          params.type = 'backup';
+        }else {
+          params.type = 'recover';
+        }
         if(this.exportConds.customize){
           var page_offset = this.filter.per_page * (this.exportConds.from - 1);
           params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
@@ -1247,6 +1257,9 @@
         } else if (action == "resume") {
           data = "{\"resume\": \"resume\"}"
           info = "命令下发成功，任务正在恢复..."
+        }else if (action == "pause") {
+          data = "{\"pause\": \"pause\"}"
+          info = "命令下发成功，任务正在终止执行..."
         }
         reqTaskAction(row.task.id, data, params, headers).then(res => {
           this.openMsg(info, 'success');
