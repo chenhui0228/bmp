@@ -121,7 +121,8 @@ class Server:
                 addr = (worker.ip, 22222)
             info['data'] = data
             info['addr'] = addr
-            if self.workeralivedict.has_key(worker_id):
+
+            if worker_id in self.workeralivedict:
                 if worker.status == 'Active':
                     self.alivelock.acquire()
                     self.workeralivedict[worker_id]+=1
@@ -295,6 +296,7 @@ class Server:
             worker = self.db.get_worker(super_context, id)
         except Exception,e:
             logger.error(e)
+        logger.debug('get worker ')
         if kwargs.has_key('ip'):
             old_ip=kwargs.get('ip')
         else:
@@ -389,7 +391,7 @@ class Server:
             if worker.ip=='10.202.127.11':
                 addr = (worker.ip, 22222)
             source = task.source
-            vol_dir = source.split('//')[1]
+            vol_dir = source.split('//',1)[1]
             new_vor_dir= vol_dir.split('/', 1)
             if len(new_vor_dir) == 0:
                 return
@@ -404,11 +406,6 @@ class Server:
         except Exception,e:
             logger.error(e)
             pass
-        #if policy.recurring=='once':
-        #    run_sub='date'
-        #else:
-        #    run_sub='cron'
-        #if do_type:
         run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
@@ -438,7 +435,7 @@ class Server:
             if typeofMessage == 'frist':
                 bk_value['start_time']=dict.get('start_time')
                 bk_value['total_size'] = dict.get('total_size')
-                bk_value['process'] = dict.get('process')
+                bk_value['process'] = str(dict.get('process'))
                 bk_value['state'] = dict.get('state')
                 try:
                     bk = self.db.bk_create(super_context, bk_value)
@@ -449,7 +446,7 @@ class Server:
                     logger.error(e)
                 return
             elif typeofMessage == 'run':
-                bk_value['process'] = int(dict.get('process'))
+                bk_value['process'] = str(dict.get('process'))
                 bk_value['current_size'] = int(dict.get('current_size'))
                 logger.info(str(self.workstate_dict))
                 if not self.workstate_dict.has_key(dict['bk_id']):
@@ -602,10 +599,10 @@ class Workerpool(threading.Thread):
                         msg_data = msg.split(":", 1)[1]
                         #logger.debug(self.name,'get meg',str(msg_data))
                         date = eval(msg_data)
-                        try:
-                            self.s.to_db(date)
-                        except Exception,e:
-                            logger.error(e)
+
+                        self.s.to_db(date)
+
+
                 else:
                         self.message.con.wait(1)
                         self.message.con.release()
