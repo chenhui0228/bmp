@@ -150,6 +150,12 @@ export const reqGetSummaries = params => {
   return axios.get(`${base}/backup/summaries`, {params: params} )
 };
 
+
+//TODO: 标签管理接口
 export const reqGetTags = params => {
-  return axios.get(`${base}/backup/tags`, {params: params} )
+  return axios.get(`${base}/backup/tags/detail`, {params: params} )
+};
+
+export const reqNewTags = (params, data) => {
+  return axios.post(`${base}/backup/tags`, data, {params: params} )
 };
