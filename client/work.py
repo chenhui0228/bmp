@@ -225,7 +225,7 @@ class Work():
                 break
         fp.close()
         outdata, errdata = self.process.communicate()
-        if  len(errdata) != 0:
+        if  self.process.poll() != 0:
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
             self.log.logger.error(errdata)
