@@ -26,7 +26,7 @@ const Login = resolve => require(['@/components/Login'], resolve)
 Vue.use(Router)
 
 let router = new Router({
-// mode: 'history',
+  mode: 'history',
   routes: [
     {
       path: '/login',
@@ -127,9 +127,9 @@ let router = new Router({
       menuShow: true,
       isSuperAdm: false,
       leaf: true, // 只有一个节点
-      iconCls: '#icon-volume', // 图标样式class
+      iconCls: '#icon-log', // 图标样式class
       children: [
-        {path: '/log-manage', component: Log, name: '日志信息', menuShow: true}
+        {path: '/log', component: Log, name: '日志信息', menuShow: true}
       ]
     },
   ]

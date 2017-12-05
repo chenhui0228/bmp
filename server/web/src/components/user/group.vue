@@ -34,10 +34,10 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0">
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px" v-if="role == 'superrole'">新建</el-button>
+        <el-button type="primary" @click="batchDelete" v-if="groups.length != 0 && role == 'superrole'">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="组名" style="min-width: 240px;"></el-input>
@@ -49,7 +49,7 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="groups" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="groups" highlight-current-row v-loading="listLoading" @selection-change="handleSelectionChange"
                 style="width: 100%;">
         <el-table-column type="selection" width="50"></el-table-column>
         <el-table-column type="index" width="60">
@@ -91,7 +91,7 @@
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="组名">
-            <el-input v-model="editForm.name" auto-complete="off"></el-input>
+            <el-input v-model="editForm.name" :disabled="true"></el-input>
           </el-form-item>
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
@@ -120,27 +120,6 @@
       </el-dialog>
 
     </el-col>
-    <!--<el-col :span="10"></el-col>-->
-    <!--<el-col :span="24">-->
-      <!--<div v-for="(group, index) in groups" style="float:left; margin-right: 10px">-->
-        <!--<el-card class="box-card">-->
-          <!--<div slot="header">-->
-            <!--<span>{{ group.name }}</span>-->
-            <!--<div style="float:right">-->
-              <!--<el-button size="small" @click="showEditDialog(index, group)">-->
-                <!--<i class="iconfont icon-modiffy"></i>-->
-              <!--</el-button>-->
-              <!--<el-button type="danger" @click="delGroup(index, group)" size="small">-->
-                <!--<i class="iconfont icon-delete"></i>-->
-              <!--</el-button>-->
-            <!--</div>-->
-          <!--</div>-->
-          <!--<div>-->
-            <!--{{ group.description }}-->
-          <!--</div>-->
-        <!--</el-card>-->
-      <!--</div>-->
-    <!--</el-col>-->
 
   </el-row>
 </template>
@@ -164,7 +143,7 @@
         page: 1,
         per_page: 10,
         offset: 0,
-        sels: [], //列表选中列
+        multipleSelection: [],
 
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
@@ -322,10 +301,17 @@
             reqAddGroup(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
-              this.$message({
-                message: '提交成功',
-                type: 'success'
-              });
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 组 ${res.data.group.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                this.$message({
+                  message: '添加成功',
+                  type: 'success'
+                });
+              }
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getGroup();
@@ -369,31 +355,38 @@
           });
         });
       },
-      //勾选
-      selsChange: function (sels) {
-        this.sels = sels;
+      handleSelectionChange(val){
+        this.multipleSelection = val;
       },
       //批量删除
-      batchDelete: function () {
-        var ids = this.sels.map(item => item.id).toString();
-        this.$confirm('确认删除选中记录吗？', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.listLoading = true;
-          //NProgress.start();
-          let para = {ids: ids};
-          reqBatchDelGroup(para).then((res) => {
-            this.listLoading = false;
-            //NProgress.done();
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          this.$confirm('将删除选中的'+this.multipleSelection.length+'个组？','提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            for (var i = 0; i < this.multipleSelection.length; ++i){
+              let para = {user: this.sysUserName};
+              reqDelGroup(this.multipleSelection[i].id, para).then((res) => {
+                this.listLoading = false;
+                //NProgress.done();
+                this.$message({
+                  message: '删除成功',
+                  type: 'success'
+                });
+                this.getGroup();
+              });
+            }
+          }).catch(() => {
             this.$message({
-              message: '删除成功',
-              type: 'success'
+              type: 'info',
+              message: '已取消删除'
             });
-            this.getGroup();
           });
-        }).catch(() => {
-
-        });
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
+        }
       },
 
     },

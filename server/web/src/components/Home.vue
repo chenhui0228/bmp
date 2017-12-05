@@ -211,7 +211,7 @@
         //this.getRoles(this.sysUserName);
         //this.getGroups(this.sysUserName);
       } else {
-        _this.$router.push('/login');
+        this.$router.push('/login');
       }
     }
   }

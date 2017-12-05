@@ -12,7 +12,8 @@
         <!--工具条-->
         <div class="toolbar" style="float:left;margin-left: 10px;">
           <el-button type="primary" @click="newUser">新建</el-button>
-          <el-button type="primary" @click="">批量删除</el-button>
+          <el-button type="primary" @click="batchDelete" v-if="users.length !=0">批量删除</el-button>
+          <el-button type="primary" @click="confirmExport">导出用户数据</el-button>
         </div>
         <div class="toolbar" style="float:right;">
           <el-form :inline="true" :model="searchCmds">
@@ -24,7 +25,7 @@
             </el-form-item>
           </el-form>
         </div>
-        <el-table :data="users" highlight-current-row v-loading="loading" style="width: 100%;">
+        <el-table :data="users" highlight-current-row v-loading="loading" style="width: 100%;" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="50">
           </el-table-column>
           <el-table-column prop="name" label="用户名" width="240" sortable>
@@ -34,12 +35,12 @@
           <el-table-column prop="group" label="属组" width="240">
           </el-table-column>
           <el-table-column prop="created_at" label="创建时间" width="240" sortable>
-            <template scope="scope">
+            <template slot-scope="scope">
               <span>{{ scope.row.created_at | timeStamp2datetime }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作">
-            <template scope="scope">
+            <template slot-scope="scope">
               <!--<el-button type="text" icon="information" @click=""></el-button>-->
               <svg class="icon" aria-hidden="true" @click="editUser(scope.$index,scope.row)">
                 <use xlink:href="#icon-modify"></use>
@@ -54,7 +55,7 @@
     </el-row>
     <el-row class="warp">
       <el-col :span="24" class="warp-main">
-        <div class="tab-pagination" v-show="">
+        <div class="tab-pagination">
           <el-pagination
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
@@ -113,12 +114,47 @@
         </el-button>
       </div>
     </el-dialog>
+    <el-dialog title="导出数据确认信息" :visible.sync="dialogExportVisible" class="export-dialog">
+      <el-form :model="exportConds">
+        <el-col :span="8">
+        <el-form-item label="自定义数据范围">
+          <el-checkbox v-model="exportConds.customize"></el-checkbox>
+        </el-form-item>
+        </el-col>
+        <el-col :span="16" v-if="exportConds.customize">
+          <el-col :span="4" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+            导出第
+          </el-col>
+          <el-col :span="3">
+            <el-form-item label="">
+              <el-input v-model="exportConds.from" auto-complete="off" style="height: 24px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+              页，至
+          </el-col>
+          <el-col :span="3">
+            <el-form-item label="">
+              <el-input v-model="exportConds.to" auto-complete="off" style="height: 24px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" style="line-heeight:100%;height: 36px;padding: 10px 2px;">
+            页数据
+          </el-col>
+        </el-col>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="cancelExport">取 消</el-button>
+        <el-button type="primary" @click="export2excel">确 定</el-button>
+      </div>
+    </el-dialog>
   </el-row>
 </template>
 
 <script>
   import {reqGetUserProfile, reqGetRoleList, reqGetGroupList, reqUpdateUserProfile, reqGetUserList, reqPostUser, reqPutUser, reqDelUser} from '../../api/api'
   import util from '../../common/util'
+  import export2Excel from '../../common/export2Excel'
   export default {
     //props: ["roles", "groups"],
     data() {
@@ -166,8 +202,14 @@
         dialogEditUserVisible: false,
         dialogUserVisible: false,
         dialogUserTitle: '',
+        dialogExportVisible: false,
         randomPassword: true,
         modifyPassword: false,
+        exportConds: {
+          customize: false,
+          from: 1,
+          to: 1,
+        },
         confimUserDeleteMsg: '你确定要删除这个用户吗？',
         filter: {
           per_page: 10,   //页大小
@@ -175,6 +217,7 @@
         },
         total_rows: 0,
         formLabelWidth: '120px',
+        multipleSelection: [],
         userRules: {
           name: [
             { required: true, message: '请输入用户名', trigger: 'blur' }
@@ -191,8 +234,6 @@
       }
     },
     watch:{
-      //UserTimeForm.start_now: function(o, n){
-      //}
       dialogNewUserVisible: function(val, oldVal) {
         this.dialogUserVisible = val || this.dialogEditUserVisible;
       },
@@ -201,42 +242,93 @@
       },
     },
     methods: {
-      /*
-      roleId2Name(row, column, cellValue){
-        var index;
-        var tmpValue = "未知";
-        for (index in this.roles){
-          if (this.roles[index].id == cellValue) {
-            tmpValue = this.roles[index].name;
-            break;
-          }
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          this.$confirm('将删除选中的'+this.multipleSelection.length+'个用户？','提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            for (var i = 0; i < this.multipleSelection.length; ++i){
+              this.deleteUser(i, this.multipleSelection[i]);
+            }
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除'
+            });
+          });
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
         }
-        return tmpValue;
       },
-      groupId2Name(row, column, cellValue){
-        var index;
-        var tmpValue = "未知";
-        for (index in this.groups){
-          if (this.groups[index].id == cellValue) {
-            tmpValue = this.groups[index].name;
-            break;
-          }
+      confirmExport(){
+        this.dialogExportVisible = true;
+      },
+      cancelExport(){
+        this.dialogExportVisible = false;
+        this.exportConds = {
+          customize: false,
+          from: 1,
+          to: 1,
+        };
+      },
+      export2excel(){
+        var file_save_name = 'users';
+        file_save_name = file_save_name+(new Date().getTime().toString());
+        let params = {
+          user: this.sysUserName,
+        };
+        if(this.exportConds.customize){
+          var page_offset = this.filter.per_page * (this.exportConds.from - 1);
+          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
+          params.offset = page_offset;
         }
-        return tmpValue;
-      },*/
-
-
-
-      //性别显示转换
-      formatSex: function (row, column) {
-        return row.sex == 1 ? '男' : row.sex == 0 ? '女' : '未知';
+        reqGetUserList(params).then(res => {
+          let { status, data } = res;
+          if (data == null) {
+            this.$message({
+              message: "未获取到信息",
+              type: 'error'
+            });
+          } else {
+            export2Excel.export2Excel(data.users,'users',file_save_name);
+          }
+          this.cancelExport();
+        },err => {
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登陆",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({ path: '/' });
+          } else if (err.response.status == 403){
+            this.$message({
+              message: "没有权限",
+              type: 'error'
+            });
+          } else {
+            this.$message({
+              message: "请求异常",
+              type: 'error'
+            });
+          }
+          this.cancelExport();
+        });
       },
       //获取用户列表
       getUsers(username){
+        var page_offset = this.filter.per_page * (this.filter.page - 1);
         let params = {
           user: username,
+          limit: this.filter.per_page,
+          offset: page_offset,
         };
         reqGetUserList(params).then(res => {
+          this.total_rows = res.data.total;
+          this.filter.page = this.filter.page;
+          this.filter.per_page = this.filter.per_page;
           let { status, data } = res;
           if (data == null) {
             this.$message({
@@ -310,24 +402,30 @@
               user: this.sysUserName,
             };
             if (this.dialogNewUserVisible){
-                console.log(params, this.user);
-                reqPostUser(params, this.user).then(res => {
+              reqPostUser(params, this.user).then(res => {
+                if(res.data.exist && res.data.exist === 'True') {
+                  this.$message({
+                    message: `添加失败, 用户名 ${res.data.user.name} 已存在`,
+                    type: 'error'
+                  });
+                }else{
                   this.openMsg(this.dialogUserTitle+'成功', 'success');
                   if(this.randomPassword){
                     this.$alert(this.user.name+'的密码是' + this.user.password + '，登陆后可修改！', '用户密码', {
                       confirmButtonText: '确定',
                     });
                   }
-                },err => {
-                  if (err.response.status == 401) {
-                    this.openMsg('请重新登陆', 'error');
-                    sessionStorage.removeItem('access-user');
-                    this.$router.push({ path: '/' });
-                  } else {
-                    this.openMsg(this.dialogUserTitle+'失败', 'error');
-                  }
-                });
-              }
+                }
+              },err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg(this.dialogUserTitle+'失败', 'error');
+                }
+              });
+            }
             if (this.dialogEditUserVisible){
               reqPutUser(params, this.user).then(res => {
                 this.openMsg(this.dialogUserTitle+'成功', 'success');
@@ -527,6 +625,9 @@
         this.getUsers(this.sysUserName);
         //console.log(`当前页: ${val}`);
       },
+      handleSelectionChange(val){
+        this.multipleSelection = val;
+      }
     },
     mounted() {
       var accessInfo = sessionStorage.getItem('access-user');
@@ -544,6 +645,8 @@
 
 </script>
 
-<style scoped>
-
+<style>
+  .export-dialog .el-dialog {
+    width: 35%
+  }
 </style>

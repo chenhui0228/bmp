@@ -118,7 +118,9 @@ export const reqDelVolume = (volume_id,params) => { return axios.delete(`${base}
 //卷管理相关结束
 
 //任务管理相关
-export const reqGetTaskList = params => { return axios.get(`${base}/backup/tasks/detail`, { params: params }) };
+export const reqGetTaskDetailList = params => { return axios.get(`${base}/backup/tasks/detail`, { params: params }) };
+
+export const reqGetTaskList = params => { return axios.get(`${base}/backup/tasks`, { params: params }) };
 
 export const reqEditTask = (task_id,user,params) => { return axios.put(`${base}/backup/tasks/${task_id}`,params,{params: user}) };
 
@@ -144,3 +146,10 @@ export const reqGetOplogList = params => {
   return axios.get(`${base}/backup/oplogs`, {params: params} )
 };
 
+export const reqGetSummaries = params => {
+  return axios.get(`${base}/backup/summaries`, {params: params} )
+};
+
+export const reqGetTags = params => {
+  return axios.get(`${base}/backup/tags`, {params: params} )
+};

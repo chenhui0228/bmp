@@ -6,7 +6,7 @@
       <el-input type="text" v-model="account.username" auto-complete="off" placeholder="账号"></el-input>
     </el-form-item>
     <el-form-item prop="pwd">
-      <el-input type="password" v-model="account.pwd" auto-complete="off" placeholder="密码"></el-input>
+      <el-input type="password" v-model="account.pwd" auto-complete="off" placeholder="密码" @keyup.enter.native="handleLogin"></el-input>
     </el-form-item>
     <el-checkbox v-model="checked" checked class="remember">记住密码</el-checkbox>
     <el-form-item style="width:100%;">
@@ -30,11 +30,9 @@
         rules: {
           username: [
             {required: true, message: '请输入账号', trigger: 'blur'},
-            //{ validator: validaePass }
           ],
           pwd: [
             {required: true, message: '请输入密码', trigger: 'blur'},
-            //{ validator: validaePass2 }
           ]
         },
         checked: true
@@ -46,11 +44,9 @@
           if (valid) {
 
             this.logining = true;
-            //NProgress.start();
             var loginParams = { user: this.account.username, password: this.account.pwd };
             requestLogin(loginParams).then(res => {
               this.logining = false;
-              //NProgress.done();
               let { status, data } = res;
               if (data == null) {
                 this.$message({
@@ -63,9 +59,6 @@
                   token: data.token,
                   uid: data.user_id
                 };
-                //if (data.role != null) {
-                //  accessInfo.isSuperAdm = true;
-                //};
                 accessInfo.role = data.role;
                 sessionStorage.setItem('access-user', JSON.stringify(accessInfo));
                 this.$router.push({ path: '/' });

@@ -10,12 +10,11 @@
     <el-col :span="24" class="warp-main">
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-        <el-button type="danger" @click="batchDelete" :disabled="this.sels.length===0"
-                   v-if="role == 'admin'">
+        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
+                   v-if="role== 'superrole'">添加</el-button>
+        <el-button type="primary" @click="batchDelete" v-if="role== 'superrole' && volumes.length !=0">
           批量删除
         </el-button>
-        <el-button type="primary" @click="showAddDialog" style="margin-left: 5px"
-                   v-if="role == 'admin'">新建</el-button>
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
             <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>
@@ -27,18 +26,16 @@
       </el-col>
 
       <!--列表-->
-      <el-table :data="volumes" highlight-current-row v-loading="listLoading" @selection-change="selsChange"
+      <el-table :data="volumes" highlight-current-row v-loading="listLoading" @selection-change="handleSelectionChange"
                 style="width: 100%;">
         <el-table-column type="selection" width="50"></el-table-column>
         <el-table-column type="index" width="60">
         </el-table-column>
         <el-table-column prop="name" label="卷名" sortable>
         </el-table-column>
-        <!--<el-table-column prop="worker" label="所属主机" sortable>-->
-        <!--</el-table-column>-->
         <el-table-column prop="description" label="描述">
         </el-table-column>
-        <el-table-column label="操作" width="250" v-if="role == 'admin' || role== 'superrole'">
+        <el-table-column label="操作" width="250" v-if="role== 'superrole'">
           <template slot-scope="scope">
             <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)">
               <use xlink:href="#icon-modify"></use>
@@ -67,11 +64,8 @@
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="卷名">
-            <el-input v-model="editForm.name" auto-complete="off"></el-input>
+            <el-input v-model="editForm.name" :disabled="true"></el-input>
           </el-form-item>
-          <!--<el-form-item prop="worker" label="所属主机">-->
-          <!--<el-input v-model="editForm.worker" auto-complete="off"></el-input>-->
-          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="editForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -88,9 +82,6 @@
           <el-form-item prop="name" label="卷名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <!--<el-form-item prop="worker" label="所属主机">-->
-          <!--<el-input v-model="addForm.worker" auto-complete="off"></el-input>-->
-          <!--</el-form-item>-->
           <el-form-item prop="description" label="描述">
             <el-input type="textarea" v-model="addForm.description" :rows="4"></el-input>
           </el-form-item>
@@ -121,7 +112,7 @@
         page: 1,
         per_page: 10,
         offset: 0,
-        sels: [], //列表选中列
+        multipleSelection: [], //列表选中列
         role: '',
 
         //编辑相关数据
@@ -134,9 +125,6 @@
           worker: [
             {required: true, message: '请输入角色', trigger: 'blur'}
           ],
-          description: [
-            {required: true, message: '请输入描述', trigger: 'blur'}
-          ]
         },
         editForm: {
           id: 0,
@@ -285,10 +273,17 @@
             reqAddVolume(user, para).then((res) => {
               this.addLoading = false;
               //NProgress.done();
-              this.$message({
-                message: '添加成功',
-                type: 'success'
-              });
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 卷 ${res.data.volume.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                this.$message({
+                  message: '添加成功',
+                  type: 'success'
+                });
+              }
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getVolume();
@@ -328,30 +323,38 @@
         });
       },
       //勾选
-      selsChange: function (sels) {
-        this.sels = sels;
+      handleSelectionChange: function (multipleSelection) {
+        this.multipleSelection = multipleSelection;
       },
       //批量删除
-      batchDelete: function () {
-//        var ids = this.sels.map(item => item.id).toString();
-//        this.$confirm('确认删除选中记录吗？', '提示', {
-//          type: 'warning'
-//        }).then(() => {
-//          this.listLoading = true;
-//          //NProgress.start();
-//          let para = {ids: ids};
-//          reqBatchDelGroup(para).then((res) => {
-//            this.listLoading = false;
-//            //NProgress.done();
-//            this.$message({
-//              message: '删除成功',
-//              type: 'success'
-//            });
-//            this.getVolume();
-//          });
-//        }).catch(() => {
-//
-//        });
+      batchDelete(){
+        if(this.multipleSelection.length > 0){
+          this.$confirm('将删除选中的'+this.multipleSelection.length+'个卷？','提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            for (var i = 0; i < this.multipleSelection.length; ++i){
+              let para = {user: this.sysUserName};
+              reqDelVolume(this.multipleSelection[i].id,para).then((res) => {
+                this.listLoading = false;
+                //NProgress.done();
+                this.$message({
+                  message: '删除成功',
+                  type: 'success'
+                });
+                this.getVolume();
+              });
+            }
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除'
+            });
+          });
+        }else{
+          this.openMsg('至少选中一条数据', 'info');
+        }
       },
 
     },

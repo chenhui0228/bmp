@@ -13,10 +13,10 @@ import socket
 from apscheduler.schedulers.background import BackgroundScheduler
 from message import Message
 from singletask import SingleTask
-from workerpool import WorkerPool
+from workerpool import WorkerPool,Delete
 import ConfigParser
-import  uuid
-
+import logging
+#logging.basicConfig()
 class Daemon:
     def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
@@ -42,13 +42,13 @@ class Daemon:
         self.reload_interval = int(cp.get('client', 'reload_interval'))
         self.port = cp.get('server', 'port')
         self.info_l = ""
-        self.glusterlist = ['10.202.125.83']
-        self.confip = '10.202.125.83:80'
+        self.glusterlist = eval(cp.get('client', 'glusterip'))
         self.task_sum = 0  # 当前任务数
         self.task_list = {}
         self.tp = []
         self.hostname = str(socket.gethostname())
         self.ip = socket.gethostbyname(self.hostname)
+        self.workpool_workid_dict={}
 
         # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
 
@@ -176,38 +176,35 @@ class Daemon:
                 time.sleep(1)
                 self.message.con.release()
 
-    def generate_uuid( dashed=True ):
-        """Creates a random uuid string.
-        :param dashed: Generate uuid with dashes or not
-        :type dashed: bool
-        :returns: string
-        """
-        if dashed:
-            return str(uuid.uuid4())
-        return uuid.uuid4().hex
 
 
     def deleteBackupData(self):
-        pass
-        if self.arglist['run_sub'] == 'date' or self.arglist['duration'] == '-1':
-            return 0
-        old_time=self.wait_start-timedelta(days=int(self.arglist['duration']))
-        dict=self.arglist['cron']
-        start_time=datetime.strptime(dict['start_date'], "%Y-%m-%d %H:%M:%S")
-        if start_time>old_time:
-            return 0
-        self.oldvfile=self.arglist['destination_address'] + self.arglist['name'] +"_"+self.arglist['id']+ "_" + old_time.strftime(
-                '%Y%m%d%H%M') + "/"
-        if os.path.exists('%s/%s'%(self.mount_dir, self.oldvfile)):
-            try:
-                shutil.rmtree(self.mount_dir+'/'+self.oldvfile)
-                self.log.logger.info("delete %s succeed"%self.oldvfile)
-                return 0
-            except Exception,e:
-                #print "delete failed"
-                self.log.logger.error("delete %s failed %s" % (self.oldvfile,e))
-                #self.send_bk('message',"delete %s failed %s" % (self.oldvfile,e))
-                return -1
+        task_list=self.task_list
+        for ms in task_list:
+            task=task_list[ms]
+            msg=task.st
+            duration=msg.get('duration')
+            vol=msg.get('destination_vol')
+            dir=msg.get('destination_address')
+            name=msg.get('name')
+            id = msg.get('id')
+            if duration!=None or vol !=None or dir!=None:
+                t=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=self.glusterlist,name=name,id=id)
+                t.start()
+
+    def deleteAllDataOfaWork(self,id):
+        task_list = self.task_list
+        task = task_list[id]
+        msg = task.st
+        duration = msg.get('duration')
+        vol = msg.get('destination_vol')
+        dir = msg.get('destination_address')
+        name = msg.get('name')
+        id = msg.get('id')
+        if duration != None or vol != None or dir != None:
+            t = Delete(self.log, duration=duration, vol=vol, dir=dir, ip=self.glusterlist, name=name, id=id)
+            t.start(True)
+
 
 
 
@@ -217,6 +214,12 @@ class Daemon:
         if ret!=0:
             self.log.logger.error('message send failed %s'%ret)
 
+    def send_alive(self):
+        data = "{'type': 'keepalive', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version, self.group)
+        try:
+            self.message.send(data)
+        except Exception,e:
+            self.log.logger.error(e.message)
 
     def _timer_func( self ):
         # print "timer running at:",datetime.now()
@@ -244,7 +247,7 @@ class Daemon:
             self.tp.remove(t)
 
             # self.logger.warning(
-            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.confip,self.log)
+            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.workpool_workid_dict,self.log)
             self.tp.append(newthread)
             newthread.setDaemon(True)
             newthread.start()
@@ -261,11 +264,12 @@ class Daemon:
 
     def addtask(self,data,do_type):
         dict = data['data']
-        dict['bk_id']=self.generate_uuid()
         ms = dict['id']
+        if self.task_list.has_key(ms):
+            return
         dict['op'] =data['type']
         self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
-        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.log)
         new_task.start(do_type)
         self.task_list[ms] = new_task
         self.task_sum = self.task_sum + 1
@@ -282,13 +286,11 @@ class Daemon:
                 self.addtask(data,'cron')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
-                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "backup"
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'],'waiting')
         elif data['type'] == "update":
-            print "do revise"
             dict = data['data']
             self.log.logger.info('change a work,the id of it is %s'%dict['id'])
             ms = dict['id']
@@ -298,7 +300,7 @@ class Daemon:
                     del self.task_list[ms]
                     self.task_sum = self.task_sum - 1
                     dict['op'] = dict['sub']
-                    new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.confip, self.log)
+                    new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterlist, self.log)
                     new_task.start(dict['run_sub'])
                     self.task_list[ms] = new_task
                     self.task_sum = self.task_sum + 1
@@ -307,13 +309,11 @@ class Daemon:
                     pass
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
-
         elif data['type'] == 'recover':  # 恢复备份文件
             print "do recover"
             dict=data['data']
             if dict['run_sub'] =='immediately':
                 dict = data['data']
-                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "recover"
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
@@ -325,6 +325,8 @@ class Daemon:
             dict = data['data']
             self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
             ms = dict['id']
+            if dict.has_key('delete'):
+                self.deleteAllDataOfaWork(dict['id'])
             if self.task_list.has_key(ms):
                 self.task_list[ms].do_remove_job()
                 del self.task_list[ms]
@@ -333,6 +335,8 @@ class Daemon:
                 self.log.logger.error('No any work which id is %s'%ms)
             if dict.has_key('delete'):
                 self.send_ta( ms, 'deleted')
+            elif dict.has_key('changeworker'):
+                pass
             else:
                 self.send_ta(ms, 'stopped')
         elif data['type'] == 'dump':  # 准备dump
@@ -345,7 +349,6 @@ class Daemon:
                 self.addtask(data,'date')
             elif dict['run_sub'] == 'immediately':
                 dict = data['data']
-                dict['bk_id'] = self.generate_uuid()
                 dict['op'] = "dump"
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
@@ -353,6 +356,22 @@ class Daemon:
         elif data['type'] == 'show':
             for onetask in self.task_list:
                 print onetask
+        elif data['type'] == 'keepalive':
+            self.log.logger.info('keepalive')
+            self.send_alive()
+        elif data['type'] == 'pause':
+            dict = data['data']
+            ms=dict['id']
+            for t in self.tp:
+                if self.workpool_workid_dict.has_key(t.name):
+                    if self.workpool_workid_dict[t.name] == ms:
+                        try:
+                            t.stop()
+                        except Exception,e:
+                            self.log.logger.error(e.message)
+                        break
+
+
         else:
             self.log.logger.error("get some messages which is to server")
 
@@ -380,11 +399,12 @@ class Daemon:
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
+        self.deleteq=Queue.Queue()
         for i in range(self.uc_size):
-            t = WorkerPool(self.q, i,self.uc_size ,self.confip,self.log)
+            t = WorkerPool(self.q, i,self.uc_size ,self.workpool_workid_dict,self.log)
             self.tp.append(t)
         for i in range(self.uc_size,self.uc_size+self.ic_size):
-            t = WorkerPool(self.qq, i,self.uc_size, self.confip, self.log)
+            t = WorkerPool(self.qq, i,self.uc_size, self.workpool_workid_dict, self.log)
             self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
@@ -407,8 +427,14 @@ class Daemon:
         except Exception,e:
             print e
         self.log.logger.debug("date")
+
+        #self.delete_thread = threading.Thread(target=self.do_delete)
+        #self.delete_thread.setDaemon(True)
+        #self.delete_thread.start()
+        ret = self.scheduler.add_job(self.deleteBackupData, 'cron', hour='0', minute='0', second='0')
         self.scheduler.start()
         #print "start threadpool over"
         self.log.logger.debug("start threadpool over")
+
         """
         """

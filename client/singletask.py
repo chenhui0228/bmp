@@ -8,7 +8,7 @@ import uuid
 
 
 class SingleTask():
-    def __init__( self, name, schd, info, q, glusterip, confip,log):
+    def __init__( self, name, schd, info, q, glusterip,log):
         # self.logger = logging.getLogger(__name__)
         self.log = log
         ms = Message("tcp")
@@ -25,24 +25,23 @@ class SingleTask():
         self.gluster = glusterip
         self.police = {}
         self.st["date"] = ""
-        self.confip = confip
-        self.suspendlist = []
+        self.stop = False
 
 
 
-    def add_suspendlist( self, id ):
-        self.suspendlist.append(id)
+    def stop_job( self):
+        self.stop=True
 
-    def del_suspendlist( self, id ):
-        if id in self.suspendlist:
-            self.suspendlist.remove(id)
+    def restart_job( self):
+        if self.stop:
+            self.stop=False
 
 
     def do_insert_job( self ):  # add work job
         self.lastid = self.sumid
         self.sumid = self.sumid + 1
         self.st['ip'] = self.gluster
-        if not self.st['id'] in self.suspendlist:
+        if not self.stop:
             #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
