@@ -779,6 +779,11 @@
         let params = {
           user: this.sysUserName,
         };
+        if (this.isBackupTask){
+          params.type = 'backup';
+        }else {
+          params.type = 'recover';
+        }
         if(this.exportConds.customize){
           var page_offset = this.filter.per_page * (this.exportConds.from - 1);
           params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
