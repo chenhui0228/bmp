@@ -113,6 +113,9 @@
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'">
               <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
             </span>
+            <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
+              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
+            </span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
           </template>
@@ -123,7 +126,8 @@
           <template slot-scope="scope">
             <span v-if="scope.row.state">
               <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" >正在dump...</span>
-              <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process !== '200'" :percentage="parseInt(scope.row.state.process)"></el-progress>
+              <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end')
+              && scope.row.state.process !== '200' && scope.row.state.state !== 'failed' && scope.row.state.state !== 'aborted'" :percentage="parseInt(scope.row.state.process)"></el-progress>
             </span>
             <span v-else>--</span>
           </template>
@@ -1128,12 +1132,12 @@
               type: 'success'
             });
             this.getTasks(this.task_type);
-          });
-        }).catch(() => {
-          this.listLoading = false;
-          this.$message({
-            message: '删除失败',
-            type: 'error'
+          }).catch(() => {
+            this.listLoading = false;
+            this.$message({
+              message: '删除失败',
+              type: 'error'
+            });
           });
         });
       },
@@ -1275,8 +1279,13 @@
         reqTaskAction(row.task.id, data, params, headers).then(res => {
           this.openMsg(info, 'success');
           params.task_id = row.task.id;
+          if(this.isBackupTask){
+            params.type = 'backup';
+          }else{
+            params.type = 'recover';
+          }
           reqGetTaskDetailList(params).then(res =>{
-            this.tasks[index] = res.data.tasks[0]
+            this.tasks[index] = res.data.tasks[0];
           })
         }, err => {
           if (err.response.status == 401) {
