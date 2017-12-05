@@ -6,7 +6,7 @@ from os.path import join, getsize, isfile
 import subprocess
 import time
 import shutil
-from message import Message
+from message1 import Message
 import tempfile
 import ConfigParser
 

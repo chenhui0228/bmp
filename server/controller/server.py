@@ -1,7 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from message import Message,Performance
+from message1 import Message,Performance
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
