@@ -537,10 +537,10 @@ class Server:
                 if worker.ip == '10.202.127.11':
                     addr = (worker.ip, 22222)
                 info = {}
-                info['data'] = "{'type':'show'}"
+                info['data'] = "{'type':'start'}"
                 info['addr'] =addr
                 self.message.issued(info)
-                logger.debug('send msg dnow')
+                logger.debug('send msg to client')
                 try:
                     self.update_worker(worker.id,True)
                     logger.debug('update_worker end')
@@ -560,6 +560,13 @@ class Server:
                     worker=self.db.create_worker(super_context,worker_value)
                 except Exception ,e:
                     logger.error(e)
+                addr=(worker.ip,int(self.port))
+                if worker.ip == '10.202.127.11':
+                    addr = (worker.ip, 22222)
+                info = {}
+                info['data'] = "{'type':'start'}"
+                info['addr'] =addr
+                self.message.issued(info)
             else:
                 logger.error('more than one client has same information')
         elif msg['type'] == 'keepalive':

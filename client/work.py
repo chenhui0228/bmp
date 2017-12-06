@@ -129,8 +129,7 @@ class Work():
             #print "1\n"
             filelist=os.listdir(pd)
             if len(filelist) == 0:
-                #print pd
-                return
+                return 0
             for filename in filelist:
 
                 try:
@@ -293,6 +292,7 @@ class Work():
         except Exception,e:
             self.log.logger.info(e)
             self.errormessage=str(e)
+            size=-1L
         return size
 
 
@@ -305,9 +305,15 @@ class Work():
             self.proctotal = self.get_file_size(self.pfile)
             start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
-            if self.proctotal == 0:
+            if self.proctotal < 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
                 time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
+            elif self.proctotal == 0:
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                time.sleep(5)
+                self.errormessage='the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
@@ -409,9 +415,15 @@ class Work():
             if ret != 0:
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
-            if self.proctotal == 0:
+            if self.proctotal < 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
                 time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
+            elif self.proctotal == 0:
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                time.sleep(5)
+                self.errormessage = 'the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))

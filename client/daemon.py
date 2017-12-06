@@ -353,9 +353,10 @@ class Daemon:
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'], 'waiting')
-        elif data['type'] == 'show':
-            for onetask in self.task_list:
-                print onetask
+        elif data['type'] == 'start':
+            #for onetask in self.task_list:
+                #print onetask
+            pass
         elif data['type'] == 'keepalive':
             self.log.logger.info('keepalive')
             self.send_alive()
