@@ -39,7 +39,12 @@
     line-height: 100%;
     padding: 5px 0px;
   }
-
+  .tag-transfer-dialog  .el-dialog{
+    width: unset;
+  }
+  .transfer-dialog-body {
+    margin: -30px 0px;
+  }
 </style>
 <template>
   <el-row class="warp">
@@ -55,7 +60,7 @@
       <el-tabs value="backup" @tab-click="handleClick">
         <el-tab-pane label="备份任务" name="backup"></el-tab-pane>
         <el-tab-pane label="恢复任务" name="recover"></el-tab-pane>
-        <el-tab-pane label="标签管理" name="tags"></el-tab-pane>
+        <!--<el-tab-pane label="标签管理" name="tags"></el-tab-pane>-->
       </el-tabs>
     </el-col>
 
@@ -66,7 +71,7 @@
         <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag"
                    style="margin-left: 5px">新建
         </el-button>
-        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags != 0" style="margin-left: 5px">
+        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags.length != 0" style="margin-left: 5px">
           批量删除
         </el-button>
         <el-button type="primary" @click="confirmExport" v-if="!isTags">导出任务数据</el-button>
@@ -80,7 +85,7 @@
           </el-form-item>
         </el-form>
       </el-col>
-      <el-col :span="24" v-if="isTags" style="margin-top: 10px;margin-left:10px;">
+      <el-col :span="24" v-if="isTags && tags.length != 0" style="margin-top: 10px;margin-left:10px;">
         <template>
           <el-checkbox v-model="selectedTagsAll">全选</el-checkbox>
         </template>
@@ -186,11 +191,11 @@
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-            <el-tooltip content="标记" placement="top">
-              <svg class="icon" aria-hidden="true" @click="markTask(scope.$index,scope.row)">
-                <use xlink:href="#icon-tags"></use>
-              </svg>
-            </el-tooltip>
+            <!--<el-tooltip content="标记" placement="top">-->
+              <!--<svg class="icon" aria-hidden="true" @click="showMarkDialog(scope.$index,scope.row)">-->
+                <!--<use xlink:href="#icon-tags"></use>-->
+              <!--</svg>-->
+            <!--</el-tooltip>-->
             <el-tooltip content="立即执行" placement="top"
                         v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
@@ -224,7 +229,7 @@
         </el-table-column>
       </el-table>
       <!--TODO: 标签列表-->
-      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" v-if="isTags && (role == 'superrole' || role == 'admin')"
+      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" :key="tag.id" v-if="isTags && (role == 'superrole' || role == 'admin')"
               @selection-change="handleSelectionChange">
         <el-card class="box-card">
           <div slot="header" class="card-header">
@@ -587,9 +592,23 @@
         </div>
       </el-dialog>
       <!--TODO:dialog that selecting tag for task-->
-      <el-dialog title="标签设置" :visible.sync="dialogTagTransferVisible">
-        <el-transfer>
-        </el-transfer>
+      <el-dialog title="标签设置" :visible.sync="dialogTagTransferVisible" :close-on-click-modal="!dialogTagVisible" @close="cancelTagTransferDialog" class="tag-transfer-dialog">
+        <div class="transfer-dialog-body">
+          <el-col :span="24" style="margin: 10px 0px;">
+            <span>
+              当前任务：{{ currSelectedTask.task.name }}
+            </span>
+          </el-col>
+          <template>
+            <el-transfer
+              v-model="taskTags"
+              filterable
+              :titles="['可设置标签', '已设置标签']"
+              :data="transferTags">
+
+            </el-transfer>
+          </template>
+        </div>
       </el-dialog>
     </el-col>
     <el-dialog title="导出数据" :visible.sync="dialogExportVisible" class="export-dialog">
@@ -720,6 +739,13 @@
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         dialogTagTransferVisible: false,
+        taskTags: [],
+        transferTags: [],
+        currSelectedTask: {
+          task:{
+            name: '',
+          }
+        },
         editFormRules: {
 //          name: [
 //            {required: true, message: '请输入主机名', trigger: 'blur'}
@@ -1100,9 +1126,21 @@
         }).then(action => {
         });
       },
+      cancelTagTransferDialog(){
+        this.dialogTagTransferVisible = false;
+        this.getTags();
+      },
       //TODO: Play tag for the task
       markTask(index, row){
-
+        console.log(this.tags);
+        if(row.task){
+          this.currSelectedTask = row;
+          console.log(row);
+        }
+      },
+      showMarkDialog(index, row){
+        this.dialogTagTransferVisible = true;
+        this.markTask(index, row);
       },
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
@@ -1595,6 +1633,15 @@
         this.policies = res.data.policies;
       });
       this.getTasks();
+      reqGetTags(para).then(res => {
+        for(var i = 0; i < res.data.tags.length; ++i){
+          this.transferTags.push({
+            key: i,
+            label: res.data.tags[i].name
+          });
+        }
+        //this.tags = res.data.tags;
+      });
       // 组件创建完后获取数据，
       // 此时 data 已经被 observed 了
       this.intervalTask = setInterval(() => {
