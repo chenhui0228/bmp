@@ -192,12 +192,12 @@ class Delete:
                             self.log.logger.error("do mount failed ")
                             return -1
                         return 0
-                    except  Exception, e:
+                    except  Exception as e:
                         # print ("do mount failed %s"%e)
                         # self.send_bk('message',"do mount failed %s"%e)
                         self.log.logger.warning("do mount failed%s"%e.message)
                         return -1
-                except Exception, e:
+                except Exception as e:
                     # print ("do mount failed %s"%e)
                     # self.send_bk('message',"do mount failed %s"%e)
                     self.log.logger.warning("do mount failed%s"%e.message)
@@ -214,7 +214,7 @@ class Delete:
                 return -1
             self.log.logger.info("do close succeed")
             return 0
-        except Exception,e:
+        except Exception as e:
            # print e
             self.log.logger.error("do close failed %s"%e)
             return -1
@@ -235,7 +235,7 @@ class Delete:
                     try:
                         shutil.rmtree(realdir)
                         self.send_bk('delete',start_time=start_time,id=self.id,name=self.name)
-                    except Exception,e:
+                    except Exception as e:
                         self.log.logger.error(e.message)
                         return -1
         return 0

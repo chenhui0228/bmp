@@ -115,7 +115,7 @@ class Message:
                 server_thread.daemon = True
                 server_thread.start()
                 self.server_thread.append(server_thread)
-            except Exception ,e:
+            except Exception as e:
                 #self.log.logger.error('start TCP listen server failed %s'%e)
                 pass
         # start server
@@ -135,7 +135,7 @@ class Message:
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     self.tcpclient.sendto(info['data'], address)
-                except Exception, e:
+                except Exception as e:
                     #self.log.logger.error('UDP send failed %s'%e)
                     return e
             else:
@@ -166,7 +166,7 @@ class Message:
                     #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
-                except Exception, e:
+                except Exception as e:
                     #self.log.logger.error('UDP send failed %s' % e)
                     return e
             else:

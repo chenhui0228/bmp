@@ -64,9 +64,6 @@ class Work():
         if ret!=0:
             self.log.logger.error(ret)
 
-
-
-
     def do_mount(self):
         n=len(self.arglist['ip'])
         if os.path.ismount(self.mount_dir):
@@ -77,27 +74,22 @@ class Work():
             self.glusterip=self.arglist['ip'][n-1]
             try:
                 cmd = ("mount.glusterfs %s:/%s %s 2>/dev/null" % (self.glusterip, self.vol, self.mount_dir))
-                try:
-                    ret = os.system(cmd)
-                    #print "do mount succeed"
-                    if ret!=0:
-                        self.errormessage='mount falied'
-                        return -1
-                    self.log.logger.info("do mount succeed")
-                    return 0
-                except  Exception,e:
-                    #print ("do mount failed %s"%e)
-                    #self.send_bk('message',"do mount failed %s"%e)
-                    self.log.logger.warning("do mount failed")
+
+                ret = os.system(cmd)
+                #print "do mount succeed"
+                if ret!=0:
+                    self.errormessage='mount falied'
                     return -1
-            except Exception,e:
+                self.log.logger.info("do mount succeed")
+                return 0
+
+            except Exception as e:
                 #print ("do mount failed %s"%e)
                 #self.send_bk('message',"do mount failed %s"%e)
-                self.log.logger.warning("do mount failed")
+                self.errormessage = str(e)
+                self.log.logger.warning("do mount failed %s"%e)
                 return -1
             n=n-1
-
-
 
     def do_mkdir(self,dir):
         if os.path.exists('%s'%dir):
@@ -112,15 +104,12 @@ class Work():
                     return -1
                 self.log.logger.info("do mkdir succeed")
                 return 0
-            except Exception,e:
+            except Exception as e:
                 self.errormessage =e.message
                # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
                 #self.send_bk('message',"do mkidr failed %s"%e)
                 return -1
-
-
-
 
     def do_work(self,pd, vd):
         ret=0
@@ -134,7 +123,7 @@ class Work():
 
                 try:
                     filepath=os.path.join(pd,filename)
-                except Exception,e:
+                except Exception as e:
                     self.log.logger.error(e)
 
                 #print filepath + '\n'
@@ -152,7 +141,6 @@ class Work():
             #print "0\n"
             ret=self.do_write_file(pd,vd)
         return ret
-
 
     def do_dump(self,cmd):
         write_now = 0
@@ -181,8 +169,6 @@ class Work():
             # print 'finished'
         self.log.logger.info("dump work finished" )
         return 0
-
-
 
     def do_write_file(self,pd,vd):
         write_all = self.proclen
@@ -256,13 +242,10 @@ class Work():
         vfilepath = os.path.join(vdir, pname)
         try:
             os.mkdir(vfilepath)
-        except Exception,e:
+        except Exception as e:
             self.log.logger.error(e)
         ret=self.do_work(pdir,vfilepath)
         return ret
-
-
-
 
     def do_close(self):
         try:
@@ -275,11 +258,10 @@ class Work():
             else:
                 self.log.logger.info("do close succeed")
                 return 0
-        except Exception,e:
+        except Exception as e:
            # print e
             self.log.logger.error("do close failed %s"%e)
             return -1
-
 
     def get_file_size(self, file_path):
         size = 0L
@@ -289,12 +271,11 @@ class Work():
             elif os.path.isdir(file_path):
                 for root, dirs, files in os.walk(file_path):
                     size += sum([getsize(join(root, name)) for name in files])
-        except Exception,e:
-            self.log.logger.info(e)
+        except Exception as e:
+            self.log.logger.error(e)
             self.errormessage=str(e)
             size=-1L
         return size
-
 
     def start(self):
         self.op=self.arglist['op']
@@ -352,7 +333,7 @@ class Work():
                     self.send_bk('last', state='failed', end_time=str(time.time()))
                 try:
                     self.do_close()
-                except Exception,e:
+                except Exception as e:
                     self.log.logger.error(e)
                 return
             ret = self.do_close()
@@ -419,12 +400,14 @@ class Work():
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
                 time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                self.do_close()
                 return
             elif self.proctotal == 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
                 time.sleep(5)
                 self.errormessage = 'the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                self.do_close()
                 return
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)

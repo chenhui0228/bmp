@@ -68,7 +68,7 @@ class Server:
         mysqlconf = conf.get('database')
         try:
             self.db= db_api.get_database(mysqlconf)
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
             return
         server_dict=conf.get('servercontroller')
@@ -101,7 +101,7 @@ class Server:
             t.setDaemon(True)
             try:
                 t.start()
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
 
 
@@ -133,7 +133,7 @@ class Server:
                         worker_value['status']='Offline'
                         try:
                             self.db.update_worker(super_context, worker_value)
-                        except Exception,e:
+                        except Exception as e:
                             logger.error(e)
                         logger.warning('the worker %s is onffline'%worker.id)
                 elif worker.status == 'Offline':
@@ -143,7 +143,7 @@ class Server:
                         worker_value['status']='Active'
                         try:
                             self.db.update_worker(super_context, worker_value)
-                        except Exception,e:
+                        except Exception as e:
                             logger.error(e)
                 self.message.issued(info)
             else:
@@ -169,7 +169,7 @@ class Server:
         if task.state == 'running_s' or task.state == 'running_w':
             try:
                 self.message.issued(info)
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
         else:
             logger.error('Can not pause in waiting or stopped')
@@ -187,11 +187,11 @@ class Server:
         info['addr'] = addr
         try:
             self.message.issued(info)
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
 
     def delete(self,id):
-        task = self.db.get_task(super_context,id)
+        task = self.db.get_task(super_context,id,deleted=True)
         worker = task.worker
         addr = (worker.ip, int(self.port))
         if worker.ip == '10.202.127.11':
@@ -208,14 +208,14 @@ class Server:
             try:
                 self.message.issued(info)
                 self.db.update_task(super_context, task_value)
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
         else:
             try:
                 task_value['state'] = 'deleted'
                 task_value['deleted'] = 'deleted'
                 self.db.update_task(super_context, task_value)
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
 
 
@@ -261,7 +261,7 @@ class Server:
 
         try:
             data=eval(data)
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
         data2 = data.get('data')
         data2['sub']=task.type
@@ -295,7 +295,7 @@ class Server:
         tasks=tasks_all[0]
         try:
             worker = self.db.get_worker(super_context, id)
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
         logger.debug('get worker ')
         if kwargs.has_key('ip'):
@@ -375,7 +375,7 @@ class Server:
         try:
             if task.source.split('/', 1)[0] == 'shell:':
                 data['type']='dump'
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
             return
         info = {}
@@ -404,7 +404,7 @@ class Server:
                 dir = '/'+new_vor_dir[1]
             #dict=translate_date(policy.recurring,policy.start_time,policy.recurring_options_every,policy.recurring_options_week)
             destination = task.destination.split('/', 1)[1]
-        except Exception,e:
+        except Exception as e:
             logger.error(e)
             pass
         run_sub='immediately'
@@ -443,7 +443,7 @@ class Server:
                     self.workstatelock.acquire()
                     self.workstate_dict[dict['bk_id']] = 0
                     self.workstatelock.release()
-                except Exception,e:
+                except Exception as e:
                     logger.error(e)
                 return
             elif typeofMessage == 'run':
@@ -461,7 +461,7 @@ class Server:
 
                 try:
                     self.db.bk_update(super_context, bk_value)
-                except Exception, e:
+                except Exception as e:
                     logger.error(e)
                 return
             elif typeofMessage == 'last':
@@ -471,7 +471,7 @@ class Server:
 
                 try:
                     self.db.bk_update(super_context, bk_value)
-                except Exception, e:
+                except Exception as e:
                     logger.error(e)
                     return
                 if not self.workstate_dict.has_key(dict['bk_id']):
@@ -489,7 +489,7 @@ class Server:
                         logger.info('find backupstate')
                         try:
                             self.db.bk_delete(super_context, line.id)
-                        except Exception, e:
+                        except Exception as e:
                             logger.error(e)
                         logger.info(str(bk_value))
                         return
@@ -509,13 +509,13 @@ class Server:
                         task_dict['deleted'] == 'deleted'
                     self.db.update_task(super_context,task_dict)
                     logger.info('change task state')
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(e.message)
         elif msg['type'] == 'initialize':
             dict = msg['data']
             try:
                 workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
             if len(workers)==1:
                 logger.debug('get worker')
@@ -531,7 +531,7 @@ class Server:
                 worker_value['start_at'] = str(time.time())
                 try:
                     self.db.update_worker(super_context,worker_value)
-                except Exception,e:
+                except Exception as e:
                     logger.error(e)
                 addr=(worker.ip,int(self.port))
                 if worker.ip == '10.202.127.11':
@@ -544,7 +544,7 @@ class Server:
                 try:
                     self.update_worker(worker.id,True)
                     logger.debug('update_worker end')
-                except Exception,e:
+                except Exception as e:
                     logger.error(e)
             elif len(workers)==0:
                 worker_value={}
@@ -558,7 +558,7 @@ class Server:
                 worker_value['start_at'] = str(time.time())
                 try:
                     worker=self.db.create_worker(super_context,worker_value)
-                except Exception ,e:
+                except Exception as e:
                     logger.error(e)
                 addr=(worker.ip,int(self.port))
                 if worker.ip == '10.202.127.11':
@@ -573,7 +573,7 @@ class Server:
             dict = msg['data']
             try:
                 workers=self.db.get_workers(super_context,name=dict['hostname'],worker_ip=dict['ip'])[0]
-            except Exception,e:
+            except Exception as e:
                 logger.error(e)
             if  len(workers) == 1:
                 worker=workers[0]
