@@ -19,10 +19,9 @@
         <el-button type="primary" @click="confirmExport">导出客户端</el-button>
         <!--<el-button type="primary" @click="showAddDialog" style="margin-left: 5px"-->
                    <!--v-if="role == 'admin' || role == 'superrole'">新建</el-button>-->
-        <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
-        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" onsubmit="return false;">
           <el-form-item>
-            <el-input v-model="filters.name" placeholder="IP地址" style="min-width: 240px;"></el-input>
+            <el-input v-model="filters.name" placeholder="主机名" style="min-width: 240px;" @keyup.native="getWokersByName"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getWokersByName">查询</el-button>
