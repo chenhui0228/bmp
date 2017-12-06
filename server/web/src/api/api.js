@@ -150,6 +150,20 @@ export const reqGetSummaries = params => {
   return axios.get(`${base}/backup/summaries`, {params: params} )
 };
 
+
+//TODO: 标签管理接口
 export const reqGetTags = params => {
-  return axios.get(`${base}/backup/tags`, {params: params} )
+  return axios.get(`${base}/backup/tags/detail`, {params: params} )
+};
+
+export const reqNewTags = (params, data) => {
+  return axios.post(`${base}/backup/tags`, data, {params: params} )
+};
+
+export const reqEditTags = (id, params, data) => {
+  return axios.put(`${base}/backup/tags/${id}`, data, {params: params} )
+};
+
+export const reqDeleteTags = (id, params) => {
+  return axios.delete(`${base}/backup/tags/${id}`, {params: params} )
 };

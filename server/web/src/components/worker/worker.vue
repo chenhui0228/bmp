@@ -19,13 +19,12 @@
         <el-button type="primary" @click="confirmExport">导出客户端</el-button>
         <!--<el-button type="primary" @click="showAddDialog" style="margin-left: 5px"-->
                    <!--v-if="role == 'admin' || role == 'superrole'">新建</el-button>-->
-        <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
-        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" onsubmit="return false;">
           <el-form-item>
-            <el-input v-model="filters.ip" placeholder="IP地址" style="min-width: 240px;"></el-input>
+            <el-input v-model="filters.name" placeholder="主机名" style="min-width: 240px;" @keyup.native="getWokersByName"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getWorker">查询</el-button>
+            <el-button type="primary" @click="getWokersByName">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
@@ -169,7 +168,7 @@
       return {
         sysUserName: '',
         filters: {
-          ip: ''
+          name: ''
         },
         listLoading: false,
         isVisible:true,
@@ -246,14 +245,16 @@
         });
       },
       //获取用户列表
-      getWorker: function () {
+      getWorker: function (name_like='') {
         this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
           limit: this.per_page,
           offset: this.offset,
-//          ip: this.filters.ip
         };
+        if(name_like !== '') {
+          para.name_like = name_like;
+        }
         this.listLoading = true;
         this.isVisible = false;
         //NProgress.start();
@@ -280,7 +281,13 @@
           }
         })
       },
-
+      getWokersByName(event){
+        if(this.filters.name !== '') {
+          this.getWorker(this.filters.name);
+        }else{
+          this.getWorker()
+        }
+      },
       //====编辑相关====
       //显示编辑界面
       showEditDialog: function (index, row) {

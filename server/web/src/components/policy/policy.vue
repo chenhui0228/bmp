@@ -16,12 +16,12 @@
           </el-button>
         </div>
         <div class="toolbar" style="float:right;">
-          <el-form :inline="true" :model="searchCmds">
+          <el-form :inline="true" :model="searchCmds" onsubmit="return false;">
             <el-form-item>
-              <el-input v-model="searchCmds.name" placeholder="策略名" style="min-width: 240px;"></el-input>
+              <el-input v-model="searchCmds.name" placeholder="策略名" style="min-width: 240px;" @keyup.native="getPoliciesByName"></el-input>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="">查询</el-button>
+              <el-button type="primary" @click="getPoliciesByName">查询</el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -243,7 +243,7 @@
         multipleSelection: [],
         filter: {
           per_page: 10,   //页大小
-          page: 1   //当前页
+          page: 1,   //当前页
         },
         total_rows: 0,
         policyRules: {
@@ -305,13 +305,16 @@
               type: type
           });
       },
-      getPolicys(username){
+      getPolicys(username, name_like=''){
         var page_offset = this.filter.per_page * (this.filter.page - 1);
         let params = {
           user: username,
           limit: this.filter.per_page,
           offset: page_offset,
         };
+        if(name_like !== '') {
+          params.name_like = name_like;
+        }
         reqGetPolicyList(params).then(res => {
           this.policies = res.data.policies;
           this.total_rows = res.data.total;
@@ -331,6 +334,13 @@
             console.log(err);
           }
         });
+      },
+      getPoliciesByName(event){
+        if(this.searchCmds.name !== ''){
+          this.getPolicys(this.sysUserName, this.searchCmds.name)
+        }else{
+          this.getPolicys(this.sysUserName)
+        }
       },
       newPolicy(){
         this.dialogNewPolicyVisible = true;

@@ -60,7 +60,7 @@ class Daemon:
                 print "backup work start in backend!"
                 self.log.logger.info("backup work start in backend!")
                 sys.exit(0)  # 退出主进程
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write('fork #1 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
             self.log.logger.error('fork #1 failed: %d (%s)\n' %
@@ -75,7 +75,7 @@ class Daemon:
             pid = os.fork()  # 第二次fork，禁止进程打开终端
             if pid > 0:
                 sys.exit(0)
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write('fork #2 failed: %d (%s)\n' %
                              (e.errno, e.strerror))
             self.log.logger.error('fork #2 failed: %d (%s)\n' %
@@ -147,7 +147,7 @@ class Daemon:
             while 1:
                 os.kill(pid, SIGTERM)
                 time.sleep(0.1)
-        except OSError, err:
+        except OSError as err:
             err = str(err)
             if err.find('No such process') > 0:
                 if os.path.exists(self.pidfile):
@@ -218,7 +218,7 @@ class Daemon:
         data = "{'type': 'keepalive', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version, self.group)
         try:
             self.message.send(data)
-        except Exception,e:
+        except Exception as e:
             self.log.logger.error(e.message)
 
     def _timer_func( self ):
@@ -353,9 +353,10 @@ class Daemon:
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'], 'waiting')
-        elif data['type'] == 'show':
-            for onetask in self.task_list:
-                print onetask
+        elif data['type'] == 'start':
+            #for onetask in self.task_list:
+                #print onetask
+            pass
         elif data['type'] == 'keepalive':
             self.log.logger.info('keepalive')
             self.send_alive()
@@ -366,8 +367,8 @@ class Daemon:
                 if self.workpool_workid_dict.has_key(t.name):
                     if self.workpool_workid_dict[t.name] == ms:
                         try:
-                            t.stop()
-                        except Exception,e:
+                            t.stopwork()
+                        except Exception as e:
                             self.log.logger.error(e.message)
                         break
 
@@ -424,7 +425,7 @@ class Daemon:
             ret=self.message.send(data)
             if ret!=0:
                 self.log.logger.error(ret)
-        except Exception,e:
+        except Exception as e:
             print e
         self.log.logger.debug("date")
 
