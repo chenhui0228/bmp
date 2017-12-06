@@ -21,7 +21,7 @@
               <el-input v-model="searchCmds.name" placeholder="用户名" style="min-width: 240px;"></el-input>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="">查询</el-button>
+              <el-button type="primary" @click="getUserByName">查询</el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -318,13 +318,16 @@
         });
       },
       //获取用户列表
-      getUsers(username){
+      getUsers(username, name_like=''){
         var page_offset = this.filter.per_page * (this.filter.page - 1);
         let params = {
           user: username,
           limit: this.filter.per_page,
           offset: page_offset,
         };
+        if(name_like !== '') {
+          params.name_like = name_like;
+        }
         reqGetUserList(params).then(res => {
           this.total_rows = res.data.total;
           this.filter.page = this.filter.page;
@@ -358,6 +361,13 @@
             });
           }
         });
+      },
+      getUserByName(event){
+        if(this.searchCmds.name !== ''){
+          this.getUsers(this.sysUserName, this.searchCmds.name)
+        }else{
+          this.getUsers(this.sysUserName)
+        }
       },
       initialUserForms(){
         this.userForm.name = '';
@@ -446,6 +456,7 @@
           }
         });
         this.initialUserForms();
+        this.getUsers(this.sysUserName)
       },
       userForm2user(){
         this.user.name = this.userForm.name;
@@ -505,13 +516,7 @@
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
           } else if (err.response.status == 403) {
-            if(err.response.data.code == 403){
-              this.openMsg('删除失败', 'error');
-            }else if(err.response.data.code == 401) {
-              this.openMsg('没有权限', 'error');
-            }else {
-              this.openMsg('删除失败', 'error');
-            }
+            this.openMsg('删除失败, 不允许删除自己', 'warning');
           }else {
             this.openMsg('请求失败', 'error');
           }

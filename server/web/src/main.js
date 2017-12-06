@@ -60,10 +60,18 @@ Vue.filter("weeksFormat", function (value) {
   return str;
 });
 Vue.filter("pathFilter", function (path) {
-  console.log(typeof (path));
   path = path.replace(/^\w+:\//g,'');
   return path;
 });
+
+Vue.filter("toGroupName", function (gid, groups) {
+  for (var i = 0; i < groups.length; ++i){
+    if (gid === groups[i].id){
+      return groups[i].name
+    }
+  }
+});
+
 Vue.filter("dateStampFormat", function (value) {
   var _date = new Date(value*1000);
   if (value == 0 || value == '0' || _date == undefined){

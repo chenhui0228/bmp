@@ -20,7 +20,7 @@
             <el-input v-model="filters.name" placeholder="卷名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getVolume">查询</el-button>
+            <el-button type="primary" :disabled="true" @click="getVolume">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
@@ -172,7 +172,6 @@
           user: this.sysUserName,
           limit: this.per_page,
           offset: this.offset,
-//          ip: this.filters.ip
         };
         this.listLoading = true;
         this.isVisible = false;

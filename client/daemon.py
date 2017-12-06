@@ -366,7 +366,7 @@ class Daemon:
                 if self.workpool_workid_dict.has_key(t.name):
                     if self.workpool_workid_dict[t.name] == ms:
                         try:
-                            t.stop()
+                            t.stopwork()
                         except Exception,e:
                             self.log.logger.error(e.message)
                         break

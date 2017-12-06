@@ -1,7 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from message import Message,Performance
+from message1 import Message,Performance
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
@@ -196,6 +196,7 @@ class Server:
         addr = (worker.ip, int(self.port))
         if worker.ip == '10.202.127.11':
             addr = (worker.ip, 22222)
+        self.pause(id)
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'

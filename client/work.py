@@ -168,6 +168,10 @@ class Work():
                 self.send_bk('run', process=200, current_size=str(write_now))
                 break
         outdata, errdata = self.process.communicate()
+        if self.pause:
+            self.log.logger.info('dump is pause')
+            self.errormessage='dump is pause'
+            return -1
         if self.process.poll() != 0:
             # print 'error info:%s' % error
             self.log.logger.error("dump work failed" )
@@ -185,30 +189,39 @@ class Work():
         write_all = self.proclen
         write_old = 0
         write_now = 0
+        seek_old=0
+        seek_now=0
         self.log.logger.info('write file %s'%pd)
         cmd = ('rsync -avlP %s %s' % (pd, vd))
         #print cmd
         fp = tempfile.TemporaryFile(mode='w+t')
         self.process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
         while True:
+            seek_now=seek_old
+            fp.seek(seek_now)
+            seek_old=int(fp.tell())
             lines = fp.readlines()
+            #print fp.tell()
             for line in lines:
                 s = line
                 if len(s) <= 1:
                     continue
                 list = s.split()
+                #print 'line is',str(s)
+                #print 'list is',str(list)
                 if list[0].isdigit():
                     write_old = write_now
-                    write_now = int(list[0])
+                    list_digit=[]
+                    for i in list:
+                        if i.isdigit():
+                           list_digit.append(int(i))
+                    write_now = int(max(list_digit))
                     write_all = write_all + (write_now - write_old)
-                    #print 'the size of file is %d' % (int((write_all * 100) / self.proctotal))
+                    write_old = write_now
                     pro=(int((write_all * 100) / self.proctotal))
                     if pro-self.sendpro>=2:
                         self.send_bk('run',process=str(pro),current_size=str(write_all))
                         self.sendpro=pro
-                else:
-                    write_old = 0
-                    write_now = 0
                 time.sleep(1)
             if self.process.poll() != None:
                 list=pd.split('/')
@@ -220,12 +233,16 @@ class Work():
                         self.send_bk('run',process=str(pro),current_size=str(self.proclen))
                         self.sendpro=pro
                 else:
-                    self.errormessage = 'file not complete'
+                    self.errormessage = 'the document copy incomplete'
                     return -1
                 break
         fp.close()
         outdata, errdata = self.process.communicate()
-        if  len(errdata) != 0:
+        if self.pause:
+            self.log.logger.info('the work is pause')
+            self.errormessage='the work is pause'
+            return -1
+        if  self.process.poll() != 0:
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
             self.log.logger.error(errdata)
@@ -267,11 +284,15 @@ class Work():
 
     def get_file_size(self, file_path):
         size = 0L
-        if isfile(file_path):
-            size = getsize(file_path)
-        else:
-            for root, dirs, files in os.walk(file_path):
-                size += sum([getsize(join(root, name)) for name in files])
+        try:
+            if isfile(file_path):
+                size = getsize(file_path)
+            elif os.path.isdir(file_path):
+                for root, dirs, files in os.walk(file_path):
+                    size += sum([getsize(join(root, name)) for name in files])
+        except Exception,e:
+            self.log.logger.info(e)
+            self.errormessage=str(e)
         return size
 
 
@@ -282,10 +303,13 @@ class Work():
             #    self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
             self.proctotal = self.get_file_size(self.pfile)
-            if self.proctotal==0:
-                self.proctotal+=1
             start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
+            if self.proctotal == 0:
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
             self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
@@ -296,7 +320,7 @@ class Work():
             if ret != 0:
                 #print "mount failed"
                 if self.errormessage == "":
-                    self.errormessage = 'backup failed'
+                    self.errormessage = 'mount failed'
                 self.send_bk('last', state='failed',end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
@@ -310,7 +334,6 @@ class Work():
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
-
                 #print "work failed"
                 if self.errormessage == "":
                     self.errormessage = 'backup failed'
@@ -387,7 +410,10 @@ class Work():
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             if self.proctotal == 0:
-                self.proctotal+=1
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
@@ -400,16 +426,16 @@ class Work():
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
                 self.do_close()
-                if self.errormessage == "":
-                    self.log.logger.error('recover failed')
-                    self.errormessage = 'recover failed'
                 if self.pause:
                     self.log.logger.info('recover pause')
+                    self.errormessage = 'recover pause'
                     self.send_bk('last', state='aborted', end_time=str(time.time()))
                 else:
+                    self.log.logger.error('recover failed')
+                    if self.errormessage == "":
+                        self.errormessage = 'recover failed'
                     self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            time.sleep(2)
             ret = self.do_close()
             if ret != 0:
                 if self.errormessage == "":
