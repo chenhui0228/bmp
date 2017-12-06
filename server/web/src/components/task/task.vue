@@ -71,9 +71,9 @@
         </el-button>
         <el-button type="primary" @click="confirmExport" v-if="!isTags">导出任务数据</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
-        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" v-if="!isTags">
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" v-if="!isTags" onsubmit="return false;">
           <el-form-item>
-            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.enter.native="searchTaskByName"></el-input>
+            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.native="searchTaskByName"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click.native="searchTaskByName">查询</el-button>
@@ -139,10 +139,10 @@
                   style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'">
-              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
+              <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: red">失败</el-button>
             </span>
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
-              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
+              <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: orangered">中断</el-button>
             </span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
@@ -1134,7 +1134,6 @@
         let para = Object.assign({}, this.createRecoverTaskForm);
         para.type = 'recover';
         para.destination = 'file:/' + para.destination;
-        console.log(para);
         reqAddTask(user, para).then((res) => {
           this.createRecoverTaskLoading = false;
           //NProgress.done();
@@ -1538,6 +1537,9 @@
             params.type = 'backup';
           }else{
             params.type = 'recover';
+          }
+          if(this.filters.name !== '') {
+            params.name_like = this.filters.name;
           }
           reqGetTaskDetailList(params).then(res =>{
             this.tasks[index] = res.data.tasks[0];
