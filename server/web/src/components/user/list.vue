@@ -446,6 +446,7 @@
           }
         });
         this.initialUserForms();
+        this.getUsers(this.sysUserName)
       },
       userForm2user(){
         this.user.name = this.userForm.name;
@@ -505,13 +506,7 @@
             sessionStorage.removeItem('access-user');
             this.$router.push({ path: '/' });
           } else if (err.response.status == 403) {
-            if(err.response.data.code == 403){
-              this.openMsg('删除失败', 'error');
-            }else if(err.response.data.code == 401) {
-              this.openMsg('没有权限', 'error');
-            }else {
-              this.openMsg('删除失败', 'error');
-            }
+            this.openMsg('删除失败, 不允许删除自己', 'warning');
           }else {
             this.openMsg('请求失败', 'error');
           }

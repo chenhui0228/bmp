@@ -20,6 +20,25 @@
   .el-table-recover {
     cursor: default;
   }
+
+  .card-col{
+    margin: 10px;
+  }
+
+  .box-card {
+    width: 220px
+  }
+  .card-header {
+    margin: -10px -10px;
+  }
+  .card-body {
+    margin: -10px -10px;
+  }
+  .card-row .el-row {
+    line-height: 100%;
+    padding: 5px 0px;
+  }
+
 </style>
 <template>
   <el-row class="warp">
@@ -42,7 +61,9 @@
       <!--工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
         <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
-        <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag" style="margin-left: 5px">新建</el-button>
+        <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag"
+                   style="margin-left: 5px">新建
+        </el-button>
         <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags != 0">
           批量删除
         </el-button>
@@ -101,17 +122,21 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名" width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略"  v-if="isBackupTask" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
         <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
         </el-table-column>
         <el-table-column prop="task.state" label="状态" width="120rem">
           <template slot-scope="scope">
             <span v-if="scope.row.task.state == 'waiting'" style="color: #f7c410">等待...</span>
-            <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" style="color: blue">执行中...</span>
+            <span v-else-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'"
+                  style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'">
               <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
+            </span>
+            <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
+              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
             </span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
@@ -123,7 +148,8 @@
           <template slot-scope="scope">
             <span v-if="scope.row.state">
               <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" >正在dump...</span>
-              <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end') && scope.row.state.process !== '200'" :percentage="parseInt(scope.row.state.process)"></el-progress>
+              <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end')
+              && scope.row.state.process !== '200' && scope.row.state.state !== 'failed' && scope.row.state.state !== 'aborted'" :percentage="parseInt(scope.row.state.process)"></el-progress>
             </span>
             <span v-else>--</span>
           </template>
@@ -144,28 +170,35 @@
           </span>
           </template>
         </el-table-column>
-        <el-table-column prop="user" label="创建人" width="150rem">
+        <el-table-column prop="user" label="创建人" width="120rem">
         </el-table-column>
         <el-table-column label="操作" width="">
-
           <template slot-scope="scope">
-            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)" v-if="isBackupTask">
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)" v-if="isBackupTask && (scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped')">
               <use xlink:href="#icon-modify"></use>
             </svg>
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-            <el-tooltip content="立即执行" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask" >
+            <el-tooltip content="标记" placement="top">
+              <svg class="icon" aria-hidden="true" @click="markTask(scope.$index,scope.row)">
+                <use xlink:href="#icon-tags"></use>
+              </svg>
+            </el-tooltip>
+            <el-tooltip content="立即执行" placement="top"
+                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
                 <use xlink:href="#icon-exec"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="终止当前执行" placement="top" v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' && isBackupTask">
+            <el-tooltip content="终止当前执行" placement="top"
+                        v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'pause')">
                 <use xlink:href="#icon-stop_2"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="停止" placement="top" v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask">
+            <el-tooltip content="停止" placement="top"
+                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
@@ -175,7 +208,8 @@
                 <use xlink:href="#icon-recover"></use>
               </svg>
             </el-tooltip>
-            <el-tooltip content="重新下发" placement="top" v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting' && !isBackupTask">
+            <el-tooltip content="重新下发" placement="top"
+                        v-if="scope.row.task.state != 'running_w' && scope.row.task.state != 'running_s' && scope.row.task.state != 'waiting' && !isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'resume')">
                 <use xlink:href="#icon-reload"></use>
               </svg>
@@ -183,10 +217,39 @@
           </template>
         </el-table-column>
       </el-table>
-      <!--标签列表-->
-      <el-col :span="4" class="" v-if="isTags && (role == 'superrole' || role == 'admin')">
+      <!--TODO: 标签列表-->
+      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" v-if="isTags && (role == 'superrole' || role == 'admin')"
+              @selection-change="handleSelectionChange">
         <el-card class="box-card">
-          <div>
+          <div slot="header" class="card-header">
+            <el-checkbox v-model="tagsSelections[index].selected"></el-checkbox>
+            <span style="font-weight:bold;">{{ tag.name }}</span>
+            <span style="float: right;">
+              <svg class="icon" aria-hidden="true" @click="editTag(tag)">
+                <use xlink:href="#icon-modify"></use>
+              </svg>
+              <svg class="icon" aria-hidden="true" @click="">
+                <use xlink:href="#icon-delete"></use>
+              </svg>
+            </span>
+          </div>
+          <div class="card-body">
+            <el-row class="card-row" style="line-height: 100%; padding: 5px 0px; font-size: 14px;">
+              <el-col :span="6">
+                任务：
+              </el-col>
+              <el-col :span="18">
+                {{ tagsSelections[index].itemslen }}
+              </el-col>
+            </el-row>
+            <el-row class="card-row" style="line-height: 100%; padding: 5px 0px; font-size: 14px;">
+              <el-col :span="6">
+                属组：
+              </el-col>
+              <el-col :span="18">
+                {{ tag.group_id | toGroupName(groups)}}
+              </el-col>
+            </el-row>
           </div>
         </el-card>
       </el-col>
@@ -264,17 +327,17 @@
           </el-form-item>
           <el-form-item prop="source" label="源">
             <el-col :span="3">
-            <el-select v-model="editForm.source_type" placeholder="请选择类型">
-              <el-option
-                v-for="type in sourceTypes"
-                :key="type.value"
-                :label="type.label"
-                :value="type.value">
-              </el-option>
-            </el-select>
+              <el-select v-model="editForm.source_type" placeholder="请选择类型">
+                <el-option
+                  v-for="type in sourceTypes"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value">
+                </el-option>
+              </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-            <el-input v-model="editForm.source" auto-complete="off"></el-input>
+              <el-input v-model="editForm.source" auto-complete="off"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -409,7 +472,8 @@
       </el-dialog>
 
       <!--任务状态框-->
-      <el-dialog  class="custom_size" :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible" :beforeClose="closeStateDialog">
+      <el-dialog class="custom_size" :title="currTaskStateTabTitle" :visible.sync="dialogTaskStateDetailTableVisible"
+                 :beforeClose="closeStateDialog">
 
         <el-table :data="taskStates"
                   border
@@ -446,7 +510,10 @@
               <span v-else-if="scope.row && scope.row.state == 'failed'">
                 <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
               </span>
-              <span style="color: dodgerblue" v-else-if="parseInt(scope.row.process) > 100" >正在dump...</span>
+              <span v-else-if="scope.row && scope.row.state == 'aborted'">
+                <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
+              </span>
+              <span style="color: dodgerblue" v-else-if="scope.row && parseInt(scope.row.process) > 100" >正在dump...</span>
               <el-progress v-else-if="scope.row && scope.row.process && scope.row.process !== '200'" :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
@@ -454,8 +521,10 @@
           </el-table-column>
           <el-table-column label="操作" min-width="180" v-if="isBackupTask">
             <template slot-scope="scope">
-              <!--创建恢复任务-->
-              <el-button type="text" v-if="scope.row && scope.row.state == 'success'" @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务</el-button>
+              <!--TODO:创建恢复任务-->
+              <el-button type="text" v-if="scope.row && scope.row.state == 'success'"
+                         @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -499,6 +568,18 @@
         </div>
       </el-dialog>
 
+      <!--TODO: 创建标签-->
+      <el-dialog :title="dialogTagTitle" :visible.sync="dialogTagVisible"  :close-on-click-modal="!dialogTagVisible" @close="cancelTagDialog">
+        <el-form :model="tagForm" ref="tagForm">
+          <el-form-item label="标签名称">
+            <el-input v-model="tagForm.name" auto-complete="off"></el-input>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="cancelTagDialog">取 消</el-button>
+          <el-button type="primary" @click="saveTag('tagForm')">确 定</el-button>
+        </div>
+      </el-dialog>
     </el-col>
     <el-dialog title="导出数据" :visible.sync="dialogExportVisible" class="export-dialog">
       <el-form :model="exportConds">
@@ -537,13 +618,15 @@
   </el-row>
 </template>
 <script>
+  //TODO: import ruquest api
   import { reqGetTaskDetailList, reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
     reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList,
-     reqGetTags} from '../../api/api';
+     reqGetTags, reqNewTags, reqEditTags, reqDeleteTags} from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
   import export2Excel from '../../common/export2Excel'
   export default {
+    //TODO: data
     data() {
       var checkStarTime = (rule, value, callback) => {
         if (this.dialogNewPolicyVisible && !this.policyTimeForm.delay) {
@@ -567,6 +650,7 @@
         this.checkStarTimeError = false;
         callback();
       };
+      //TODO: data return
       return {
         sysUserName: '',
         filters: {
@@ -601,6 +685,12 @@
         //TODO: 创建恢复任务相关数据
         createRecoverTaskLoading: false,
         createRecoverTaskFormVisible: false,
+        dialogNewTagVisible: false,
+        dialogEditTagVisible: false,
+        dialogTagVisible: false,
+        dialogTagTitle: "创建标签",
+        tagForm: {},
+        tagsSelections: [],
         dialogExportVisible:false,
         exportConds: {
           customize: false,
@@ -673,12 +763,25 @@
         groups: [],
       }
     },
+    //TODO: created
     created() {
 
     },
+    //TODO: beforeDestroy
     beforeDestroy() {
         clearInterval(this.intervalTask)
     },
+    //TODO: watch
+    watch:{
+      //TODO: watch dialogTagVisible
+      dialogEditTagVisible: function(val, oldVal) {
+        this.dialogTagVisible = val || this.dialogEditTagVisible;
+      },
+      dialogNewTagVisible: function(val, oldVal) {
+        this.dialogTagVisible = val || this.dialogNewTagVisible;
+      },
+    },
+    //TODO: methods
     methods: {
       handleClick(tag) {
         this.page = 1;
@@ -720,19 +823,6 @@
         }else {
           return 'el-table-recover';
         }
-      },
-      getTags(){
-        let params = {
-          user: this.sysUserName,
-        };
-        reqGetTags(params).then(res => {
-          console.log(res.log)
-        },err => {
-
-        });
-      },
-      newTag(){
-
       },
       //获取任务列表
       getTasks: function (type='backup') {
@@ -866,7 +956,95 @@
         }
 
       },
-      //Recover Task
+      //TODO: Get tags
+      getTags(){
+        let params = {
+          user: this.sysUserName
+        }
+        reqGetTags(params).then( res =>{
+          this.tags = res.data.tags;
+          for (var i = 0; i < res.data.tags.length; ++i){
+            this.tagsSelections[i] = {};
+            this.tagsSelections[i].selected = false;
+            this.tagsSelections[i].itemslen = res.data.tags[i].items.length;
+          }
+        }, err => {
+
+        });
+      },
+      cancelTagDialog(){
+        this.dialogNewTagVisible = false;
+        this.dialogEditTagVisible = false;
+        this.dialogTagVisible = false;
+        this.tagForm = {}
+      },
+      //TODO: New tag
+      newTag(){
+        this.dialogNewTagVisible = true;
+        this.dialogEditTagVisible = false;
+        this.dialogTagTitle = "创建标签";
+      },
+      //TODO: Edit tag
+      editTag(tag){
+        this.dialogNewTagVisible = false;
+        this.dialogEditTagVisible = true;
+        this.dialogTagTitle = "修改标签";
+        this.tagForm = {
+          name: tag.name,
+          id: tag.id
+        };
+      },
+      //TODO: Save tag
+      saveTag(tagForm){
+        this.$refs[tagForm].validate((valid) => {
+          if(valid){
+            let params = {
+              user: this.sysUserName
+            }
+            if(this.dialogNewTagVisible){
+              reqNewTags(params, this.tagForm).then(res => {
+                this.getTags()
+              }, err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg('新建失败', 'error');
+                }
+              });
+            }
+            if(this.dialogEditTagVisible){
+              reqEditTags(this.tagForm.id, params, this.tagForm).then(res => {
+                this.getTags()
+              }, err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg('修改失败', 'error');
+                }
+              });
+            }
+          }
+        });
+        this.cancelTagDialog();
+      },
+      //TODO: Delete tag
+      deleteTag(tag){
+        let params = {
+          user: this.sysUserName
+        };
+        reqDeleteTags(tag.name, params).then(res => {
+
+        });
+      },
+      //TODO: Play tag for the task
+      markTask(index, row){
+
+      },
+      //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
         this.createRecoverTaskFormVisible = true;
         let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmmss');
@@ -1125,12 +1303,12 @@
               type: 'success'
             });
             this.getTasks(this.task_type);
-          });
-        }).catch(() => {
-          this.listLoading = false;
-          this.$message({
-            message: '删除失败',
-            type: 'error'
+          }).catch(() => {
+            this.listLoading = false;
+            this.$message({
+              message: '删除失败',
+              type: 'error'
+            });
           });
         });
       },
@@ -1272,8 +1450,13 @@
         reqTaskAction(row.task.id, data, params, headers).then(res => {
           this.openMsg(info, 'success');
           params.task_id = row.task.id;
+          if(this.isBackupTask){
+            params.type = 'backup';
+          }else{
+            params.type = 'recover';
+          }
           reqGetTaskDetailList(params).then(res =>{
-            this.tasks[index] = res.data.tasks[0]
+            this.tasks[index] = res.data.tasks[0];
           })
         }, err => {
           if (err.response.status == 401) {
