@@ -26,7 +26,8 @@
   }
 
   .box-card {
-    width: 220px
+    width: 220px;
+    margin-top: 0px;
   }
   .card-header {
     margin: -10px -10px;
@@ -38,48 +39,58 @@
     line-height: 100%;
     padding: 5px 0px;
   }
-
+  .tag-transfer-dialog  .el-dialog{
+    width: unset;
+  }
+  .transfer-dialog-body {
+    margin: -30px 0px;
+  }
 </style>
 <template>
   <el-row class="warp">
+    <!--TODO:面包屑-->
     <el-col :span="24" class="warp-breadcrum">
       <el-breadcrumb separator="/">
         <el-breadcrumb-item :to="{ path: '/' }"><b>首页</b></el-breadcrumb-item>
         <el-breadcrumb-item>任务管理</el-breadcrumb-item>
       </el-breadcrumb>
     </el-col>
-
+    <!--TODO:选项卡题-->
     <el-col :span="24" style="margin-top:5px;margin-bottom: 10px">
       <el-tabs value="backup" @tab-click="handleClick">
         <el-tab-pane label="备份任务" name="backup"></el-tab-pane>
         <el-tab-pane label="恢复任务" name="recover"></el-tab-pane>
-        <el-tab-pane label="标签管理" name="tags"></el-tab-pane>
+        <!--<el-tab-pane label="标签管理" name="tags"></el-tab-pane>-->
       </el-tabs>
     </el-col>
 
     <el-col :span="24" class="warp-main">
-      <!--工具条-->
+      <!--TODO:工具条-->
       <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
         <el-button type="primary" v-if="isBackupTask" @click="showAddDialog" style="margin-left: 5px">新建</el-button>
         <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag"
                    style="margin-left: 5px">新建
         </el-button>
-        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags != 0">
+        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags.length != 0" style="margin-left: 5px">
           批量删除
         </el-button>
-        <el-button type="primary" @click="confirmExport">导出任务数据</el-button>
+        <el-button type="primary" @click="confirmExport" v-if="!isTags">导出任务数据</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
-        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" v-if="!isTags" onsubmit="return false;">
           <el-form-item>
-            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.enter.native="searchTaskByName"></el-input>
+            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.native="searchTaskByName"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click.native="searchTaskByName">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
-
-      <!--列表-->
+      <el-col :span="24" v-if="isTags && tags.length != 0" style="margin-top: 10px;margin-left:10px;">
+        <template>
+          <el-checkbox v-model="selectedTagsAll">全选</el-checkbox>
+        </template>
+      </el-col>
+      <!--TODO:列表-->
       <el-table :data="tasks"
                 highlight-current-row
                 v-loading="listLoading"
@@ -133,10 +144,10 @@
                   style="color: blue">执行中...</span>
             <span v-else-if="scope.row.task.state == 'stopped'" style="color: red">已停止</span>
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'failed'">
-              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: red">失败</el-button>
+              <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: red">失败</el-button>
             </span>
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
-              <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
+              <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: orangered">中断</el-button>
             </span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
@@ -180,11 +191,11 @@
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
-            <el-tooltip content="标记" placement="top">
-              <svg class="icon" aria-hidden="true" @click="markTask(scope.$index,scope.row)">
-                <use xlink:href="#icon-tags"></use>
-              </svg>
-            </el-tooltip>
+            <!--<el-tooltip content="标记" placement="top">-->
+              <!--<svg class="icon" aria-hidden="true" @click="showMarkDialog(scope.$index,scope.row)">-->
+                <!--<use xlink:href="#icon-tags"></use>-->
+              <!--</svg>-->
+            <!--</el-tooltip>-->
             <el-tooltip content="立即执行" placement="top"
                         v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'start')">
@@ -218,7 +229,7 @@
         </el-table-column>
       </el-table>
       <!--TODO: 标签列表-->
-      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" v-if="isTags && (role == 'superrole' || role == 'admin')"
+      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" :key="tag.id" v-if="isTags && (role == 'superrole' || role == 'admin')"
               @selection-change="handleSelectionChange">
         <el-card class="box-card">
           <div slot="header" class="card-header">
@@ -228,7 +239,7 @@
               <svg class="icon" aria-hidden="true" @click="editTag(tag)">
                 <use xlink:href="#icon-modify"></use>
               </svg>
-              <svg class="icon" aria-hidden="true" @click="">
+              <svg class="icon" aria-hidden="true" @click="confirmDeleteMsgbox(index, tag)">
                 <use xlink:href="#icon-delete"></use>
               </svg>
             </span>
@@ -580,6 +591,25 @@
           <el-button type="primary" @click="saveTag('tagForm')">确 定</el-button>
         </div>
       </el-dialog>
+      <!--TODO:dialog that selecting tag for task-->
+      <el-dialog title="标签设置" :visible.sync="dialogTagTransferVisible" :close-on-click-modal="!dialogTagVisible" @close="cancelTagTransferDialog" class="tag-transfer-dialog">
+        <div class="transfer-dialog-body">
+          <el-col :span="24" style="margin: 10px 0px;">
+            <span>
+              当前任务：{{ currSelectedTask.task.name }}
+            </span>
+          </el-col>
+          <template>
+            <el-transfer
+              v-model="taskTags"
+              filterable
+              :titles="['可设置标签', '已设置标签']"
+              :data="transferTags">
+
+            </el-transfer>
+          </template>
+        </div>
+      </el-dialog>
     </el-col>
     <el-dialog title="导出数据" :visible.sync="dialogExportVisible" class="export-dialog">
       <el-form :model="exportConds">
@@ -708,6 +738,14 @@
         //编辑相关数据
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
+        dialogTagTransferVisible: false,
+        taskTags: [],
+        transferTags: [],
+        currSelectedTask: {
+          task:{
+            name: '',
+          }
+        },
         editFormRules: {
 //          name: [
 //            {required: true, message: '请输入主机名', trigger: 'blur'}
@@ -761,6 +799,7 @@
         isPause: false,
         intervalTask: '',
         groups: [],
+        selectedTagsAll: false,
       }
     },
     //TODO: created
@@ -780,6 +819,17 @@
       dialogNewTagVisible: function(val, oldVal) {
         this.dialogTagVisible = val || this.dialogNewTagVisible;
       },
+      selectedTagsAll: function(val, oldVal){
+        if(val){
+          for(var i =0; i < this.tagsSelections.length; ++i){
+            this.tagsSelections[i].selected = true;
+          }
+        }else{
+          for(var i =0; i < this.tagsSelections.length; ++i){
+            this.tagsSelections[i].selected = false;
+          }
+        }
+      }
     },
     //TODO: methods
     methods: {
@@ -977,6 +1027,7 @@
             this.tagsSelections[i] = {};
             this.tagsSelections[i].selected = false;
             this.tagsSelections[i].itemslen = res.data.tags[i].items.length;
+            this.tagsSelections[i].id = res.data.tags[i].id;
           }
         }, err => {
 
@@ -1013,6 +1064,7 @@
             }
             if(this.dialogNewTagVisible){
               reqNewTags(params, this.tagForm).then(res => {
+                this.openMsg('新建成功！', 'success');
                 this.getTags()
               }, err => {
                 if (err.response.status == 401) {
@@ -1026,6 +1078,7 @@
             }
             if(this.dialogEditTagVisible){
               reqEditTags(this.tagForm.id, params, this.tagForm).then(res => {
+                this.openMsg('新建成功！', 'success');
                 this.getTags()
               }, err => {
                 if (err.response.status == 401) {
@@ -1042,17 +1095,52 @@
         this.cancelTagDialog();
       },
       //TODO: Delete tag
-      deleteTag(tag){
+      deleteTag(index, tag){
         let params = {
           user: this.sysUserName
         };
-        reqDeleteTags(tag.name, params).then(res => {
-
+        reqDeleteTags(tag.id, params).then(res => {
+          this.openMsg('删除成功','success');
+          this.getTags();
+        }, err => {
+          this.openMsg('删除失败','error');
         });
+      },
+      confirmDeleteMsgbox(index, tag){
+        const h = this.$createElement;
+        this.$msgbox({
+          title: '重要提醒',
+          message: h('p',{style: 'color: red'}, "删除标签同时已被标记的任务将失去相应的标签！"),
+          type: 'warning',
+          showCancelButton: true,
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          beforeClose: (action, instance, done) => {
+            if (action === 'confirm') {
+              this.deleteTag(index, tag);
+              done();
+            } else {
+              done();
+            }
+          }
+        }).then(action => {
+        });
+      },
+      cancelTagTransferDialog(){
+        this.dialogTagTransferVisible = false;
+        this.getTags();
       },
       //TODO: Play tag for the task
       markTask(index, row){
-
+        console.log(this.tags);
+        if(row.task){
+          this.currSelectedTask = row;
+          console.log(row);
+        }
+      },
+      showMarkDialog(index, row){
+        this.dialogTagTransferVisible = true;
+        this.markTask(index, row);
       },
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
@@ -1084,7 +1172,6 @@
         let para = Object.assign({}, this.createRecoverTaskForm);
         para.type = 'recover';
         para.destination = 'file:/' + para.destination;
-        console.log(para);
         reqAddTask(user, para).then((res) => {
           this.createRecoverTaskLoading = false;
           //NProgress.done();
@@ -1326,7 +1413,7 @@
       handleSelectionChange: function (multipleSelection) {
         this.multipleSelection = multipleSelection;
       },
-      //批量删除
+      //TODO:批量删除
       batchDelete(){
         if(this.multipleSelection.length > 0){
           if(this.isTags){
@@ -1368,7 +1455,31 @@
           }
 
         }else{
-          this.openMsg('至少选中一条数据', 'info');
+          if(this.isTags){
+            var selectedNum = 0;
+            for(var i = 0; i < this.tagsSelections.length; ++i){
+              if(this.tagsSelections[i].selected){
+                selectedNum = selectedNum + 1;
+              }
+            }
+            if(selectedNum > 0){
+              this.$confirm('将删除选中的'+selectedNum+'个标签？','提示',{
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+              }).then(() => {
+                for(var i = 0; i < this.tagsSelections.length; ++i){
+                  if(this.tagsSelections[i].selected){
+                    this.deleteTag(i,this.tagsSelections[i]);
+                  }
+                }
+              });
+            } else {
+              this.openMsg('至少选中一条数据', 'info');
+            }
+          } else {
+            this.openMsg('至少选中一条数据', 'info');
+          }
         }
       },
       //任务状态详情
@@ -1465,6 +1576,9 @@
           }else{
             params.type = 'recover';
           }
+          if(this.filters.name !== '') {
+            params.name_like = this.filters.name;
+          }
           reqGetTaskDetailList(params).then(res =>{
             this.tasks[index] = res.data.tasks[0];
           })
@@ -1519,6 +1633,15 @@
         this.policies = res.data.policies;
       });
       this.getTasks();
+      reqGetTags(para).then(res => {
+        for(var i = 0; i < res.data.tags.length; ++i){
+          this.transferTags.push({
+            key: i,
+            label: res.data.tags[i].name
+          });
+        }
+        //this.tags = res.data.tags;
+      });
       // 组件创建完后获取数据，
       // 此时 data 已经被 observed 了
       this.intervalTask = setInterval(() => {

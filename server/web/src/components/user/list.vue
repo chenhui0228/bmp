@@ -16,9 +16,9 @@
           <el-button type="primary" @click="confirmExport">导出用户数据</el-button>
         </div>
         <div class="toolbar" style="float:right;">
-          <el-form :inline="true" :model="searchCmds">
+          <el-form :inline="true" :model="searchCmds" onsubmit="return false;">
             <el-form-item>
-              <el-input v-model="searchCmds.name" placeholder="用户名" style="min-width: 240px;"></el-input>
+              <el-input v-model="searchCmds.name" placeholder="用户名" style="min-width: 240px;" @keyup.native="getUserByName"></el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="getUserByName">查询</el-button>

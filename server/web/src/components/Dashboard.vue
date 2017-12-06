@@ -390,6 +390,13 @@
 
         }
       },
+      initializeWorkerSummary() {
+        this.workerSummary = {
+          total: 0,
+          currActive: 0,
+          currOffline: 0,
+        }
+      },
       initializeTaskStateSummary(data) {
         this.taskStateSummary.taskname = [];
         this.taskStateSummary.success = [];
@@ -597,6 +604,7 @@
         window.onresize = this.chartRecoverySummary.resize;
       },
       chartWorkerSummaryFunc(data) {
+        this.initializeWorkerSummary();
         if (data.total != null) {
           this.workerSummary.total = data.total;
         }

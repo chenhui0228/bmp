@@ -20,33 +20,21 @@ def create_dir(path):
             try:
                 os.mkdir(new_path)
             except:
-                try:
-                    cmd="umount %s"%new_path
-                    os.system(cmd)
-                except:
-                    pass
+                pass
 
     del_path=os.path.join(path,'del')
     if not os.path.exists(del_path):
         try:
             os.mkdir(del_path)
         except:
-            try:
-                cmd = "umount %s" % del_path
-                os.system(cmd)
-            except:
-                pass
+            pass
 
     recover_path=os.path.join(path,'recover')
     if not os.path.exists(recover_path):
         try:
             os.mkdir(recover_path)
         except:
-            try:
-                cmd = "umount %s" % recover_path
-                os.system(cmd)
-            except:
-                pass
+            pass
 
 if __name__ == '__main__':
     if not os.path.exists('/etc/SFbackup/client.conf'):

@@ -164,6 +164,6 @@ export const reqEditTags = (id, params, data) => {
   return axios.put(`${base}/backup/tags/${id}`, data, {params: params} )
 };
 
-export const reqDeleteTags = (name, params) => {
-  return axios.delete(`${base}/backup/tags/${name}`, {params: params} )
+export const reqDeleteTags = (id, params) => {
+  return axios.delete(`${base}/backup/tags/${id}`, {params: params} )
 };
