@@ -21,6 +21,10 @@
     cursor: default;
   }
 
+  .card-col{
+    margin: 10px;
+  }
+
   .box-card {
     width: 220px
   }
@@ -30,7 +34,7 @@
   .card-body {
     margin: -10px -10px;
   }
-  div .card-row .el-row {
+  .card-row .el-row {
     line-height: 100%;
     padding: 5px 0px;
   }
@@ -214,14 +218,14 @@
         </el-table-column>
       </el-table>
       <!--TODO: 标签列表-->
-      <el-col v-for="(tag,index) in tags" :span="4" class="" v-if="isTags && (role == 'superrole' || role == 'admin')"
+      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" v-if="isTags && (role == 'superrole' || role == 'admin')"
               @selection-change="handleSelectionChange">
         <el-card class="box-card">
           <div slot="header" class="card-header">
             <el-checkbox v-model="tagsSelections[index].selected"></el-checkbox>
             <span style="font-weight:bold;">{{ tag.name }}</span>
             <span style="float: right;">
-              <svg class="icon" aria-hidden="true" @click="">
+              <svg class="icon" aria-hidden="true" @click="editTag(tag)">
                 <use xlink:href="#icon-modify"></use>
               </svg>
               <svg class="icon" aria-hidden="true" @click="">
@@ -565,15 +569,15 @@
       </el-dialog>
 
       <!--TODO: 创建标签-->
-      <el-dialog title="创建标签" :visible.sync="dialogNewTagVisible">
-        <el-form :model="newTagForm">
+      <el-dialog :title="dialogTagTitle" :visible.sync="dialogTagVisible"  :close-on-click-modal="!dialogTagVisible" @close="cancelTagDialog">
+        <el-form :model="tagForm" ref="tagForm">
           <el-form-item label="标签名称">
-            <el-input v-model="newTagForm.name" auto-complete="off"></el-input>
+            <el-input v-model="tagForm.name" auto-complete="off"></el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button @click="cancelTagDialog">取 消</el-button>
-          <el-button type="primary" @click="saveTag">确 定</el-button>
+          <el-button type="primary" @click="saveTag('tagForm')">确 定</el-button>
         </div>
       </el-dialog>
     </el-col>
@@ -617,7 +621,7 @@
   //TODO: import ruquest api
   import { reqGetTaskDetailList, reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
     reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList,
-     reqGetTags, reqNewTags} from '../../api/api';
+     reqGetTags, reqNewTags, reqEditTags, reqDeleteTags} from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
   import export2Excel from '../../common/export2Excel'
@@ -682,7 +686,10 @@
         createRecoverTaskLoading: false,
         createRecoverTaskFormVisible: false,
         dialogNewTagVisible: false,
-        newTagForm: {},
+        dialogEditTagVisible: false,
+        dialogTagVisible: false,
+        dialogTagTitle: "创建标签",
+        tagForm: {},
         tagsSelections: [],
         dialogExportVisible:false,
         exportConds: {
@@ -763,6 +770,16 @@
     //TODO: beforeDestroy
     beforeDestroy() {
         clearInterval(this.intervalTask)
+    },
+    //TODO: watch
+    watch:{
+      //TODO: watch dialogTagVisible
+      dialogEditTagVisible: function(val, oldVal) {
+        this.dialogTagVisible = val || this.dialogEditTagVisible;
+      },
+      dialogNewTagVisible: function(val, oldVal) {
+        this.dialogTagVisible = val || this.dialogNewTagVisible;
+      },
     },
     //TODO: methods
     methods: {
@@ -957,19 +974,69 @@
       },
       cancelTagDialog(){
         this.dialogNewTagVisible = false;
+        this.dialogEditTagVisible = false;
+        this.dialogTagVisible = false;
+        this.tagForm = {}
       },
       //TODO: New tag
       newTag(){
         this.dialogNewTagVisible = true;
+        this.dialogEditTagVisible = false;
+        this.dialogTagTitle = "创建标签";
       },
-      saveTag(){
+      //TODO: Edit tag
+      editTag(tag){
+        this.dialogNewTagVisible = false;
+        this.dialogEditTagVisible = true;
+        this.dialogTagTitle = "修改标签";
+        this.tagForm = {
+          name: tag.name,
+          id: tag.id
+        };
+      },
+      //TODO: Save tag
+      saveTag(tagForm){
+        this.$refs[tagForm].validate((valid) => {
+          if(valid){
+            let params = {
+              user: this.sysUserName
+            }
+            if(this.dialogNewTagVisible){
+              reqNewTags(params, this.tagForm).then(res => {
+                this.getTags()
+              }, err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg('新建失败', 'error');
+                }
+              });
+            }
+            if(this.dialogEditTagVisible){
+              reqEditTags(this.tagForm.id, params, this.tagForm).then(res => {
+                this.getTags()
+              }, err => {
+                if (err.response.status == 401) {
+                  this.openMsg('请重新登陆', 'error');
+                  sessionStorage.removeItem('access-user');
+                  this.$router.push({ path: '/' });
+                } else {
+                  this.openMsg('修改失败', 'error');
+                }
+              });
+            }
+          }
+        });
+        this.cancelTagDialog();
+      },
+      //TODO: Delete tag
+      deleteTag(tag){
         let params = {
           user: this.sysUserName
-        }
-        let data = this.newTagForm
-        reqNewTags(params, data).then(res => {
-          console.log(res);
-        }, err => {
+        };
+        reqDeleteTags(tag.name, params).then(res => {
 
         });
       },
