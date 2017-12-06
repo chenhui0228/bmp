@@ -6,7 +6,7 @@ from os.path import join, getsize, isfile
 import subprocess
 import time
 import shutil
-from message1 import Message
+from message import Message
 import tempfile
 import ConfigParser
 
@@ -284,11 +284,15 @@ class Work():
 
     def get_file_size(self, file_path):
         size = 0L
-        if isfile(file_path):
-            size = getsize(file_path)
-        elif os.path.isdir(file_path):
-            for root, dirs, files in os.walk(file_path):
-                size += sum([getsize(join(root, name)) for name in files])
+        try:
+            if isfile(file_path):
+                size = getsize(file_path)
+            elif os.path.isdir(file_path):
+                for root, dirs, files in os.walk(file_path):
+                    size += sum([getsize(join(root, name)) for name in files])
+        except Exception,e:
+            self.log.logger.info(e)
+            self.errormessage=str(e)
         return size
 
 
@@ -299,10 +303,13 @@ class Work():
             #    self.arglist['ip'].append(self.arglist['destination _ip'])
             self.pfile = self.arglist['source_address']
             self.proctotal = self.get_file_size(self.pfile)
-            if self.proctotal==0:
-                self.proctotal+=1
             start_time=float(int(time.time()))
             timeArray = time.localtime(start_time)
+            if self.proctotal == 0:
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
             self.send_bk('frist',total_size=self.proctotal,start_time=str(start_time))
             self.vfile = self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount,self.arglist['threadId'])
@@ -403,7 +410,10 @@ class Work():
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             if self.proctotal == 0:
-                self.proctotal+=1
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)
             if ret != 0:

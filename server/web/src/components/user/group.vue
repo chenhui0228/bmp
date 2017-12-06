@@ -43,7 +43,7 @@
             <el-input v-model="filters.name" placeholder="组名" style="min-width: 240px;"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getGroup">查询</el-button>
+            <el-button type="primary" @click="getGroup" disabled>查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
@@ -194,13 +194,12 @@
         this.getGroup();
       },
       //获取用户列表
-      getGroup: function () {
+      getGroup: function (event) {
         this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
           limit: this.per_page,
           offset: this.offset,
-//          name: this.filters.name
         };
         this.listLoading = true;
         this.isVisible = false;

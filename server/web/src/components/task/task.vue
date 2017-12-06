@@ -71,10 +71,10 @@
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
         <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px">
           <el-form-item>
-            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;"></el-input>
+            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.enter.native="searchTaskByName"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getTasks">查询</el-button>
+            <el-button type="primary" @click.native="searchTaskByName">查询</el-button>
           </el-form-item>
         </el-form>
       </el-col>
@@ -825,7 +825,7 @@
         }
       },
       //获取任务列表
-      getTasks: function (type='backup') {
+      getTasks: function (type='backup', name_like='') {
         this.offset = this.per_page * (this.page - 1);
         let para = {
           user: this.sysUserName,
@@ -833,6 +833,9 @@
           limit: this.per_page,
           offset: this.offset,
         };
+        if(name_like !== '' || this.filters.name !== '') {
+          para.name_like = name_like || this.filters.name;
+        }
         this.listLoading = true;
         //NProgress.start();
         reqGetTaskDetailList(para).then((res) => {
@@ -855,6 +858,13 @@
             });
           }
         });
+      },
+      searchTaskByName(event) {
+        if(this.filters.name !== '') {
+          this.getTasks(this.task_type, this.filters.name)
+        }else {
+          this.getTasks(this.task_type)
+        }
       },
       confirmExport(){
         this.dialogExportVisible = true;
@@ -1522,6 +1532,9 @@
           params.type = 'backup';
         }else{
           params.type = 'recover';
+        }
+        if(this.filters.name !== '') {
+          params.name_like = this.filters.name;
         }
         reqGetTaskDetailList(params).then((res) => {
           this.total = res.data.total;
