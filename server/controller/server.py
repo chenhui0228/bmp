@@ -106,14 +106,12 @@ class Server:
 
 
     def keeplaive(self):
-        logger.debug('start sned keepalive %s'%str(self.workeralivedict))
         workers=self.db.get_workers(super_context)
         workersnum=workers[1]
         workerslist=workers[0]
         for i in range(workersnum):
             worker=workerslist[i]
             worker_id=worker.id
-            worker_ip=worker.ip
             data = "{'type':'keepalive'}"
             info = {}
             addr=(worker.ip, int(self.port))
@@ -121,43 +119,36 @@ class Server:
                 addr = (worker.ip, 22222)
             info['data'] = data
             info['addr'] = addr
+            self.message.issued(info)
+            last_update = int(worker.last_report)
+            now = int(time.time())
+            logger.debug('the worker is %s,status is %s,interval is %s'%(worker_id,worker.status,str(now-last_update)))
+            if worker.status == 'Active':
+                if now-last_update>=4*self.timer_interval:
+                    worker_value={}
+                    worker_value['id']=worker.id
+                    worker_value['status']='Offline'
+                    try:
+                        self.db.update_worker(super_context, worker_value)
+                    except Exception as e:
+                        logger.error(e)
+                    logger.warning('the worker %s is onffline' % worker.id)
 
-            if worker_id in self.workeralivedict:
-                if worker.status == 'Active':
-                    self.alivelock.acquire()
-                    self.workeralivedict[worker_id]+=1
-                    self.alivelock.release()
-                    if self.workeralivedict[worker_id]>=4:
-                        worker_value={}
-                        worker_value['id']=worker.id
-                        worker_value['status']='Offline'
-                        try:
-                            self.db.update_worker(super_context, worker_value)
-                        except Exception as e:
-                            logger.error(e)
-                        logger.warning('the worker %s is onffline'%worker.id)
-                elif worker.status == 'Offline':
-                    if self.workeralivedict[worker_id]<1:
-                        worker_value={}
-                        worker_value['id']=worker.id
-                        worker_value['status']='Active'
-                        try:
-                            self.db.update_worker(super_context, worker_value)
-                        except Exception as e:
-                            logger.error(e)
-                self.message.issued(info)
-            else:
-                self.alivelock.acquire()
-                self.workeralivedict[worker_id] =0
-                self.alivelock.release()
-                logger.info('workeralivedict add one')
-                self.message.issued(info)
+            elif worker.status == 'Offline':
+                if now - last_update < 4 * self.timer_interval:
+                    worker_value={}
+                    worker_value['id']=worker.id
+                    worker_value['status']='Active'
+                    try:
+                        self.db.update_worker(super_context, worker_value)
+                    except Exception as e:
+                        logger.error(e)
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
         self.t.setDaemon(True)
         self.t.start()
 
     def pause(self,id):
-        task = self.db.get_task(super_context,id)
+        task = self.db.get_task(super_context,id,True, True)
         worker = task.worker
         addr = (worker.ip, int(self.port))
         if worker.ip == '10.202.127.11':
@@ -191,7 +182,7 @@ class Server:
             logger.error(e)
 
     def delete(self,id):
-        task = self.db.get_task(super_context,id,deleted=True)
+        task = self.db.get_task(super_context,id,True, True)
         worker = task.worker
         addr = (worker.ip, int(self.port))
         if worker.ip == '10.202.127.11':
@@ -528,7 +519,8 @@ class Server:
                 worker_value['group_id'] =group.id
                 worker_value['group_name'] = group.name
                 worker_value['status'] = 'Active'
-                worker_value['start_at'] = str(time.time())
+                worker_value['start_at'] = int(time.time())
+                worker_value['last_report'] = int(time.time())
                 try:
                     self.db.update_worker(super_context,worker_value)
                 except Exception as e:
@@ -555,7 +547,8 @@ class Server:
                 worker_value['group_id'] =group.id
                 worker_value['group_name']=  group.name
                 worker_value['status'] = 'Active'
-                worker_value['start_at'] = str(time.time())
+                worker_value['start_at'] = int(time.time())
+                worker_value['last_report'] = int(time.time())
                 try:
                     worker=self.db.create_worker(super_context,worker_value)
                 except Exception as e:
@@ -577,11 +570,17 @@ class Server:
                 logger.error(e)
             if  len(workers) == 1:
                 worker=workers[0]
-                if self.workeralivedict.has_key(worker.id):
-                    self.alivelock.acquire()
-                    self.workeralivedict[worker.id]=0
-                    self.alivelock.release()
-                    logger.info('the worker is alive which id is %s'%worker.id)
+                worker_value={}
+                worker_value['id'] = worker.id
+                worker_value['name']=dict['hostname']
+                worker_value['ip']=dict['ip']
+                worker_value['last_report'] = int(time.time())
+                try:
+                    worker=self.db.update_worker(super_context,worker_value)
+                    logger.debug('the worker which ip is %s,hostname is %s is alive'%(worker_value['ip'],worker_value['name']))
+                except Exception as e:
+                    logger.error(e)
+
             else:
                 logger.error('more than one client has same information or has no client')
 
