@@ -1,7 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from message1 import Message,Performance
+from servermessage import Message,Performance
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
@@ -497,8 +497,6 @@ class Server:
             #if key == 'process':
             #    if int(bk.process) < int(dict[key]):
             #        return
-
-
         elif msg['type'] == 'state':
                 dict = msg['data']
                 try:
