@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, BIGINT
+from sqlalchemy import Column, Integer, String, BIGINT, NUMERIC
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime
@@ -152,7 +152,6 @@ class Policy(Base, BackupBase):
     id = Column(String(36), primary_key=True, nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
-    start_time = Column(Integer)
     recurring = Column(String(10))
     user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
     group_id = Column(String(36))
@@ -164,7 +163,8 @@ class Policy(Base, BackupBase):
         'Task',
         primaryjoin=(
             'and_('
-            'Policy.id == Task.policy_id)'
+            'Policy.id == Task.policy_id, '
+            'Task.deleted == "False")'
         ),
         back_populates='policy'
     )
@@ -189,7 +189,8 @@ class Role(Base, BackupBase):
         'User',
         primaryjoin=(
             'and_('
-            'Role.id == User.role_id)'
+            'Role.id == User.role_id,'
+            'User.deleted == "False")'
         ),
         back_populates='role'
     )
@@ -204,7 +205,8 @@ class Group(Base, BackupBase):
         'User',
         primaryjoin=(
             'and_('
-            'Group.id == User.group_id)'
+            'Group.id == User.group_id,'
+            'User.deleted == "False")'
         ),
         back_populates='group'
     )
@@ -220,6 +222,8 @@ class User(Base, BackupBase):
     password = Column(String(255))
     role_id = Column(String(36), ForeignKey('role.id'))
     group_id = Column(String(36), ForeignKey('groups.id'))
+    email = Column(String(36))
+
     key = Column(String(36))
     login_time = Column(Integer)
 
@@ -227,7 +231,8 @@ class User(Base, BackupBase):
         'Task',
         primaryjoin=(
             'and_('
-            'User.id == Task.user_id)'
+            'User.id == Task.user_id,'
+            'Task.deleted == "False")'
         ),
         back_populates='user'
     )
@@ -236,7 +241,7 @@ class User(Base, BackupBase):
         'Group',
         primaryjoin=(
             'and_('
-            'User.group_id == Group.id )'
+            'User.group_id == Group.id)'
         ),
         back_populates='users'
     )
@@ -259,15 +264,6 @@ class User(Base, BackupBase):
         back_populates='user'
     )
 
-    workers = orm.relationship(
-        'Worker',
-        primaryjoin=(
-            'and_('
-            'User.id == Worker.owner )'
-        ),
-        back_populates='user'
-    )
-
     volumes = orm.relationship(
         'Volume',
         primaryjoin=(
@@ -284,34 +280,28 @@ class Worker(Base, BackupBase):
     name = Column(String(255), nullable=True)
     description = Column(String(1024), nullable=True)
     ip = Column(String(255), nullable=False)
-    owner = Column(String(36), ForeignKey('user.id'), nullable=False)
+    owner = Column(String(36))
     group_id = Column(String(36))
     start_at = Column(Integer)
     status = Column(String(36))
     version = Column(String(36))
+    last_report = Column(Integer, default=0)
 
     tasks = orm.relationship(
         'Task',
         primaryjoin=(
             'and_('
-            'Worker.id == Task.worker_id)'
+            'Worker.id == Task.worker_id,'
+            'Task.deleted == "False")'
         ),
         back_populates='worker'
     )
 
-    user = orm.relationship(
-        'User',
-        primaryjoin=(
-            'and_('
-            'Worker.owner == User.id)'
-        ),
-        back_populates='workers'
-    )
 
 class Task(Base, BackupBase):
     __tablename__ = 'task'
     id = Column(String(36), primary_key=True, nullable=False)
-    name = Column(String(255), nullable=True)
+    name = Column(String(255), nullable=True, index=True)
     type = Column(String(36))
     description = Column(String(255), nullable=True)
     user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
@@ -320,7 +310,9 @@ class Task(Base, BackupBase):
     worker_id = Column(String(36), ForeignKey('workers.id'))
     source = Column(String(1024))
     destination = Column(String(1024))
-    script_path = Column(String(4096))
+    start_time = Column(Integer)
+    state = Column(String(36))
+    last_state = Column(String(36))
 
     policy = orm.relationship(
         'Policy',
@@ -372,7 +364,7 @@ class BackupState(Base, BackupBase):
     task_id = Column(String(36), ForeignKey('task.id'), nullable=False)
     state = Column(String(255), nullable=True, default=0)
     process = Column(String(36))
-    total_size = Column(Integer, default=0)
+    total_size = Column(BIGINT, default=0)
     current_size = Column(Integer, default=0)
     start_time = Column(Integer, nullable=True, default=0)
     end_time = Column(Integer, nullable=True, default=0)
@@ -403,15 +395,52 @@ class Volume(Base, BackupBase):
         viewonly=True,
         primaryjoin=(
             'and_('
-            'Volume.owner == User.id)'
+            'Volume.owner == User.id,'
+            'User.deleted == "False")'
         ),
         back_populates='volumes'
     )
 
 
-class oplog(Base, BackupBase):
+class Tag(Base, BackupBase):
+    __tablename__ = 'tag'
+    id = Column(String(36), primary_key=True, nullable=False)
+    name = Column(String(36))
+    group_id = Column(String(36))
+
+    tag_items = orm.relationship(
+        'TagItem',
+        primaryjoin=(
+            'and_('
+            'Tag.id == TagItem.tag_id)'),
+        back_populates='tag'
+    )
+
+
+class TagItem(Base, BackupBase):
+    __tablename__ = 'tag_item'
+    id = Column(BIGINT, primary_key=True, nullable=False)
+    tag_id = Column(String(36), ForeignKey('tag.id'))
+    type = Column(String(36))
+    item_id = Column(String(36))
+    item = Column(String(36))
+
+    tag = orm.relationship(
+        'Tag',
+        lazy='immediate',
+        viewonly=True,
+        primaryjoin=(
+            'and_('
+            'TagItem.tag_id == Tag.id)'
+        ),
+        back_populates='tag_items'
+    )
+
+class OpLog(Base, BackupBase):
     __tablename__ = 'oplog'
     id = Column(BIGINT, primary_key=True, nullable=False)
-    user = Column(String(36))
+    user_id = Column(String(36))
+    username = Column(String(36))
+    group_id = Column(String(36))
     message = Column(String(2048))
 
