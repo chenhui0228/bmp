@@ -67,6 +67,7 @@ class Work():
     def do_mount(self):
         n=len(self.arglist['ip'])
         if os.path.ismount(self.mount_dir):
+            self.errormessage="the dir has mounted,maybe there is a direct work doing now"
             self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
             #self.send_bk('message','the dir has mounted,maybe there is a direct work doing now')
             return -1
@@ -359,6 +360,7 @@ class Work():
             if ret != 0:
                 self.errormessage = 'mount failed'
                 self.log.logger.error('mount failed')
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:

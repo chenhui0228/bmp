@@ -493,9 +493,6 @@ class Server:
                     logger.error(str(bk_value))
                     logger.error(e.message)
                     return
-                if not self.workstate_dict.has_key(dict['bk_id']):
-                    logger.error('some messages order is wrong  ')
-                    return
             elif typeofMessage== 'delete':
                 logger.info('delete a kackupstate which id is')
                 backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
@@ -521,11 +518,12 @@ class Server:
                     bk_id = dict.get('bk_id')
                     try:
                         bk_old = self.db.get_bk_state(super_context, bk_id)
-                        logger.error('the work is not run')
-                        return
+                        if bk_old.state == 'success' or bk_old.state == 'failed' or bk_old.state == 'aborted':
+                            task_dict['state']='waiting'
                     except:
                         pass
                 logger.info(str(dict))
+
                 try:
                     task=self.db.get_task(super_context,dict['id'])
                 except Exception as e:
