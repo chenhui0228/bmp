@@ -703,7 +703,8 @@
             },
             yAxis: {
               show: true,
-              type: 'value'
+              type: 'value',
+              minInterval: 1
             },
             toolbox: {
               show: true,
