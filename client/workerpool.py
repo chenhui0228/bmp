@@ -73,8 +73,8 @@ class WorkerPool(threading.Thread):
     2、
     """
 
-    def send_ta(self,id,value):
-        data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
+    def send_ta(self,id,value,bk_id=None):
+        data="{'type':'state','data':{'id':'%s','state':'%s','bk_id':'%s'}}"%(id,value,bk_id)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error('message send failed %s'%ret)
@@ -118,9 +118,9 @@ class WorkerPool(threading.Thread):
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
-                self.send_ta(self.arglist['id'],'running_s')
+                self.send_ta(self.arglist['id'],'running_s',self.arglist['bk_id'])
             else:
-                self.send_ta(self.arglist['id'], 'running_w')
+                self.send_ta(self.arglist['id'], 'running_w',self.arglist['bk_id'])
             self.work = Work(self.arglist, self.log)
 
             if not self.work:
@@ -135,6 +135,7 @@ class WorkerPool(threading.Thread):
                     self.send_ta(self.arglist['id'],'stopped')
                 else:
                     self.send_ta(self.arglist['id'], 'waiting')
+                self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
             if self.workpool_workid_dict.has_key(self.name):
