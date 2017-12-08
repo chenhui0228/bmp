@@ -514,18 +514,27 @@ class Server:
             #        return
         elif msg['type'] == 'state':
                 dict = msg['data']
+                task_dict = {}
+                task_dict['id'] = dict['id']
+                task_dict['state'] = dict['state']
+                if task_dict['state'] == 'running_s' or task_dict['state'] == 'running_w':
+                    bk_id = dict.get('bk_id')
+                    try:
+                        bk_old = self.db.get_bk_state(super_context, bk_id)
+                        logger.error('the work is not run')
+                        return
+                    except:
+                        pass
                 logger.info(str(dict))
                 try:
                     task=self.db.get_task(super_context,dict['id'])
-                    task_dict={}
-                    task_dict['id']=dict['id']
-                    task_dict['state']=dict['state']
-                    if dict['state'] == 'deleted':
-                        task_dict['deleted'] == 'deleted'
-                    self.db.update_task(super_context,task_dict)
-                    logger.info('change task state')
                 except Exception as e:
                     logger.error(e.message)
+                if dict['state'] == 'deleted':
+                    task_dict['deleted'] == 'deleted'
+                self.db.update_task(super_context,task_dict)
+                logger.info('change task state')
+
         elif msg['type'] == 'initialize':
             dict = msg['data']
             try:
