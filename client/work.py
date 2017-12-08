@@ -96,7 +96,7 @@ class Work():
             return 0
         else:
             try:
-                cmd = ("mkdir -p %s" % dir)
+                cmd = ("mkdir -p %s  2>/dev/null" % dir)
                 ret = os.system(cmd)
                # print "do mkidr succeed"
                 if ret!=0:

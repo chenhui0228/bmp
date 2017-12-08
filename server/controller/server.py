@@ -430,32 +430,48 @@ class Server:
                 bk_value['process'] = str(dict.get('process'))
                 bk_value['state'] = dict.get('state')
                 try:
+                    if self.workstatelock.acquire():
+                        self.workstate_dict[dict['bk_id']] = 0
+                        self.workstatelock.release()
                     bk = self.db.bk_create(super_context, bk_value)
-                    self.workstatelock.acquire()
-                    self.workstate_dict[dict['bk_id']] = 0
-                    self.workstatelock.release()
                 except Exception as e:
                     logger.error(e)
                 return
             elif typeofMessage == 'run':
+                try:
+                    bk_old = self.db.get_bk_state(super_context, bk_value['id'])
+                except Exception,e:
+                    logger.error(str(e))
+                    return
+                if bk_old.state == 'failed' or bk_old.state == 'success':
+                    logger.debug('then you get the message in run,the work is end')
+                    return
                 bk_value['process'] = str(dict.get('process'))
                 bk_value['current_size'] = int(dict.get('current_size'))
                 logger.info(str(self.workstate_dict))
-                if not self.workstate_dict.has_key(dict['bk_id']):
-                    return
-                if int(self.workstate_dict[dict['bk_id']])>int(dict['process']):
-                    return
-                else:
-                    self.workstatelock.acquire()
-                    self.workstate_dict[dict['bk_id']]=int(dict['process'])
-                    self.workstatelock.release()
-
+                if self.workstatelock.acquire():
+                    if not self.workstate_dict.has_key(dict['bk_id']):
+                        self.workstatelock.release()
+                        return
+                    if int(self.workstate_dict[dict['bk_id']])>int(dict['process']):
+                        self.workstatelock.release()
+                        return
+                    else:
+                        self.workstate_dict[dict['bk_id']]=int(dict['process'])
+                        self.workstatelock.release()
                 try:
                     self.db.bk_update(super_context, bk_value)
                 except Exception as e:
                     logger.error(e)
                 return
             elif typeofMessage == 'last':
+                time.sleep(3)
+                if self.workstatelock.acquire():
+                    try:
+                        del self.workstate_dict[dict['bk_id']]
+                    except Exception,e:
+                        logger.info(e.message)
+                    self.workstatelock.release()
                 try:
                     task=self.db.get_task(super_context,bk_value['task_id'])
                 except Exception,e:
@@ -464,23 +480,22 @@ class Server:
                 if (task.type == 'recover' or task.type == 'backup') and bk_value['state'] == 'success':
                     bk_value['process'] = 100
                     try:
-                        bk_old = self.db.get_bk_state(super_context, bk_value['task_id'])
-                        bk_value['current_size']=bk_old.total_size
+                        bk_old = self.db.get_bk_state(super_context, bk_value['id'])
+                        bk_value['current_size']=int(bk_old.total_size)
                     except Exception, e:
                         logger.error(e.message)
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('message')
                 try:
+                    time.sleep(5)
                     self.db.bk_update(super_context, bk_value)
-                except Exception as e:
-                    logger.error(e)
+                except Exception, e:
+                    logger.error(str(bk_value))
+                    logger.error(e.message)
                     return
                 if not self.workstate_dict.has_key(dict['bk_id']):
                     logger.error('some messages order is wrong  ')
                     return
-                self.workstatelock.acquire()
-                del self.workstate_dict[dict['bk_id']]
-                self.workstatelock.release()
             elif typeofMessage== 'delete':
                 logger.info('delete a kackupstate which id is')
                 backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
@@ -499,6 +514,7 @@ class Server:
             #        return
         elif msg['type'] == 'state':
                 dict = msg['data']
+                logger.info(str(dict))
                 try:
                     task=self.db.get_task(super_context,dict['id'])
                     task_dict={}

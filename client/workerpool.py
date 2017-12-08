@@ -135,6 +135,7 @@ class WorkerPool(threading.Thread):
                     self.send_ta(self.arglist['id'],'stopped')
                 else:
                     self.send_ta(self.arglist['id'], 'waiting')
+                self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
             if self.workpool_workid_dict.has_key(self.name):
