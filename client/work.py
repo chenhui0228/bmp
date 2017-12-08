@@ -105,7 +105,7 @@ class Work():
                 self.log.logger.info("do mkdir succeed")
                 return 0
             except Exception as e:
-                self.errormessage =e.message
+                self.errormessage =str(e)
                # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
                 #self.send_bk('message',"do mkidr failed %s"%e)
@@ -243,6 +243,7 @@ class Work():
         try:
             os.mkdir(vfilepath)
         except Exception as e:
+            self.errormessage=str(e)
             self.log.logger.error(e)
         ret=self.do_work(pdir,vfilepath)
         return ret
@@ -259,7 +260,8 @@ class Work():
                 self.log.logger.info("do close succeed")
                 return 0
         except Exception as e:
-           # print e
+            # print e
+            self.errormessage = str(e)
             self.log.logger.error("do close failed %s"%e)
             return -1
 
@@ -439,7 +441,6 @@ class Work():
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         else:
-            self.send_bk('last', state='failed', end_time=str(time.time()))
             return
             #print "end do_cloes"
         self.send_bk('last', state='success', end_time=str(time.time()))

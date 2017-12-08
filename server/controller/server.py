@@ -221,7 +221,7 @@ class Server:
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
         task = self.db.get_task(super_context,id)
-        if task.state == 'stopped':
+        if task.state == 'stopped' or task.state == 'running_s':
             return
         worker = task.worker
         policy = task.policy
@@ -456,10 +456,20 @@ class Server:
                     logger.error(e)
                 return
             elif typeofMessage == 'last':
+                try:
+                    task=self.db.get_task(super_context,bk_value['task_id'])
+                except Exception,e:
+                    logger.error(e.message)
                 bk_value['state'] = dict.get('state')
+                if (task.type == 'recover' or task.type == 'backup') and bk_value['state'] == 'success':
+                    bk_value['process'] = 100
+                    try:
+                        bk_old = self.db.get_bk_state(super_context, bk_value['task_id'])
+                        bk_value['current_size']=bk_old.total_size
+                    except Exception, e:
+                        logger.error(e.message)
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('message')
-
                 try:
                     self.db.bk_update(super_context, bk_value)
                 except Exception as e:

@@ -357,7 +357,6 @@ class Daemon:
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
         elif data['type'] == 'recover':  # 恢复备份文件
-            print "do recover"
             dict=data['data']
             if dict['run_sub'] =='immediately':
                 dict = data['data']
