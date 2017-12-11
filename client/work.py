@@ -2,10 +2,8 @@
 #coding:utf-8
 import os
 from os.path import join, getsize, isfile
-#from datetime import *
 import subprocess
 import time
-import shutil
 from message import Message
 import tempfile
 import ConfigParser

@@ -1,7 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from message1 import Message,Performance
+from servermessage import Message,Performance
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
@@ -11,7 +11,6 @@ import threading
 import six
 import logging
 logger=logging.getLogger('backup')
-import eventlet
 
 
 class Singleton(type):
