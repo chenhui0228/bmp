@@ -345,12 +345,19 @@
               type: 'success'
             });
             this.getGroup();
-          });
-        }).catch((err) => {
-          this.listLoading = false;
-          this.$message({
-            message: '删除失败',
-            type: 'error'
+          }).catch((err) => {
+            if(err.response.status == 403){
+              this.$message({
+                message: '删除失败,组内还有用,请先删除用户',
+                type: 'error'
+              });
+            }else{
+              this.$message({
+                message: '删除失败',
+                type: 'error'
+              });
+            }
+            this.listLoading = false;
           });
         });
       },

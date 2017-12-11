@@ -135,6 +135,25 @@ def state_get_test(db, context):
     st = db.get_bk_state(context, '1')
     print st.to_dict()
 
+
+def task_list(db, context):
+    worker_id = '1'
+    tasks = db.get_tasks(context, worker_id=worker_id)
+    print tasks
+
+def worker_create(db, context):
+    worker_value = {}
+    worker_value['ip'] = '123'
+    worker_value['name'] = 'test'
+    worker_value['owner'] = 'robot'
+    worker_value['status'] = 'Active'
+    worker = db.create_worker(context, worker_value)
+
+def worker_update(db, context):
+    worker = {'id':'a9c66cbd-ba89-4e2f-9275-2908865339c2',
+              'name': 'abc'}
+    w = db.update_worker(context, worker)
+
 if __name__ == '__main__':
 
 
@@ -159,6 +178,8 @@ if __name__ == '__main__':
     }
     #updata_user(db, context)
     #state_create_test(db, context)
-    state_get_test(db, context)
-
+    #state_get_test(db, context)
+    #worker_create(db, context)
+    #worker_update(db, context)
+    task_list(db, context)
 

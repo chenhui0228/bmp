@@ -282,9 +282,9 @@
       <el-dialog title="编辑" v-model="editFormVisible" :close-on-click-modal="false" :beforeClose="cancelEdit">
         <el-form :model="editForm" label-width="100px" :rules="editFormRules" ref="editForm">
           <el-form-item prop="name" label="任务名">
-            <el-input v-model="editForm.name" auto-complete="off"></el-input>
+            <el-input v-model="editForm.name" auto-complete="off" disabled></el-input>
           </el-form-item>
-          <el-form-item prop="policy" label="任务策略">
+          <el-form-item prop="policy_id" label="任务策略">
             <el-select v-model="editForm.policy_id" placeholder="请选择">
               <el-option
                 v-for="policy in policies"
@@ -294,7 +294,7 @@
               </el-option>
             </el-select>
           </el-form-item>
-          <el-form-item prop="worker" label="作业机">
+          <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="editForm.worker_id" placeholder="请选择">
               <el-option
                 v-for="worker in workers"
@@ -382,7 +382,7 @@
           <el-form-item prop="name" label="任务名">
             <el-input v-model="addForm.name" auto-complete="off"></el-input>
           </el-form-item>
-          <el-form-item prop="policy" label="任务策略">
+          <el-form-item prop="policy_id" label="任务策略">
             <el-select v-model="addForm.policy_id" placeholder="请选择">
               <el-option
                 v-for="policy in policies"
@@ -400,7 +400,7 @@
               </span>
             </span>
           </el-form-item>
-          <el-form-item prop="worker" label="作业机">
+          <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="addForm.worker_id" placeholder="请选择">
               <el-option
                 v-for="worker in workers"
@@ -553,9 +553,12 @@
       </el-dialog>
 
       <!--TODO: 创建恢复任务框-->
-      <el-dialog title="创建恢复任务" v-model="createRecoverTaskFormVisible" :close-on-click-modal="false">
-        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm">
-          <el-form-item prop="worker" label="作业机">
+      <el-dialog title="创建恢复任务"
+                 v-model="createRecoverTaskFormVisible"
+                 :close-on-click-modal="false"
+                 :beforeClose="cancelCreateRecoverTask">
+        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm" :rules="createRecoverTaskFormRules">
+          <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="createRecoverTaskForm.worker_id" placeholder="请选择">
               <el-option
                 v-for="worker in workers"
@@ -574,7 +577,7 @@
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
-          <el-button @click.native="createRecoverTaskFormVisible = false">取消</el-button>
+          <el-button @click.native="cancelCreateRecoverTask">取消</el-button>
           <el-button type="primary" @click.native="createRecoverTask" :loading="createRecoverTaskLoading">提交</el-button>
         </div>
       </el-dialog>
@@ -747,24 +750,21 @@
           }
         },
         editFormRules: {
-//          name: [
-//            {required: true, message: '请输入主机名', trigger: 'blur'}
-//          ],
-//          owner: [
-//            {required: true, message: '请输入角色', trigger: 'blur'}
-//          ],
-//          port: [
-//            {required: true, message: '请输入'}
-//          ],
-//          description: [
-//            {required: true, message: '请输入描述', trigger: 'blur'}
-//          ],
-//            start_time: [
-//            { required: true, validator: checkStarTime, trigger: 'blur' }
-//            ],
-//            delay : [
-//              { type: 'array',  validator: checkStarTimeAgain, trigger: 'change' }
-//            ],
+          name: [
+            {required: true, message: '请输入任务名', trigger: 'blur'}
+          ],
+          policy_id: [
+            {required: true, message: '请选择策略', trigger: 'blur'}
+          ],
+          worker_id: [
+            {required: true, message: '请选择作业机', trigger: 'blur'}
+          ],
+          source: [
+            {required: true, message: '源地址不能为空', trigger: 'blur'}
+          ],
+          destination: [
+            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+          ]
         },
         editForm: {
           name: '',
@@ -783,6 +783,15 @@
         addFormVisible: false,
         addLoading: false,
         addForm: {
+        },
+
+        createRecoverTaskFormRules: {
+          worker_id: [
+            {required: true, message: '请选择作业机'}
+          ],
+          destination: [
+            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+          ]
         },
 
         //任务详情相关数据
@@ -1144,10 +1153,11 @@
       },
       //TODO:Recover Task
       showCreateRecoverTaskDialog: function (row) {
+        let now_date = parseInt(new Date().getTime()/1000);
         this.createRecoverTaskFormVisible = true;
         let task_suffix = util.formatDate.format(row.start_time, 'yyyyMMddhhmmss');
         let descript_suffix = util.formatDate.format(row.start_time, 'yyyy-MM-dd hh:mm:ss');
-        let name = this.currentWatchingTask.name + '_Recover_' + task_suffix;
+        let name = this.currentWatchingTask.name + '_Recover_' + task_suffix + '_' + now_date;
         let source_prefix = this.currentWatchingTask.destination; //恢复任务源地址前面一部分是该备份任务的目的地址
         let source_suffix = '';
         if(source_prefix.charAt(source_prefix.length -1) === '/'){
@@ -1166,25 +1176,42 @@
         };
       },
       createRecoverTask: function () {
-        let user = {
-          user: this.sysUserName,
-        };
-        let para = Object.assign({}, this.createRecoverTaskForm);
-        para.type = 'recover';
-        para.destination = 'file:/' + para.destination;
-        reqAddTask(user, para).then((res) => {
-          this.createRecoverTaskLoading = false;
-          //NProgress.done();
-          this.openMsg('创建成功，请前往恢复任务查看','success');
-          this.$refs['createRecoverTaskForm'].resetFields();
-          this.createRecoverTaskFormVisible = false;
-        }).catch(err=>{
-          this.createRecoverTaskLoading = false;
-          this.openMsg('添加失败','error');
-          console.log(err.message);
-          this.$refs['createRecoverTaskForm'].resetFields();
-          this.createRecoverTaskFormVisible = false;
-        });
+        this.$refs.createRecoverTaskForm.validate((valid) => {
+          if(valid){
+            let user = {
+              user: this.sysUserName,
+            };
+            let para = Object.assign({}, this.createRecoverTaskForm);
+            para.type = 'recover';
+            para.destination = 'file:/' + para.destination;
+            reqAddTask(user, para).then((res) => {
+              this.createRecoverTaskLoading = false;
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 任务 ${res.data.task.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                this.openMsg('创建成功，请前往恢复任务查看','success');
+              }
+              this.$refs['createRecoverTaskForm'].resetFields();
+              this.createRecoverTaskFormVisible = false;
+            }).catch(err=>{
+              this.createRecoverTaskLoading = false;
+              this.openMsg('添加失败','error');
+              console.log(err.message);
+              this.$refs['createRecoverTaskForm'].resetFields();
+              this.createRecoverTaskFormVisible = false;
+            });
+          }
+          else{
+            this.openMsg('提交失败，请检查','error');
+          }
+        })
+      },
+      cancelCreateRecoverTask: function () {
+        this.createRecoverTaskFormVisible = false;
+        this.$refs['createRecoverTaskForm'].resetFields();
       },
 
       //====编辑相关====
@@ -1361,11 +1388,18 @@
 
             reqAddTask(user, para).then((res) => {
               this.addLoading = false;
-              //NProgress.done();
-              this.$message({
-                message: '添加成功',
-                type: 'success'
-              });
+              if(res.data.exist && res.data.exist === 'True') {
+                this.$message({
+                  message: `添加失败, 任务 ${res.data.task.name} 已存在`,
+                  type: 'error'
+                });
+              }else{
+                //NProgress.done();
+                this.$message({
+                  message: '添加成功',
+                  type: 'success'
+                });
+              }
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
               this.getTasks();
@@ -1676,6 +1710,8 @@
                 this.tasks.splice(i, {'state.start_time': res.data.tasks[i].state.start_time});
                 this.tasks[i].state.total_size = res.data.tasks[i].state.total_size;
                 this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
+                this.tasks[i].state.message = res.data.tasks[i].state.message;
+                this.tasks.splice(i, {'state.message': res.data.tasks[i].state.message});
               }
             }
           }

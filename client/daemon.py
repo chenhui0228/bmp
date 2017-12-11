@@ -40,11 +40,13 @@ class Daemon:
         self.version=cp.get('client', 'version')
         self.group = cp.get('client', 'group')
         self.reload_interval = int(cp.get('client', 'reload_interval'))
-        self.port = cp.get('server', 'port')
+        self.client_port = cp.get('client', 'client_port')
         self.info_l = ""
         self.glusterlist = eval(cp.get('client', 'glusterip'))
         self.task_sum = 0  # 当前任务数
         self.task_list = {}
+        self.work_list=[]
+        self.message = Message("tcp")
         self.tp = []
         self.hostname = str(socket.gethostname())
         self.ip = socket.gethostbyname(self.hostname)
@@ -125,7 +127,41 @@ class Daemon:
         self._daemonize()
         self._run()
 
-    def stop( self ):
+    def stop(self):
+        data="{'type':'pauseall'}"
+        addr = (self.ip, int(self.client_port))
+        info={}
+        info['data']=data
+        info['addr']=addr
+        self.message.issued(info)
+        time.sleep(10)
+        try:
+            # self.message.closeall()
+            pf = file(self.pidfile, 'r')
+            pid = int(pf.read().strip())
+            pf.close()
+        except IOError:
+            pid = None
+
+        try:
+            while 1:
+                os.kill(pid, SIGTERM)
+                time.sleep(0.1)
+        except OSError as err:
+            err = str(err)
+            if err.find('No such process') > 0:
+                if os.path.exists(self.pidfile):
+                    os.remove(self.pidfile)
+            else:
+                message = 'stop client'
+                sys.stderr.write(message)
+                # print str(err)
+                sys.exit(1)
+
+
+
+
+    def stopclient( self ):
         # 从pid文件中获取pid
 
         try:
@@ -135,6 +171,7 @@ class Daemon:
             pf.close()
         except IOError:
             pid = None
+
 
         if not pid:  # 重启不报错
             message = 'pidfile %s does not exist. Daemon not running!\n'
@@ -204,6 +241,16 @@ class Daemon:
         if duration != None or vol != None or dir != None:
             t = Delete(self.log, duration=duration, vol=vol, dir=dir, ip=self.glusterlist, name=name, id=id)
             t.start(True)
+
+    def pauseall(self):
+        for t in self.tp:
+            if self.workpool_workid_dict.has_key(t.name):
+                try:
+                    t.stopwork()
+                except Exception as e:
+                    self.log.logger.error(e.message)
+                break
+
 
 
 
@@ -310,13 +357,13 @@ class Daemon:
             else:
                 self.log.logger.error('No any work which id is %s' % ms)
         elif data['type'] == 'recover':  # 恢复备份文件
-            print "do recover"
             dict=data['data']
             if dict['run_sub'] =='immediately':
                 dict = data['data']
                 dict['op'] = "recover"
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
+
                 self.send_ta( dict['id'], 'waiting')
             else:
                 self.log.logger.error('recover  must be immediately')
@@ -371,8 +418,11 @@ class Daemon:
                         except Exception as e:
                             self.log.logger.error(e.message)
                         break
-
-
+        elif data['type'] == 'pauseall':
+            self.pauseall()
+            self.log.logger.info('pause all work')
+            time.sleep(5)
+            self.stopclient()
         else:
             self.log.logger.error("get some messages which is to server")
 
@@ -411,13 +461,15 @@ class Daemon:
             t.setDaemon(True)
             t.start()
         self.log.logger.debug("To start  listen:")
-        self.message = Message("tcp")
-        self.message.start_server()
+        try:
+            self.message.start_server()
+        except:
+            self.log.logger.error('client message start error')
+            self.stopclient()
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.setDaemon(True)
         self.listen_thread.start()
         self.t.start()
-
         self.log.logger.debug("initialize")
         data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (self.ip, self.hostname, self.version,self.group)
         self.log.logger.debug("group %s "%self.group)

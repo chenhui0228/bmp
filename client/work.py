@@ -67,6 +67,7 @@ class Work():
     def do_mount(self):
         n=len(self.arglist['ip'])
         if os.path.ismount(self.mount_dir):
+            self.errormessage="the dir has mounted,maybe there is a direct work doing now"
             self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
             #self.send_bk('message','the dir has mounted,maybe there is a direct work doing now')
             return -1
@@ -96,7 +97,7 @@ class Work():
             return 0
         else:
             try:
-                cmd = ("mkdir -p %s" % dir)
+                cmd = ("mkdir -p %s  2>/dev/null" % dir)
                 ret = os.system(cmd)
                # print "do mkidr succeed"
                 if ret!=0:
@@ -105,7 +106,7 @@ class Work():
                 self.log.logger.info("do mkdir succeed")
                 return 0
             except Exception as e:
-                self.errormessage =e.message
+                self.errormessage =str(e)
                # print ("do mkidr failed %s"%e)
                 self.log.logger.info("do mkdir failed")
                 #self.send_bk('message',"do mkidr failed %s"%e)
@@ -243,6 +244,7 @@ class Work():
         try:
             os.mkdir(vfilepath)
         except Exception as e:
+            self.errormessage=str(e)
             self.log.logger.error(e)
         ret=self.do_work(pdir,vfilepath)
         return ret
@@ -259,7 +261,8 @@ class Work():
                 self.log.logger.info("do close succeed")
                 return 0
         except Exception as e:
-           # print e
+            # print e
+            self.errormessage = str(e)
             self.log.logger.error("do close failed %s"%e)
             return -1
 
@@ -352,11 +355,14 @@ class Work():
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             path=self.arglist['source_address']
+            instance = self.arglist['instance']
+
 
             ret = self.do_mount()
             if ret != 0:
                 self.errormessage = 'mount failed'
                 self.log.logger.error('mount failed')
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
@@ -366,7 +372,7 @@ class Work():
                     self.errormessage = 'mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            cmd = './%s %s/%s' % (path, self.mount_dir, self.vfile)
+            cmd = 'sh %s %s %s/%s' % (path, instance, self.mount_dir, self.vfile)
             ret=self.do_dump(cmd)
             if ret!=0:
                 self.do_close()
@@ -439,7 +445,6 @@ class Work():
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         else:
-            self.send_bk('last', state='failed', end_time=str(time.time()))
             return
             #print "end do_cloes"
         self.send_bk('last', state='success', end_time=str(time.time()))

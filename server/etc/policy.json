@@ -72,6 +72,15 @@
   "oplog:show": "rule:default",
   "oplog:create": "rule:default",
   "oplog:update": "rule:default",
-  "oplog:delete": "rule:default"
+  "oplog:delete": "rule:default",
+
+  "tag:index": "rule:default",
+  "tag:detail": "rule:default",
+  "tag:show": "rule:default",
+  "tag:create": "rule:default",
+  "tag:update": "rule:default",
+  "tag:delete": "rule:default",
+  "tag:add": "rule:default"
+
 
 }
