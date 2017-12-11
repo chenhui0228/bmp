@@ -37,7 +37,7 @@ class Daemon:
         self.version=cp.get('client', 'version')
         self.group = cp.get('client', 'group')
         self.reload_interval = int(cp.get('client', 'reload_interval'))
-        self.client_port = cp.get('server', 'client_port')
+        self.client_port = cp.get('client', 'client_port')
         self.info_l = ""
         self.glusterlist = eval(cp.get('client', 'glusterip'))
         self.task_sum = 0  # 当前任务数
