@@ -25,7 +25,7 @@ import errorpage
 from cherrypy.process.plugins import Daemonizer, PIDFile
 import log
 from auth import authentication
-
+from db.sqlalchemy import api as db_api
 MYPATH = os.path.abspath(__file__)
 MYDIR = os.path.dirname(MYPATH)
 BACKUP_VER = "1.1"
@@ -50,9 +50,13 @@ def parse_cmdargs(args=None, target=''):
     parser.add_argument('-f', dest='foreground',
                         action="store_true",
                         help="run on foreground")
+    parser.add_argument('--create-default-roles', action="store_true",
+                        help="create three roles, admin, operator, user ")
+
     parsed_args, extras = parser.parse_known_args(args)
 
     return parser, parsed_args, extras
+
 
 
 def hdr(s):
@@ -84,7 +88,17 @@ class Root(object):
 def CORS():
     cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
 
-
+def do_create_default_roles(conf):
+    super_context = {
+        'is_superuser': True
+    }
+    db = db_api.get_database(conf)
+    roles = {'admin', 'operator', 'user'}
+    for role in roles:
+        role_info = {
+            'name': role
+        }
+        db.role_create(super_context, role_info)
 @cherrypy.expose()
 class BackupPolicyService(object):
     def __init__(self, conf):
@@ -131,7 +145,9 @@ if __name__ == '__main__':
     if parsed_args.help:
         do_basic_help(parser, childargs)
     config_path = parsed_args.backupconf
-
+    conf.update(config_path)
+    if parsed_args.create_default_roles:
+        do_create_default_roles(conf)
     PIDFile(cherrypy.engine, parsed_args.pidfile).subscribe()
     if not parsed_args.foreground:
         Daemonizer(cherrypy.engine).subscribe()
@@ -145,7 +161,6 @@ if __name__ == '__main__':
     cherrypy.config.update(errorpage.pages)
     cherrypy.engine.unsubscribe('graceful', cherrypy.log.reopen_files)
     cherrypy.config.update(config_path)
-    conf.update(config_path)
     log.setup(conf)
     authentication.init(conf)
     root = Root()
