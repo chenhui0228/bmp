@@ -269,7 +269,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
@@ -326,7 +329,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
