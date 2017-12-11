@@ -251,10 +251,6 @@ class Daemon:
                     self.log.logger.error(e.message)
                 break
 
-
-
-
-
     def send_ta(self,id,value):
         data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
         ret=self.message.send(data)
