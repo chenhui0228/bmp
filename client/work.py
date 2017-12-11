@@ -355,6 +355,8 @@ class Work():
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             path=self.arglist['source_address']
+            instance = self.arglist['instance']
+
 
             ret = self.do_mount()
             if ret != 0:
@@ -370,7 +372,7 @@ class Work():
                     self.errormessage = 'mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            cmd = './%s %s/%s' % (path, self.mount_dir, self.vfile)
+            cmd = 'sh %s %s %s/%s' % (path, instance, self.mount_dir, self.vfile)
             ret=self.do_dump(cmd)
             if ret!=0:
                 self.do_close()

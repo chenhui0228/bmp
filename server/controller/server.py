@@ -73,10 +73,11 @@ class Server:
             return
         server_dict=conf.get('servercontroller')
         logger.info(str(server_dict))
-        self.port=server_dict['port']
+        self.server_port=server_dict['server_port']
+        self.client_port=server_dict['client_port']
         self.worker_size=server_dict['worker_size']
         self.timer_interval=server_dict['timer_interval']
-        if self.port==None or self.timer_interval == None or self.worker_size == None:
+        if self.server_port==None or self.timer_interval == None or self.worker_size == None or self.client_port == None:
             logger.error('conf is lost')
             logger.error(str(conf))
             return
@@ -84,7 +85,7 @@ class Server:
             logger.info('get right conf %s'%str(server_dict))
 
         self.workstate_dict={}
-        self.message = Message('tcp',self.port)
+        self.message = Message('tcp',self.server_port,self.client_port)
         self.message.start_server()
         self.alivelock=threading.Lock()
         self.workstatelock = threading.Lock()
@@ -114,9 +115,7 @@ class Server:
             worker_id=worker.id
             data = "{'type':'keepalive'}"
             info = {}
-            addr=(worker.ip, int(self.port))
-            if worker.ip=='10.202.127.11':
-                addr = (worker.ip, 22222)
+            addr=(worker.ip, int(self.client_port))
             info['data'] = data
             info['addr'] = addr
             self.message.issued(info)
@@ -150,9 +149,7 @@ class Server:
     def pause(self,id):
         task = self.db.get_task(super_context,id,True, True)
         worker = task.worker
-        addr = (worker.ip, int(self.port))
-        if worker.ip == '10.202.127.11':
-            addr = (worker.ip, 22222)
+        addr = (worker.ip, int(self.client_port))
         data = "{'type':'pause','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
@@ -169,9 +166,7 @@ class Server:
     def stop(self,id):
         task = self.db.get_task(super_context,id)
         worker = task.worker
-        addr = (worker.ip, int(self.port))
-        if worker.ip == '10.202.127.11':
-            addr = (worker.ip, 22222)
+        addr = (worker.ip, int(self.client_port))
         data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
@@ -184,9 +179,7 @@ class Server:
     def delete(self,id):
         task = self.db.get_task(super_context,id,True, True)
         worker = task.worker
-        addr = (worker.ip, int(self.port))
-        if worker.ip == '10.202.127.11':
-            addr = (worker.ip, 22222)
+        addr = (worker.ip, int(self.client_port))
         self.pause(id)
         task_value = {}
         task_value['id'] = id
@@ -225,9 +218,7 @@ class Server:
             return
         worker = task.worker
         policy = task.policy
-        addr = (worker.ip, int(self.port))
-        if worker.ip=='10.202.127.11':
-            addr = (worker.ip, 22222)
+        addr = (worker.ip, int(self.client_port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
         new_vor_dir = vol_dir.split('/', 1)
@@ -269,8 +260,12 @@ class Server:
             data['type']=data2['sub']
             if task.source.split('/', 1)[0] == 'shell:':
                 data['type'] = 'dump'
+                instance=task.name.split('_')[1]
+                data2['instance']=instance
         if task.source.split('/', 1)[0] == 'shell:':
             data2['sub']='dump'
+            instance = task.name.split('_')[1]
+            data2['instance'] = instance
 
 
         info = {}
@@ -307,9 +302,7 @@ class Server:
         else:
             for task in tasks:
                 if task.worker_id == id:
-                    addr = (old_ip, int(self.port))
-                    if worker.ip == '10.202.127.11':
-                        addr = (worker.ip, 22222)
+                    addr = (old_ip, int(self.client_port))
                     data = "{'typr':'delete','data':{'id':'%s','changeworker':'yes'}}" % task.id
                     info = {}
                     info['data'] = data
@@ -335,9 +328,7 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = task.worker
         policy = task.policy
-        addr = (worker.ip, int(self.port))
-        if worker.ip=='10.202.127.11':
-            addr = (worker.ip, 22222)
+        addr = (worker.ip, int(self.client_port))
         destination = task.destination
         vol_dir = destination.split('//')[1]
         new_vor_dir= vol_dir.split('/', 1)
@@ -366,6 +357,9 @@ class Server:
         try:
             if task.source.split('/', 1)[0] == 'shell:':
                 data['type']='dump'
+                data2=data['data']
+                instance=task.name.split('_')[1]
+                data2['instance']=instance
         except Exception as e:
             logger.error(e)
             return
@@ -379,9 +373,7 @@ class Server:
             task = self.db.get_task(super_context, id)
             worker = task.worker
             policy = task.policy
-            addr = (worker.ip, int(self.port))
-            if worker.ip=='10.202.127.11':
-                addr = (worker.ip, 22222)
+            addr = (worker.ip, int(self.client_port))
             source = task.source
             vol_dir = source.split('//',1)[1]
             new_vor_dir= vol_dir.split('/', 1)
@@ -465,7 +457,7 @@ class Server:
                     logger.error(e)
                 return
             elif typeofMessage == 'last':
-                time.sleep(3)
+                time.sleep(1)
                 if self.workstatelock.acquire():
                     try:
                         del self.workstate_dict[dict['bk_id']]
@@ -556,9 +548,7 @@ class Server:
                     self.db.update_worker(super_context,worker_value)
                 except Exception as e:
                     logger.error(e)
-                addr=(worker.ip,int(self.port))
-                if worker.ip == '10.202.127.11':
-                    addr = (worker.ip, 22222)
+                addr=(worker.ip,int(self.client_port))
                 info = {}
                 info['data'] = "{'type':'start'}"
                 info['addr'] =addr
@@ -584,9 +574,7 @@ class Server:
                     worker=self.db.create_worker(super_context,worker_value)
                 except Exception as e:
                     logger.error(e)
-                addr=(worker.ip,int(self.port))
-                if worker.ip == '10.202.127.11':
-                    addr = (worker.ip, 22222)
+                addr=(worker.ip,int(self.client_port))
                 info = {}
                 info['data'] = "{'type':'start'}"
                 info['addr'] =addr

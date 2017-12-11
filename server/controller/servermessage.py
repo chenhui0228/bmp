@@ -77,14 +77,15 @@ class UDPServer(BaseRequestHandler):
 
 
 class Message:
-    def __init__(self, ms_type,port):
+    def __init__(self, ms_type,server_port,client_port):
         global q
         # self.locahost=socket.gethostname
         #mylogger = MyLogging()
         hostname = str(socket.gethostname())
         ip = socket.gethostbyname(hostname)
         self.local_ip = ip
-        self.port = int(port)
+        self.server_port = int(server_port)
+        self.client_prot = int(client_port)
         self.send_ip=ip
         self.recv_state = "stop"
         self.send_status = "stop"
@@ -103,7 +104,7 @@ class Message:
     def start_server(self):   # 监听
         global con
         self.con=con
-        ADDR = (self.local_ip, self.port)
+        ADDR = (self.local_ip, self.server_port)
         #self.log.logger.info('start TCP listen server')
         # init server:
         if self.ms_type == "tcp":
@@ -190,7 +191,7 @@ class Message:
         if self.ms_type == "tcp":
             info={}
             info['data']=str(data)
-            info['addr']=(self.send_ip,self.port)
+            info['addr']=(self.send_ip,self.client_port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)
