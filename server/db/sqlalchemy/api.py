@@ -781,7 +781,8 @@ class API(object):
             digest = auth_basic.calculate_digest(user.name, password, values['key'])
             values['password'] = digest
         for k, v in params.items():
-            params[k] = values.get(k, params[k])
+            if values.get(k):
+                params[k] = values.get(k)
         user.update(params)
         self.db.flush(session)
         return self._get_user(session, id=id)

@@ -134,7 +134,6 @@ def login(request, **kwargs):
                 rolename = ''
                 if role:
                     rolename = role.name
-                print request.headers
                 msg = 'user {0} is logged in from {1}'.format(username, request.headers.get('Remote-Addr'))
                 logger.info(msg)
                 oplogger.log_event(super_context, msg)
