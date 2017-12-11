@@ -3,7 +3,6 @@
 from datetime import *
 import time
 from message import Message
-import uuid
 
 
 
