@@ -20,11 +20,8 @@ import logging
 class Daemon:
     def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
-        # self.logger = logging.getLogger(__name__)
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/SFbackup/client.conf')
-        log_level = cp.get('client', 'log_level')
-        log_file_dir = cp.get('client', 'log_file_dir')
         self.log=mylogger
         self.stdin = stdin
         self.stdout = stdout
@@ -40,7 +37,7 @@ class Daemon:
         self.version=cp.get('client', 'version')
         self.group = cp.get('client', 'group')
         self.reload_interval = int(cp.get('client', 'reload_interval'))
-        self.client_port = cp.get('client', 'client_port')
+        self.client_port = cp.get('server', 'client_port')
         self.info_l = ""
         self.glusterlist = eval(cp.get('client', 'glusterip'))
         self.task_sum = 0  # 当前任务数
@@ -52,10 +49,7 @@ class Daemon:
         self.ip = socket.gethostbyname(self.hostname)
         self.workpool_workid_dict={}
 
-        # self.conn=pymysql.connect(host='10.202.125.82',port= 3306,user = 'mysqltest',passwd='sf123456',db='mysqltest')
-
     def _daemonize( self ):
-
         try:
             pid = os.fork()  # 第一次fork，生成子进程，脱离父进程
             if pid > 0:
@@ -159,11 +153,8 @@ class Daemon:
                 sys.exit(1)
 
 
-
-
     def stopclient( self ):
         # 从pid文件中获取pid
-
         try:
            # self.message.closeall()
             pf = file(self.pidfile, 'r')
@@ -190,7 +181,6 @@ class Daemon:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                #print str(err)
                 sys.exit(1)
 
     def restart( self ):
@@ -212,8 +202,6 @@ class Daemon:
                         self.message.con.wait()
                 time.sleep(1)
                 self.message.con.release()
-
-
 
     def deleteBackupData(self):
         task_list=self.task_list
@@ -265,15 +253,10 @@ class Daemon:
             self.log.logger.error(e.message)
 
     def _timer_func( self ):
-        # print "timer running at:",datetime.now()
         self.timer_id = self.timer_id + 1
         """
-        没过2秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
+        没过60秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
         """
-        if self.timer_id * self.timer_interval % self.reload_interval == 0:
-            #self.send_bk('live','1',self.task_sum)
-            pass
-
 
         if self.listen_thread.isAlive():
             pass
@@ -297,13 +280,6 @@ class Daemon:
 
         self.t = Timer(self.timer_interval, self._timer_func)
         self.t.start()
-
-    """
-      读取到的所有的配置信息以task 为单位，用list 存储，
-      如果最大task_id 没变，说明没有新的任务产生
-      如果max_task_sum 变化，说明肯定有任务增减
-
-    """
 
     def addtask(self,data,do_type):
         dict = data['data']
@@ -397,8 +373,6 @@ class Daemon:
                 self.qq.put([str(dict), 2], block=True, timeout=None)
                 self.send_ta(dict['id'], 'waiting')
         elif data['type'] == 'start':
-            #for onetask in self.task_list:
-                #print onetask
             pass
         elif data['type'] == 'keepalive':
             self.log.logger.info('keepalive')
@@ -432,17 +406,11 @@ class Daemon:
         """ run your fun"""
         now = datetime.now()
         self.hostname = socket.gethostname()
-        #print "run in :", self.hostname
         os.system("ulimit -n " + "65535")
-        # start timer:
-        #print "to start timer:"
         self.log.logger.debug("to start timer:")
         self.t = Timer(self.timer_interval, self._timer_func)
-        #print "load config info"
-        #print " run job scheduler"
         self.log.logger.debug('run job scheduler')
         self.scheduler = BackgroundScheduler()
-        #print "to start tp:"
         self.log.logger.debug("To start threading pool:")
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
@@ -476,14 +444,6 @@ class Daemon:
         except Exception as e:
             print e
         self.log.logger.debug("date")
-
-        #self.delete_thread = threading.Thread(target=self.do_delete)
-        #self.delete_thread.setDaemon(True)
-        #self.delete_thread.start()
         ret = self.scheduler.add_job(self.deleteBackupData, 'cron', hour='0', minute='0', second='0')
         self.scheduler.start()
-        #print "start threadpool over"
         self.log.logger.debug("start threadpool over")
-
-        """
-        """

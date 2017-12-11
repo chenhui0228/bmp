@@ -154,8 +154,8 @@ class Server:
         self.t.setDaemon(True)
         self.t.start()
 
-    def pause(self,id):
-        task = self.db.get_task(super_context,id)
+    def pause(self,id,deleted=False):
+        task = self.db.get_task(super_context,id,deleted=deleted)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         data = "{'type':'pause','data':{'id':'%s'}}" % (id)
@@ -188,7 +188,7 @@ class Server:
         task = self.db.get_task(super_context,id,deleted=True)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
-        self.pause(id)
+        self.pause(id,True)
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'
@@ -592,11 +592,8 @@ class Workerpool(threading.Thread):
         self.name=i
         self.s=server
 
-
-
     def run(self):  # listen msg from clien
         logger.debug('workerpool  %s start'%self.name)
-
         while True:
             if self.message.con.acquire():
                 if not self.message.q.empty():
