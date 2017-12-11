@@ -82,8 +82,9 @@ def init(conf):
     global oplogger
     oplogger = EventManager(conf)
     db = get_database(conf)
-    superrole = db.role_get_by_name(super_context, 'superrole')
-    if not superrole:
+    try:
+        superrole = db.role_get_by_name(super_context, 'superrole')
+    except HTTPError:
         role = {
             "name": 'superrole',
             "description": "this role has super power, take it carefully ! "
@@ -150,7 +151,7 @@ def login(request, **kwargs):
         cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
         return
     else:
-        raise HTTPError(400, 'Hey, do not do this! ')
+        raise cherrypy.HTTPRedirect('/')
 
 
 
