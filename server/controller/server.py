@@ -1,7 +1,7 @@
 import os, sys
 from datetime import *
 import time
-from servermessage import Message,Performance
+from message1 import Message,Performance
 import ConfigParser
 sys.path.append('../')
 from db.sqlalchemy import api as db_api
@@ -107,6 +107,7 @@ class Server:
 
 
     def keeplaive(self):
+        logger.debug('start sned keepalive %s'%str(self.workeralivedict))
         workers=self.db.get_workers(super_context)
         workersnum=workers[1]
         workerslist=workers[0]
@@ -119,35 +120,43 @@ class Server:
             info['data'] = data
             info['addr'] = addr
             self.message.issued(info)
-            last_update = int(worker.last_report)
-            now = int(time.time())
-            logger.debug('the worker is %s,status is %s,interval is %s'%(worker_id,worker.status,str(now-last_update)))
-            if worker.status == 'Active':
-                if now-last_update>=4*self.timer_interval:
-                    worker_value={}
-                    worker_value['id']=worker.id
-                    worker_value['status']='Offline'
-                    try:
-                        self.db.update_worker(super_context, worker_value)
-                    except Exception as e:
-                        logger.error(e)
-                    logger.warning('the worker %s is onffline' % worker.id)
+            if worker_id in self.workeralivedict:
+                logger.debug('the worker is %s,status is %s,workeralivedict is %s'%(worker_id,worker.status,str(self.workeralivedict[worker_id])))
+                if worker.status == 'Active':
+                    self.alivelock.acquire()
+                    self.workeralivedict[worker_id]+=1
+                    self.alivelock.release()
+                    if self.workeralivedict[worker_id]>=4:
+                        worker_value={}
+                        worker_value['id']=worker.id
+                        worker_value['status']='Offline'
+                        try:
+                            self.db.update_worker(super_context, worker_value)
+                        except Exception as e:
+                            logger.error(e)
+                        logger.warning('the worker %s is onffline'%worker.id)
+                elif worker.status == 'Offline':
+                    if self.workeralivedict[worker_id]<4:
+                        worker_value={}
+                        worker_value['id']=worker.id
+                        worker_value['status']='Active'
+                        try:
+                            self.db.update_worker(super_context, worker_value)
+                        except Exception as e:
+                            logger.error(e)
 
-            elif worker.status == 'Offline':
-                if now - last_update < 4 * self.timer_interval:
-                    worker_value={}
-                    worker_value['id']=worker.id
-                    worker_value['status']='Active'
-                    try:
-                        self.db.update_worker(super_context, worker_value)
-                    except Exception as e:
-                        logger.error(e)
+            else:
+                self.alivelock.acquire()
+                self.workeralivedict[worker_id] =0
+                self.alivelock.release()
+                logger.info('workeralivedict add one')
+
         self.t = threading.Timer(self.timer_interval, self.keeplaive)
         self.t.setDaemon(True)
         self.t.start()
 
     def pause(self,id):
-        task = self.db.get_task(super_context,id,True, True)
+        task = self.db.get_task(super_context,id)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         data = "{'type':'pause','data':{'id':'%s'}}" % (id)
@@ -177,7 +186,7 @@ class Server:
             logger.error(e)
 
     def delete(self,id):
-        task = self.db.get_task(super_context,id,True, True)
+        task = self.db.get_task(super_context,id,deleted=True)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         self.pause(id)
@@ -214,7 +223,7 @@ class Server:
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
         task = self.db.get_task(super_context,id)
-        if task.state == 'stopped' or task.state == 'running_s':
+        if task.state == 'stopped':
             return
         worker = task.worker
         policy = task.policy
@@ -422,35 +431,26 @@ class Server:
                 bk_value['process'] = str(dict.get('process'))
                 bk_value['state'] = dict.get('state')
                 try:
-                    if self.workstatelock.acquire():
-                        self.workstate_dict[dict['bk_id']] = 0
-                        self.workstatelock.release()
                     bk = self.db.bk_create(super_context, bk_value)
+                    self.workstatelock.acquire()
+                    self.workstate_dict[dict['bk_id']] = 0
+                    self.workstatelock.release()
                 except Exception as e:
                     logger.error(e)
                 return
             elif typeofMessage == 'run':
-                try:
-                    bk_old = self.db.get_bk_state(super_context, bk_value['id'])
-                except Exception,e:
-                    logger.error(str(e))
-                    return
-                if bk_old.state == 'failed' or bk_old.state == 'success':
-                    logger.debug('then you get the message in run,the work is end')
-                    return
                 bk_value['process'] = str(dict.get('process'))
                 bk_value['current_size'] = int(dict.get('current_size'))
                 logger.info(str(self.workstate_dict))
-                if self.workstatelock.acquire():
-                    if not self.workstate_dict.has_key(dict['bk_id']):
-                        self.workstatelock.release()
-                        return
-                    if int(self.workstate_dict[dict['bk_id']])>int(dict['process']):
-                        self.workstatelock.release()
-                        return
-                    else:
-                        self.workstate_dict[dict['bk_id']]=int(dict['process'])
-                        self.workstatelock.release()
+                if not self.workstate_dict.has_key(dict['bk_id']):
+                    return
+                if int(self.workstate_dict[dict['bk_id']])>int(dict['process']):
+                    return
+                else:
+                    self.workstatelock.acquire()
+                    self.workstate_dict[dict['bk_id']]=int(dict['process'])
+                    self.workstatelock.release()
+
                 try:
                     self.db.bk_update(super_context, bk_value)
                 except Exception as e:
@@ -469,22 +469,20 @@ class Server:
                 except Exception,e:
                     logger.error(e.message)
                 bk_value['state'] = dict.get('state')
-                if (task.type == 'recover' or task.type == 'backup') and bk_value['state'] == 'success':
-                    bk_value['process'] = 100
-                    try:
-                        bk_old = self.db.get_bk_state(super_context, bk_value['id'])
-                        bk_value['current_size']=int(bk_old.total_size)
-                    except Exception, e:
-                        logger.error(e.message)
                 bk_value['end_time'] = dict.get('end_time')
                 bk_value['message'] = dict.get('message')
+
                 try:
-                    time.sleep(5)
                     self.db.bk_update(super_context, bk_value)
-                except Exception, e:
-                    logger.error(str(bk_value))
-                    logger.error(e.message)
+                except Exception as e:
+                    logger.error(e)
                     return
+                if not self.workstate_dict.has_key(dict['bk_id']):
+                    logger.error('some messages order is wrong  ')
+                    return
+                self.workstatelock.acquire()
+                del self.workstate_dict[dict['bk_id']]
+                self.workstatelock.release()
             elif typeofMessage== 'delete':
                 logger.info('delete a kackupstate which id is')
                 backupstate_list=self.db.bk_list(super_context,task_id=dict['id'])[0]
@@ -501,30 +499,21 @@ class Server:
             #if key == 'process':
             #    if int(bk.process) < int(dict[key]):
             #        return
+
+
         elif msg['type'] == 'state':
                 dict = msg['data']
-                task_dict = {}
-                task_dict['id'] = dict['id']
-                task_dict['state'] = dict['state']
-                if task_dict['state'] == 'running_s' or task_dict['state'] == 'running_w':
-                    bk_id = dict.get('bk_id')
-                    try:
-                        bk_old = self.db.get_bk_state(super_context, bk_id)
-                        if bk_old.state == 'success' or bk_old.state == 'failed' or bk_old.state == 'aborted':
-                            task_dict['state']='waiting'
-                    except:
-                        pass
-                logger.info(str(dict))
-
                 try:
                     task=self.db.get_task(super_context,dict['id'])
+                    task_dict={}
+                    task_dict['id']=dict['id']
+                    task_dict['state']=dict['state']
+                    if dict['state'] == 'deleted':
+                        task_dict['deleted'] == 'deleted'
+                    self.db.update_task(super_context,task_dict)
+                    logger.info('change task state')
                 except Exception as e:
                     logger.error(e.message)
-                if dict['state'] == 'deleted':
-                    task_dict['deleted'] == 'deleted'
-                self.db.update_task(super_context,task_dict)
-                logger.info('change task state')
-
         elif msg['type'] == 'initialize':
             dict = msg['data']
             try:
@@ -542,8 +531,7 @@ class Server:
                 worker_value['group_id'] =group.id
                 worker_value['group_name'] = group.name
                 worker_value['status'] = 'Active'
-                worker_value['start_at'] = int(time.time())
-                worker_value['last_report'] = int(time.time())
+                worker_value['start_at'] = str(time.time())
                 try:
                     self.db.update_worker(super_context,worker_value)
                 except Exception as e:
@@ -568,8 +556,7 @@ class Server:
                 worker_value['group_id'] =group.id
                 worker_value['group_name']=  group.name
                 worker_value['status'] = 'Active'
-                worker_value['start_at'] = int(time.time())
-                worker_value['last_report'] = int(time.time())
+                worker_value['start_at'] = str(time.time())
                 try:
                     worker=self.db.create_worker(super_context,worker_value)
                 except Exception as e:
@@ -589,17 +576,11 @@ class Server:
                 logger.error(e)
             if  len(workers) == 1:
                 worker=workers[0]
-                worker_value={}
-                worker_value['id'] = worker.id
-                worker_value['name']=dict['hostname']
-                worker_value['ip']=dict['ip']
-                worker_value['last_report'] = int(time.time())
-                try:
-                    worker=self.db.update_worker(super_context,worker_value)
-                    logger.debug('the worker which ip is %s,hostname is %s is alive'%(worker_value['ip'],worker_value['name']))
-                except Exception as e:
-                    logger.error(e)
-
+                if self.workeralivedict.has_key(worker.id):
+                    self.alivelock.acquire()
+                    self.workeralivedict[worker.id]=0
+                    self.alivelock.release()
+                    logger.info('the worker is alive which id is %s'%worker.id)
             else:
                 logger.error('more than one client has same information or has no client')
 

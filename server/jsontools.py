@@ -1,7 +1,7 @@
 import cherrypy
 import sys
 import json
-import exception
+import backup_exception
 import datetime
 from cherrypy._cpcompat import  json_encode
 import six
@@ -245,10 +245,10 @@ def action_peek_json(body):
         decoded = loads(body)
     except ValueError:
         msg = "cannot understand JSON"
-        raise exception.MalformedRequestBody(reason=msg)
+        raise backup_exception.MalformedRequestBody(reason=msg)
     # Make sure there's exactly one key...
     if len(decoded) != 1:
         msg = "too many body keys"
-        raise exception.MalformedRequestBody(reason=msg)
+        raise backup_exception.MalformedRequestBody(reason=msg)
     # Return the action and the decoded body...
     return list(decoded.keys())[0]

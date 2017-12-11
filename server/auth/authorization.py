@@ -203,10 +203,12 @@ class PolicyManager(object):
         self._file_cache = {}
         self.use_conf = use_conf
         self.overwrite = overwrite
+        self.init_done = False
         self.init()
 
     def init(self):
         self.load_rules()
+        self.init_done = True
 
     def set_rules(self, rules, overwrite=True, use_conf=False):
         """Create a new :class:`Rules` based on the provided dict of rules.
@@ -297,6 +299,8 @@ class PolicyManager(object):
 
 
     def load_rules(self, force_reload=False):
+        if self.init_done and not force_reload:
+            return
         if force_reload:
             self.use_conf = force_reload
         if self.use_conf:
@@ -372,6 +376,13 @@ class PolicyManager(object):
             raise PolicyNotAuthorized(rule, target, creds)
 
         return result
+
+    def get_admin_role(self):
+        try:
+            role = self.rules['admin_role'].match
+            return role
+        except KeyError:
+            logger.error('there is no admin role')
 
     def check_rules(self, raise_on_violation=False):
         """Look for rule definitions that are obviously incorrect."""
