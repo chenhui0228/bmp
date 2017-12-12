@@ -10,11 +10,11 @@ import ConfigParser
 def create_dir(path):
     cp = ConfigParser.ConfigParser()
     cp.read('/etc/fbmp/client.conf')
-    usually_concurrent=int(cp.get('client', 'usually_concurrent'))
-    immediately_concurrent = int(cp.get('client', 'immediately_concurrent'))
+    workpool_size=int(cp.get('client', 'workpool_size'))
+    immediate_workpool_size = int(cp.get('client', 'immediate_workpool_size'))
     if not os.path.exists(path):  # 创建挂载的目录
         os.makedirs(path)
-    for i in range(usually_concurrent+immediately_concurrent):
+    for i in range(workpool_size+immediate_workpool_size):
         new_path=os.path.join(path,str(i))
         if not os.path.exists(new_path):
             try:
