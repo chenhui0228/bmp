@@ -80,7 +80,7 @@ class Message:
     def __init__(self, ms_type):
         global q
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
+        cp.read('/etc/fbmp/client.conf')
         server_ip = cp.get('server', 'ip')
         server_port = cp.get('server', 'server_port')
         client_port = cp.get('client', 'client_port')

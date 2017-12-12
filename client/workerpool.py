@@ -251,9 +251,9 @@ class Delete:
         if int(self.duration)==-1:
             return
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
+        cp.read('/etc/fbmp/client.conf')
         self.mount = cp.get('client', 'mount_dir')
-        self.mount_dir = "%sdel/" % (self.mount)
+        self.mount_dir = "%sdelete/" % (self.mount)
         ret = self.do_mount()
         if ret !=0:
             self.log.logger.error('delete mount failed')

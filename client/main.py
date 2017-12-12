@@ -9,7 +9,7 @@ import ConfigParser
 
 def create_dir(path):
     cp = ConfigParser.ConfigParser()
-    cp.read('/etc/SFbackup/client.conf')
+    cp.read('/etc/fbmp/client.conf')
     usually_concurrent=int(cp.get('client', 'usually_concurrent'))
     immediately_concurrent = int(cp.get('client', 'immediately_concurrent'))
     if not os.path.exists(path):  # 创建挂载的目录
@@ -22,7 +22,7 @@ def create_dir(path):
             except:
                 pass
 
-    del_path=os.path.join(path,'del')
+    del_path=os.path.join(path,'delete')
     if not os.path.exists(del_path):
         try:
             os.mkdir(del_path)
@@ -37,34 +37,32 @@ def create_dir(path):
             pass
 
 if __name__ == '__main__':
-    if not os.path.exists('/etc/SFbackup/client.conf'):
-        print "conf is lose"
+    conf_dir='/etc/fbmp/client.conf'
+    if not os.path.exists(conf_dir):
+        print "conf is lose, you should copy the client.conf to /etc/fbmp"
         sys.exit(1)
     cp = ConfigParser.ConfigParser()
-    cp.read('/etc/SFbackup/client.conf')
+    cp.read('/etc/fbmp/client.conf')
     log_level = cp.get('client', 'log_level')
     log_file_dir = cp.get('client', 'log_file_dir')
-    work_dir=cp.get('client', 'mount_dir')
+    work_dir=cp.get('client', 'work_dir')
+    pid_dir=cp.get('client','pid_dir')
+    pid_file=pid_dir+'client.pid'
     create_dir(work_dir)
     if not os.path.exists(log_file_dir):
         os.makedirs(log_file_dir)
     log_file_name=log_file_dir+'client.log'
     mylogger = MyLogging(log_level,log_file_name)   # 初始化log
-    ip = ''
-    cip = ''
-    if not os.path.exists('/var/run/bak/'):
-        os.mkdir('/var/run/bak/')
+    if not os.path.exists(pid_dir):
+        os.mkdir(pid_dir)
     if 'start' == sys.argv[1]:
-        #print cip
-        daemon = Daemon('/var/run/bak/watch_process.pid',  mylogger, ip, cip)
+        daemon = Daemon(pid_file,  mylogger)
         daemon.start()
     elif  'restart' == sys.argv[1]:
-
-        daemon = Daemon('/var/run/bak/watch_process.pid', mylogger, ip, cip)
+        daemon = Daemon(pid_file, mylogger)
         daemon.restart()
     elif 'stop' == sys.argv[1]:
-
-        daemon = Daemon('/var/run/bak/watch_process.pid',  mylogger, ip, cip,)
+        daemon = Daemon(pid_file,  mylogger)
         time.sleep(0.2)
         daemon.stop()
         sys.exit(1)

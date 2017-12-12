@@ -23,7 +23,7 @@ class Work():
         #print "to init arglist"
         self.arglist = arglist
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
+        cp.read('/etc/fbmp/client.conf')
         self.mount = cp.get('client', 'mount_dir')
         self.errormessage=""
         self.process=''

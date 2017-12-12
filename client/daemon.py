@@ -18,28 +18,27 @@ import ConfigParser
 import logging
 #logging.basicConfig()
 class Daemon:
-    def __init__( self, pidfile,  mylogger, glusterip="", confip="", stdin='/dev/stderr', stdout='/dev/stderr',
+    def __init__( self, pidfile,  mylogger, stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
+        cp.read('/etc/fbmp/client.conf')
         self.log=mylogger
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.pidfile = pidfile
         self.timer_interval = int(cp.get('client', 'timer_interval'))
-        self.qdpth = int(cp.get('client', 'qdpth'))
+        self.qdpth = int(cp.get('client', 'queue_depth'))
         # print "pid file:",self.pidfile
         self.timer_id = 0
         self.q = ""
-        self.uc_size = int(cp.get('client', 'usually_concurrent')) # 线程池大小
-        self.ic_size = int(cp.get('client', 'immediately_concurrent'))
+        self.workpool_size = int(cp.get('client', 'workpool_size')) # 线程池大小
+        self.immediate_workpool_size = int(cp.get('client', 'immediate_workpool_size'))
         self.version=cp.get('client', 'version')
         self.group = cp.get('client', 'group')
-        self.reload_interval = int(cp.get('client', 'reload_interval'))
         self.client_port = cp.get('client', 'client_port')
         self.info_l = ""
-        self.glusterlist = eval(cp.get('client', 'glusterip'))
+        self.glusterlist = cp.get('client', 'glusterip').split()
         self.task_sum = 0  # 当前任务数
         self.task_list = {}
         self.work_list=[]
@@ -273,7 +272,7 @@ class Daemon:
             self.tp.remove(t)
 
             # self.logger.warning(
-            newthread = WorkerPool(self.q, t.getName(), self.uc_size,self.workpool_workid_dict,self.log)
+            newthread = WorkerPool(self.q, t.getName(), self.workpool_size,self.workpool_workid_dict,self.log)
             self.tp.append(newthread)
             newthread.setDaemon(True)
             newthread.start()
@@ -335,7 +334,6 @@ class Daemon:
                 dict['op'] = "recover"
                 dict['ip'] = self.glusterlist
                 self.qq.put([str(dict), 2], block=True, timeout=None)
-
                 self.send_ta( dict['id'], 'waiting')
             else:
                 self.log.logger.error('recover  must be immediately')
@@ -415,11 +413,11 @@ class Daemon:
         self.q = Queue.Queue(self.qdpth)
         self.qq = Queue.Queue(self.qdpth)
         self.deleteq=Queue.Queue()
-        for i in range(self.uc_size):
-            t = WorkerPool(self.q, i,self.uc_size ,self.workpool_workid_dict,self.log)
+        for i in range(self.workpool_size):
+            t = WorkerPool(self.q, i,self.workpool_size ,self.workpool_workid_dict,self.log)
             self.tp.append(t)
-        for i in range(self.uc_size,self.uc_size+self.ic_size):
-            t = WorkerPool(self.qq, i,self.uc_size, self.workpool_workid_dict, self.log)
+        for i in range(self.workpool_size,self.workpool_size+self.immediate_workpool_size):
+            t = WorkerPool(self.qq, i,self.workpool_size, self.workpool_workid_dict, self.log)
             self.tp.append(t)
         for t in self.tp:
             t.setDaemon(True)
