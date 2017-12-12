@@ -36,7 +36,7 @@ def db_cmd(parsed_args):
     config_path = parsed_args.backupconf
     db_conf.update(config_path)
     if parsed_args.sync:
-        db_api.sync(conf)
+        db_api.sync(db_conf)
     sys.exit(0)
 
 def do_create_default_roles(conf):
@@ -53,8 +53,11 @@ def do_create_default_roles(conf):
 
 
 def role_cmd(parsed_args):
+    conf = Config()
+    config_path = parsed_args.backupconf
+    conf.update(config_path)
     if parsed_args.create_default:
-        do_create_default_roles()
+        do_create_default_roles(conf)
     sys.exit(0)
 
 def run_cmd(parsed_args):
@@ -89,15 +92,16 @@ def parse_cmdargs(args=None, target=''):
                         help="run on foreground")
     run.set_defaults(func=run_cmd)
     role = subparsers.add_parser('role', help='role operation')
-    role.add_argument('create-default', action="store_false",
+    role.add_argument('--create-default', action="store_true",
                       help="create three roles, admin, operator, user ")
     role.set_defaults(func=role_cmd)
 
     db = subparsers.add_parser('db', help='database operation')
-    db.add_argument('sync', action="store_false",
+    db.add_argument('--sync', action="store_true",
                     help='create database and tables')
     db.set_defaults(func=db_cmd)
     parsed_args, extras = parser.parse_known_args(args)
+
     return parser, parsed_args, extras
 
 

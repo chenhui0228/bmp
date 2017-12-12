@@ -1557,15 +1557,14 @@ def get_database(conf):
     return Database(conf)
 
 def sync(conf):
-    driver = None
-    path = None
     if isinstance(conf.get('database'), dict):
         database_conf = conf['database']
         logger.info('database config %s' % database_conf)
     else:
         database_conf = conf
-
+    driver = database_conf.get('driver')
     if driver == 'sqlite':
+        path = database_conf.get('path')
         path = 'sqlite:///%s' % path
         engine = create_engine(path)
         Base.metadata.bind = engine
