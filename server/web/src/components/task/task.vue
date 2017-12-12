@@ -1722,7 +1722,19 @@
             }
           }
         },err => {
-          console.log(err)
+          if (err.response.status == 401) {
+            this.$message({
+              message: "请重新登录",
+              type: 'error'
+            });
+            sessionStorage.removeItem('access-user');
+            this.$router.push({path: '/login'});
+          } else {
+            this.$message({
+              message: "获取数据失败",
+              type: 'error'
+            });
+          }
         });
       },3000)
     }
