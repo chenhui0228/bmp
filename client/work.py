@@ -24,7 +24,7 @@ class Work():
         self.arglist = arglist
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
-        self.mount = cp.get('client', 'mount_dir')
+        self.mount = cp.get('client', 'work_dir')
         self.errormessage=""
         self.process=''
         self.pause=False

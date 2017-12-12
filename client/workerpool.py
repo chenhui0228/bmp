@@ -252,7 +252,7 @@ class Delete:
             return
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
-        self.mount = cp.get('client', 'mount_dir')
+        self.mount = cp.get('client', 'work_dir')
         self.mount_dir = "%sdelete/" % (self.mount)
         ret = self.do_mount()
         if ret !=0:
