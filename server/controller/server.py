@@ -565,7 +565,10 @@ class Server:
                 worker_value['name']=dict['hostname']
                 worker_value['ip']=dict['ip']
                 worker_value['version'] = dict['version']
-                group=self.db.group_get_by_name(super_context,dict['group'])
+                try:
+                    group=self.db.group_get_by_name(super_context,dict['group'])
+                except Exception,e:
+                    logger.error(e.message)
                 worker_value['group_id'] =group.id
                 worker_value['group_name']=  group.name
                 worker_value['status'] = 'Active'
