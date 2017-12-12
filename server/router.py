@@ -141,7 +141,7 @@ class Controller(Resource):
     def __init__(self, conf):
         self.db = db_api.get_database(conf)
         self.policy = PolicyManager(conf)
-        self.bkserver = bkserver.Server(conf)
+        self.conf = conf
         self.oplogger = EventManager(conf)
         self.admin_role = self.policy.get_admin_role()
 
@@ -253,9 +253,9 @@ class TasksController(Controller):
             task = self.db.create_task(context, action_args)
             info['exist'] = 'False'
             if task.type == 'backup':
-                self.bkserver.backup(task.id)
+                self.conf['bkserver'].backup(task.id)
             elif task.type == 'recover':
-                self.bkserver.recover(task.id)
+                self.conf['bkserver'].recover(task.id)
             msg = 'create  a {0} task {1} [ {2} ]'.format(task.type, task.name, task.id )
             self.oplogger.log_event(context, msg)
         info['task'] = task.to_dict()
@@ -266,7 +266,7 @@ class TasksController(Controller):
         id = action_args.get('id')
         context = action_args['context']
         old =  self.db.delete_task(context, id)
-        self.bkserver.delete(id)
+        self.conf['bkserver'].delete(id)
         msg = 'delete the task {0} [ {1} ]'.format(old['name'], old['id'])
         self.oplogger.log_event(context, msg)
         return old
@@ -278,7 +278,7 @@ class TasksController(Controller):
         info = {}
         try:
             task = self.db.update_task(context, action_args)
-            self.bkserver.update_task(task.id)
+            self.conf['bkserver'].update_task(task.id)
             info['task'] = task.to_dict()
             info['exist'] = 'False'
             msg = 'update the task {0} [ {1} ]'.format(task.name, task.id)
@@ -292,7 +292,7 @@ class TasksController(Controller):
     def start(self, action_args):
         context = action_args['context']
         task_id = action_args['id']
-        self.bkserver.backup(task_id, True)
+        self.conf['bkserver'].backup(task_id, True)
         msg = 'start  the task %s' % action_args['id']
         self.oplogger.log_event(context, msg)
         return 'success'
@@ -302,7 +302,7 @@ class TasksController(Controller):
     def stop(self, action_args):
         context = action_args['context']
         task_id = action_args['id']
-        self.bkserver.stop(task_id)
+        self.conf['bkserver'].stop(task_id)
         msg = 'stop  the task %s' % task_id
         self.oplogger.log_event(context, msg)
 
@@ -311,7 +311,7 @@ class TasksController(Controller):
     def pause(self, action_args):
         context = action_args['context']
         task_id = action_args['id']
-        self.bkserver.pause(task_id)
+        self.conf['bkserver'].pause(task_id)
         msg = 'pause  the task %s' % task_id
         self.oplogger.log_event(context, msg)
 
@@ -320,7 +320,7 @@ class TasksController(Controller):
     def resume(self, action_args):
         context = action_args['context']
         task_id = action_args['id']
-        self.bkserver.resume(task_id)
+        self.conf['bkserver'].resume(task_id)
         msg = 'resume the task %s' % task_id
         self.oplogger.log_event(context, msg)
 
@@ -406,7 +406,7 @@ class PoliciesController(Controller):
         policy_info = {}
         try:
             policy = self.db.update_policy(context, action_args)
-            self.bkserver.update_policy(policy.id)
+            self.conf['bkserver'].update_policy(policy.id)
             msg = 'update  the   policy : {0} [ {1} ] '.format(
                 policy.name, policy.id)
             self.oplogger.log_event(context, msg)

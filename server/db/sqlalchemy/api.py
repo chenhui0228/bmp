@@ -1556,3 +1556,33 @@ def get_database(conf):
     '''
     return Database(conf)
 
+def sync(conf):
+    driver = None
+    path = None
+    if isinstance(conf.get('database'), dict):
+        database_conf = conf['database']
+        logger.info('database config %s' % database_conf)
+    else:
+        database_conf = conf
+
+    if driver == 'sqlite':
+        path = 'sqlite:///%s' % path
+        engine = create_engine(path)
+        Base.metadata.bind = engine
+        path = database_conf.get('path', '/var/backup/backup.db')
+        Base.metadata.create_all(engine)
+    elif driver == 'mysql' or driver == 'mariadb':
+        user = database_conf.get('user')
+        password = database_conf.get('password')
+        host = database_conf.get('host')
+        port = database_conf.get('port', 3306)
+        database = database_conf.get('database')
+        if user and password and host and port and database:
+            url = 'mysql+mysqldb://{0}:{1}@{2}:{3}'. \
+                format(user, password, host, port)
+            engine = create_engine(url)
+            engine.connect()
+            engine.execute("CREATE DATABASE IF NOT EXISTS {0} CHARSET=utf8".format(database))
+            engine.execute("USE {0}".format(database))
+            Base.metadata.create_all(engine)
+
