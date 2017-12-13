@@ -73,7 +73,7 @@ class Database(object):
                     engine.execute("USE {0}".format(database))
                     Base.metadata.create_all(engine)
 
-                path = 'mysql+mysqldb://{0}:{1}@{2}:{3}/{4}'. \
+                path = 'mysql+mysqldb://{0}:{1}@{2}:{3}/{4}?charset=utf8'. \
                     format(user, password, host, port, database)
 
         else:
