@@ -354,7 +354,7 @@
           }).catch((err) => {
             if(err.response.status == 403){
               this.$message({
-                message: '删除失败,组内还有用,请先删除用户',
+                message: '删除失败,请先删除组内所有用户',
                 type: 'error'
               });
             }else{

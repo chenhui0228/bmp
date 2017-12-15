@@ -1,8 +1,6 @@
 ##部署安装步骤：
 
-###一、备份服务端管理节点部署安装
-
-####1. 获取安装包并解压
+###一、软件包下载与解压
 
 我们可以从如下地址获取所有需要的安装包
 
@@ -16,20 +14,77 @@ wget http://xxxx
 tar zxf xxxxxxx.tar.gz
 ```
 
-####2. 环境初始化
+进入解压后的目录
 
+```bash
+cd  xxxxxxxxxx
+tree        #查看目录结构
+```
 
-#####2.1. MySql数据库安装与配置
+可以看到目录结构大致如下所示
 
-管理节点需要安装MySql数据库存来储备份管理数据。你需要安装MySql服务，并配置数据库用户，并赋予用户创建数据库权限。
+```text
+.
+├── client  #备份客户端程序目录
+│   ├── client.conf     #客户端配置文件
+│   └── ...
+├── README.md
+├── requirements.txt        #项目依赖清单
+├── requirePackages     #依赖包，包含python相关依赖包和Glusterfs fuse client安装依赖的动态库
+│   ├── glusterfs_fuse_packages
+│   │   ├── el6     #适合Centos6.x版本的依赖，包含rpms依赖和Glusterfs Fuse Client编译出来的动态链接库
+│   │   │   └── rpms
+│   │   │       ├──
+│   │   │       └── ...
+│   │   └── el7     #适合Centos7.x版本的依赖
+│   │       └── rpms
+│   │           └── ...
+│   └── pypi        #运行软件所需的所有Python依赖
+│       └── ...
+├── server      #服务端程序，含web server的服务端程序和备份客户端的服务端程序
+│   ├── ...
+│   ├── etc     #配置文件目录
+│   │   ├── logging.conf
+│   │   ├── policy.json
+│   │   └── server.conf
+│   ├── requirements.txt    #服务端依赖清单
+│   ├── ...
+│   └── web     #前端模块
+│       ├── build       #构建打包配置
+│       │   └── ...
+│       ├── config      #构建打包配置
+│       │   └── ...
+│       ├── dist        #打包后web项目目录
+│       │   ├── index.html
+│       │   └── static
+│       │       └── ...
+│       ├── index.html
+│       ├── node_modules        #web前端项目依赖包
+│       ├── package.json        #web前端项目依赖配置文件
+│       ├── README.md
+│       └── src
+│           ├── api
+│           │   ├── api.js
+│           │   └── index.js
+│           └── ...
+└── setup
+```
+
+###二、备份服务端管理节点部署安装
+
+#####1. MySql数据库安装与配置
+
+管理节点需要安装MySql数据库存来储备份管理数据。你需要安装MySql服务，配置数据库用户，并赋予用户创建数据库权限。
 安装MySql数据库方法请参照MySql官方文档，这里不做详述。
-创建用户并配置用户权限命令如下：
+为备份软件创建用户并配置用户权限命令如下：
 
 ```bash
 
 ```
 
-#####2.2. python环境初始化和相关依赖安装
+####2. 环境初始化
+
+#####2.1. python环境初始化和相关依赖安装
 
 我们约定使用python版本为2.7，如果当前系统python版本小于2.7，我们将为你安装python-2.7.8。这不会影响你已有python应用的正常使用，且不会替换原来的python版本。
 执行命令如下：
@@ -38,13 +93,26 @@ tar zxf xxxxxxx.tar.gz
 
 ```
 
-#####2.3 管理节点服务配置和安装
+#####2.2 管理节点服务配置和安装
 
-在/etc目录下新建目录fbmp
+-**管理节点配置**
+
+
+在/etc目录下新建目录/fbmp
 
 ```bash
 mkdir /etc/fbmp
 ```
+编辑配置文件并拷贝至/etc/fbmp目录下
+
+在解压后的软件目录结构如下
+
+
+
+```bash
+
+```
+
 
 2) 
 
@@ -110,7 +178,7 @@ web_ip = 10.10.10.11.8080
       -s, --server       Stop web server program on the host.
 
 >**注意**： 在只运行客户端或者服务端程序时，需要先初始化python环境，然后初始化client或者web server环境；
-
+k
 >setup并不包含前端页面资源打包，发布的web前端产品需要参考本文后面webpack打包说明
 
 
