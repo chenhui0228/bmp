@@ -444,7 +444,7 @@
           </el-form-item>
           <el-form-item prop="source" label="源">
             <el-col :span="3">
-              <el-select v-model="addForm.source_type" placeholder="请选择类型">
+              <el-select v-model="addForm.source_type" placeholder="请选择类型" @change="handleSourceTypeChange">
                 <el-option
                   v-for="type in sourceTypes"
                   :key="type.value"
@@ -688,11 +688,33 @@
         this.checkStarTimeError = false;
         callback();
       };
-      var validateAddr = (rule, value, callback) => {
+      var validateBackupSourceAddr = (rule, value, callback) => {
         if (value !== '' && value[0] !== '/') {
           callback(new Error('输入格式不正确，请以"/"开头'));
         }else if(value === ''){
-          callback(new Error('输入格式不正确，地址不能为空'));
+          callback(new Error('输入格式不正确，源地址不能为空'));
+        }else if(this.sourceType === ''){
+          callback(new Error('请选择源地址类型'))
+        }else{
+          callback()
+        }
+      };
+      var validateBackupDestAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，目的地址不能为空'));
+        }else if(this.volumeName === ''){
+          callback(new Error('请选择卷'))
+        }else{
+          callback()
+        }
+      };
+      var validateRecoverDestAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，目的地址不能为空'));
         }else{
           callback()
         }
@@ -725,6 +747,7 @@
           label: 'dump脚本',
           value: '2'
         }],
+        sourceType: '', //选择了哪一个type
         workers:[],
         volumes:[],
         policies:[],
@@ -774,10 +797,10 @@
             {required: true, message: '请选择作业机', trigger: 'blur'}
           ],
           source: [
-            {required: true, validator: validateAddr}
+            {required: true, validator: validateBackupSourceAddr}
           ],
           destination: [
-            {required: true, validator: validateAddr}
+            {required: true, validator: validateBackupDestAddr}
           ]
         },
         editForm: {
@@ -804,7 +827,7 @@
             {required: true, message: '请选择作业机'}
           ],
           destination: [
-            {required: true, validator: validateAddr}
+            {required: true, validator: validateRecoverDestAddr}
           ]
         },
 
@@ -1244,9 +1267,11 @@
         if(row.task.type === 'backup'){
           if(source.search("file:") >= 0){
             row.task.source_type = '1';
+            this.sourceType = '1';
             source = source.replace(/file:\//i,'');
           }else if (source.search("shell:") >= 0){
             row.task.source_type = '2';
+            this.sourceType = '2';
             source = source.replace(/shell:\//i,'');
           }
           var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
@@ -1267,6 +1292,8 @@
       //取消编辑
       cancelEdit: function () {
         this.editFormVisible = false;
+        this.volumeName = '';
+        this.sourceType = '';
         this.$refs['editForm'].resetFields();
         this.getTasks();
       },
@@ -1320,6 +1347,8 @@
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
+                this.volumeName = '';
+                this.sourceType = '';
                 this.getTasks();
               });
             });
@@ -1353,6 +1382,8 @@
       //取消提交
       cancelAdd: function () {
         this.addFormVisible = false;
+        this.volumeName = '';
+        this.sourceType = '';
         this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
@@ -1364,6 +1395,11 @@
           });
           this.volumeName = volume.name;
 //          this.destination_prefix = this.destination_prefix + this.volumeName;
+        }
+      },
+      handleSourceTypeChange: function (value) {
+        if(typeof(value) !== "undefined"){
+          this.sourceType = value;
         }
       },
       failedMsgbox(row){
@@ -1404,6 +1440,7 @@
             }
 
             reqAddTask(user, para).then((res) => {
+              console.log("reqAdd")
               this.addLoading = false;
               if(res.data.exist && res.data.exist === 'True') {
                 this.$message({
@@ -1430,6 +1467,8 @@
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
             });
+            this.volumeName = '';
+            this.sourceType = '';
           }
           else{
             this.$message({
