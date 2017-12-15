@@ -348,7 +348,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.source" auto-complete="off"></el-input>
+              <el-input v-model="editForm.source" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -363,7 +363,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.destination" auto-complete="off"></el-input>
+              <el-input v-model="editForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
@@ -454,7 +454,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.source" auto-complete="off"></el-input>
+              <el-input v-model="addForm.source" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -469,7 +469,9 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.destination" auto-complete="off"></el-input>
+              <el-input v-model="addForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头"
+                        onkeypress="return event.keyCode !== 32">
+              </el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
@@ -573,7 +575,10 @@
             </span>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"></el-input>
+            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"
+                      placeholder="请输入目的地址，请以 '/' 开头"
+                      onkeypress="return event.keyCode !== 32">
+            </el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
@@ -683,6 +688,15 @@
         this.checkStarTimeError = false;
         callback();
       };
+      var validateAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，地址不能为空'));
+        }else{
+          callback()
+        }
+      };
       //TODO: data return
       return {
         sysUserName: '',
@@ -708,7 +722,7 @@
           value: '1'
         },
         {
-          label: 'shell脚本',
+          label: 'dump脚本',
           value: '2'
         }],
         workers:[],
@@ -760,10 +774,10 @@
             {required: true, message: '请选择作业机', trigger: 'blur'}
           ],
           source: [
-            {required: true, message: '源地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateAddr}
           ],
           destination: [
-            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateAddr}
           ]
         },
         editForm: {
@@ -790,7 +804,7 @@
             {required: true, message: '请选择作业机'}
           ],
           destination: [
-            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateAddr}
           ]
         },
 
