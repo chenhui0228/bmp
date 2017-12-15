@@ -148,7 +148,7 @@ class Deleted:
         dict = message_dict['data']
         self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
         ms = dict['id']
-        if dict.has_key('delete'):
+        if dict.has_key('deletework'):
             self.deleteAllDataOfaWork(dict['id'])
         if self.task_dict.has_key(ms):
             self.task_dict[ms].do_remove_job()

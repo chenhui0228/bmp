@@ -181,7 +181,7 @@ class Delete:
             if n==0:
                 return -1
             if os.path.ismount(self.mount_dir):
-                self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
+                self.log.logger.error("the dir has mounted,maybe there is a delete work doing now")
                 return -1
             while n > 0:
                 self.glusterip = self.ip[n - 1]
@@ -232,7 +232,6 @@ class Delete:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
                 if int(filename[n+1:n+9]) < oldtime or delAll :
-                    print 'haha'
                     realdir=os.path.join(tardir,filename)
                     start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
