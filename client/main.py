@@ -66,4 +66,16 @@ if __name__ == '__main__':
         time.sleep(0.2)
         daemon.stop()
         sys.exit(1)
+    else:
+        usage_tip = '''
+        Usage:
+            python start.py <command> 
+        Commands:
+            start:start client
+                        
+            stop: stop client
+            
+            restart: restart client
+        '''
+        print usage_tip
     sys.exit(0)

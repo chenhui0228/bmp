@@ -45,7 +45,7 @@ class SingleTask():
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             try:
-                self.queue.put_nowait([str(self.st), 2], block=True, timeout=None)
+                self.queue.put([str(self.st), self.sumid], block=True, timeout=7200)
             except Exception as e:
                 self.log.logger.error('can put work msg in workerpool queue,%s'%str(e))
 

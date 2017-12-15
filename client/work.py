@@ -100,6 +100,7 @@ class Work():
                # print "do mkidr succeed"
                 if ret!=0:
                     self.errormessage='mkdir %s failed'%dir
+                    self.log.logger.error('mkdir %s failed'%dir)
                     return -1
                 self.log.logger.info("do mkdir succeed")
                 return 0
@@ -176,7 +177,12 @@ class Work():
         self.log.logger.info('write file %s'%pd)
         cmd = ('rsync -avlP %s %s' % (pd, vd))
         #print cmd
-        fp = tempfile.TemporaryFile(mode='w+t')
+        try:
+            fp = tempfile.TemporaryFile(mode='w+t')
+        except Exception,e:
+            self.log.logger.error(e)
+            self.errormessage=str(e)
+            return -1
         self.process = subprocess.Popen(cmd, shell=True, stdout=fp,stderr=subprocess.PIPE )
         while True:
             seek_now=seek_old
@@ -201,6 +207,7 @@ class Work():
                     if pro-self.sendpro>=2:
                         self.send_bk('run',process=str(pro),current_size=str(write_all))
                         self.sendpro=pro
+                        self.log.logger.debug('the work %s '%str(pro))
                 time.sleep(1)
             if self.process.poll() != None:
                 list=pd.split('/')
@@ -225,7 +232,7 @@ class Work():
             #print 'error info:%s' % error
             self.log.logger.error("cmd %s work failed"%cmd)
             self.log.logger.error(errdata)
-            self.errormessage=errdata
+            self.errormessage=str(errdata)
             return -1
        # print write_all
        # print 'finished'

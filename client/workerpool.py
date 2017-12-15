@@ -91,6 +91,7 @@ class WorkerPool(threading.Thread):
                 try:
 
                     task = self.queue.get(block=True, timeout=20)  # 接收消息
+                    self.log.logger.info("task recv:%s ,task No:%d" % (task[0], task[1]))
 
                 except:
                     #print "get queue timerout!!!!!!!!!!!!"
@@ -98,7 +99,7 @@ class WorkerPool(threading.Thread):
                     continue
 
             #print "task recv:%s ,task No:%d" % (task[0], task[1])
-            self.log.logger.info("task recv:%s ,task No:%d" % (task[0], task[1]))
+
 
             """
             获取的数据是通过http格式拿到的json 格式数据，通过转换为dicts 后进行处理
@@ -231,6 +232,7 @@ class Delete:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
                 if int(filename[n+1:n+9]) < oldtime or delAll :
+                    print 'haha'
                     realdir=os.path.join(tardir,filename)
                     start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
