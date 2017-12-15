@@ -360,7 +360,7 @@ class Work():
             self.vol = self.arglist['destination_vol']
             self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             path=self.arglist['source_address']
-            instance = self.arglist['instance']
+            instance = str(self.arglist['instance']).lower()
             if not os.path.exists(path):
                 self.errormessage = 'the shell %s is not exist'%path
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
