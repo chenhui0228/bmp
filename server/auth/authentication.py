@@ -9,7 +9,7 @@ from db.sqlalchemy import uuidutils
 from db.sqlalchemy.api import get_database
 import logging
 logger = logging.getLogger('backup')
-
+from oplog import EventManager
 def generate_salt():
     return uuidutils.generate_uuid(False)
 
@@ -24,11 +24,11 @@ else:
 string_types = (text_type, binary_type)
 
 super_context = {
-    'is_superrole': True
+    'is_superuser': True
 }
 
 tokmgr = None
-
+oplogger = None
 def check_token(auth_header, user):
     if not user:
         logger.error('user should not be none')
@@ -79,9 +79,12 @@ def init(conf):
     logger.debug('token conf : %s ' % token_conf)
     global tokmgr
     tokmgr = token.TokenManager(token_conf)
+    global oplogger
+    oplogger = EventManager(conf)
     db = get_database(conf)
-    superrole = db.role_get_by_name(super_context, 'superrole')
-    if not superrole:
+    try:
+        superrole = db.role_get_by_name(super_context, 'superrole')
+    except HTTPError:
         role = {
             "name": 'superrole',
             "description": "this role has super power, take it carefully ! "
@@ -125,13 +128,15 @@ def login(request, **kwargs):
             password = kwargs.get('password')
             valid = auth_basic.verify_user(user_info, username, password)
             if valid:
-                logger.info('user {0} is logged in successful'.format(username))
                 payload = tokmgr.build_payload(username)
                 tok = token.genarate_token(payload, user_info.key)
                 role = user_info.role
                 rolename = ''
                 if role:
                     rolename = role.name
+                msg = 'user {0} is logged in from {1}'.format(username, request.headers.get('Remote-Addr'))
+                logger.info(msg)
+                oplogger.log_event(super_context, msg)
                 return {'token': tok,
                         'role':rolename,
                         'user_id': user_info.id
@@ -145,7 +150,7 @@ def login(request, **kwargs):
         cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
         return
     else:
-        raise HTTPError(400, 'Hey, do not do this! ')
+        raise cherrypy.HTTPRedirect('/')
 
 
 

@@ -73,8 +73,8 @@ class WorkerPool(threading.Thread):
     2、
     """
 
-    def send_ta(self,id,value):
-        data="{'type':'state','data':{'id':'%s','state':'%s'}}"%(id,value)
+    def send_ta(self,id,value,bk_id=None):
+        data="{'type':'state','data':{'id':'%s','state':'%s','bk_id':'%s'}}"%(id,value,bk_id)
         ret=self.message.send(data)
         if ret!=0:
             self.log.logger.error('message send failed %s'%ret)
@@ -91,6 +91,7 @@ class WorkerPool(threading.Thread):
                 try:
 
                     task = self.queue.get(block=True, timeout=20)  # 接收消息
+                    self.log.logger.info("task recv:%s ,task No:%d" % (task[0], task[1]))
 
                 except:
                     #print "get queue timerout!!!!!!!!!!!!"
@@ -98,7 +99,7 @@ class WorkerPool(threading.Thread):
                     continue
 
             #print "task recv:%s ,task No:%d" % (task[0], task[1])
-            self.log.logger.info("task recv:%s ,task No:%d" % (task[0], task[1]))
+
 
             """
             获取的数据是通过http格式拿到的json 格式数据，通过转换为dicts 后进行处理
@@ -118,9 +119,9 @@ class WorkerPool(threading.Thread):
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
-                self.send_ta(self.arglist['id'],'running_s')
+                self.send_ta(self.arglist['id'],'running_s',self.arglist['bk_id'])
             else:
-                self.send_ta(self.arglist['id'], 'running_w')
+                self.send_ta(self.arglist['id'], 'running_w',self.arglist['bk_id'])
             self.work = Work(self.arglist, self.log)
 
             if not self.work:
@@ -135,6 +136,7 @@ class WorkerPool(threading.Thread):
                     self.send_ta(self.arglist['id'],'stopped')
                 else:
                     self.send_ta(self.arglist['id'], 'waiting')
+                self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
             if self.workpool_workid_dict.has_key(self.name):
@@ -179,7 +181,7 @@ class Delete:
             if n==0:
                 return -1
             if os.path.ismount(self.mount_dir):
-                self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
+                self.log.logger.error("the dir has mounted,maybe there is a delete work doing now")
                 return -1
             while n > 0:
                 self.glusterip = self.ip[n - 1]
@@ -250,9 +252,9 @@ class Delete:
         if int(self.duration)==-1:
             return
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
-        self.mount = cp.get('client', 'mount_dir')
-        self.mount_dir = "%sdel/" % (self.mount)
+        cp.read('/etc/fbmp/client.conf')
+        self.mount = cp.get('client', 'work_dir')
+        self.mount_dir = "%sdelete/" % (self.mount)
         ret = self.do_mount()
         if ret !=0:
             self.log.logger.error('delete mount failed')

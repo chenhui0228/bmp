@@ -14,5 +14,6 @@ def calculate_digest(user, password, key):
     sign_in = str(user) + str(password)
     HMACAlgorithm = algorithms.HMACAlgorithm
     alg_obj = HMACAlgorithm(HMACAlgorithm.SHA256)
-    sig = alg_obj.sign(sign_in, key)
+    sig = alg_obj.sign(sign_in, str(key))
     return base64.urlsafe_b64encode(sig)
+
