@@ -45,6 +45,7 @@ if __name__ == '__main__':
     cp.read('/etc/fbmp/client.conf')
     log_level = cp.get('client', 'log_level')
     log_file_dir = cp.get('client', 'log_file_dir')
+
     work_dir=cp.get('client', 'work_dir')
     pid_dir=cp.get('client','pid_dir')
     pid_file=pid_dir+'client.pid'

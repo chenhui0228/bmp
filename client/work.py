@@ -383,7 +383,7 @@ class Work():
                     self.errormessage = 'mkdir %s/%s failed'%(self.mount_dir,self.vfile)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            cmd = './%s %s %s/%s' % (path, instance, self.mount_dir, self.vfile)
+            cmd = '%s %s %s/%s' % (path, instance, self.mount_dir, self.vfile)
             ret=self.do_dump(cmd)
             if ret!=0:
                 self.do_close()
@@ -407,7 +407,7 @@ class Work():
 
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['source_vol']
-            self.vfile = self.arglist['destination_address']
+            self.vfile = self.mount+'recover'+self.arglist['destination_address']
             self.pfile = self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
