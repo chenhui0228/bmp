@@ -269,7 +269,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
@@ -326,7 +329,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
@@ -345,12 +351,19 @@
               type: 'success'
             });
             this.getGroup();
-          });
-        }).catch((err) => {
-          this.listLoading = false;
-          this.$message({
-            message: '删除失败',
-            type: 'error'
+          }).catch((err) => {
+            if(err.response.status == 403){
+              this.$message({
+                message: '删除失败,请先删除组内所有用户',
+                type: 'error'
+              });
+            }else{
+              this.$message({
+                message: '删除失败',
+                type: 'error'
+              });
+            }
+            this.listLoading = false;
           });
         });
       },

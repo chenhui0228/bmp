@@ -3,7 +3,6 @@
 from datetime import *
 import time
 from message import Message
-import uuid
 
 
 
@@ -45,7 +44,10 @@ class SingleTask():
             #print "**********************put workerpool time:", time.asctime(time.localtime(time.time())), " name is:", self.name
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
-            self.queue.put([str(self.st), 2], block=True, timeout=None)
+            try:
+                self.queue.put([str(self.st), self.sumid], block=True, timeout=7200)
+            except Exception as e:
+                self.log.logger.error('can put work msg in workerpool queue,%s'%str(e))
 
     """
     删除任务
