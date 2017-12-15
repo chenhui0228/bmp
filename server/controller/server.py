@@ -454,6 +454,7 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
+        self.pause(id)
         data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
