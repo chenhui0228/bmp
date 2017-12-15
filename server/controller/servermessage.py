@@ -113,7 +113,7 @@ class Message:
                 # init client:
                 # self.updclient =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
-                server_thread.daemon = True
+                server_thread.setDaemon(True)
                 server_thread.start()
                 self.server_thread.append(server_thread)
             except Exception as e:

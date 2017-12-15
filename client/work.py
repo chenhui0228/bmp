@@ -285,9 +285,15 @@ class Work():
         if self.op == 'backup':
             #if self.arglist.has_key('destination _ip'):
             #    self.arglist['ip'].append(self.arglist['destination _ip'])
-            self.pfile = self.arglist['source_address']
-            self.proctotal = self.get_file_size(self.pfile)
             start_time=float(int(time.time()))
+            self.pfile = self.arglist['source_address']
+            if not os.path.exists(self.pfile):
+                self.errormessage = '%s is not exist'%self.pfile
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
+            self.proctotal = self.get_file_size(self.pfile)
             timeArray = time.localtime(start_time)
             if self.proctotal < 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
@@ -355,8 +361,12 @@ class Work():
             self.vfile=self.arglist['destination_address'] +"/"+ self.arglist['name']+"_"+self.arglist['id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             path=self.arglist['source_address']
             instance = self.arglist['instance']
-
-
+            if not os.path.exists(path):
+                self.errormessage = 'the shell %s is not exist'%path
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
+                return
             ret = self.do_mount()
             if ret != 0:
                 if  self.errormessage == "":
@@ -399,6 +409,12 @@ class Work():
             self.pfile = self.arglist['source_address']
             ret = self.do_mount()
             if ret != 0:
+                return
+            if not os.path.exists(self.mount_dir + self.pfile):
+                self.errormessage = '%s is not exist'%self.pfile
+                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                time.sleep(5)
+                self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             if self.proctotal < 0:
