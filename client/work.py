@@ -149,11 +149,13 @@ class Work():
         self.process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while True:
             write_now=self.get_file_size(self.mount_dir+'/'+self.vfile)
-            self.send_bk('run', process=-1, current_size=str(write_now))
+            self.send_bk('run', process=200, current_size=str(write_now))
+            self.log.logger.info('the work dump %s'%str(write_now))
             time.sleep(1)
             if self.process.poll() != None:
                 write_now = self.get_file_size(self.mount_dir+'/'+self.vfile)
                 self.send_bk('run', process=200, current_size=str(write_now))
+                self.log.logger.info('the work dump %s' % str(write_now))
                 break
         outdata, errdata = self.process.communicate()
         if self.pause:
@@ -363,7 +365,7 @@ class Work():
             instance = str(self.arglist['instance']).lower()
             if not os.path.exists(path):
                 self.errormessage = 'the shell %s is not exist'%path
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                self.send_bk('frist', total_size=-1, start_time=str(start_time))
                 time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return

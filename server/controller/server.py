@@ -83,9 +83,13 @@ class Return:
             bk_value['total_size'] = dict.get('total_size')
             bk_value['process'] = str(dict.get('process'))
             bk_value['state'] = dict.get('state')
+            if str(bk_value['total_size']) == '-1':
+                num=-1
+            else:
+                num=0
             try:
                 if self.server.workstatelock.acquire():
-                    self.server.workstate_dict[dict['bk_id']] = 0
+                    self.server.workstate_dict[dict['bk_id']] =num
                     self.server.workstatelock.release()
                 bk = self.db.bk_create(super_context, bk_value)
             except Exception as e:
@@ -98,7 +102,7 @@ class Return:
                 logger.error(str(e))
                 return
             if bk_old.state == 'failed' or bk_old.state == 'success':
-                logger.debug('then you get the message in run,the work is end')
+                logger.error('then you get the message in run,the work is end')
                 return
             bk_value['process'] = str(dict.get('process'))
             bk_value['current_size'] = int(dict.get('current_size'))
@@ -139,7 +143,7 @@ class Return:
                     logger.error(e)
                 return
             bk_value['state'] = dict.get('state')
-            if (task.type == 'recover' or task.type == 'backup') and bk_value['state'] == 'success':
+            if (task.source[0] == 'f' or task.source[0] == 'g') and bk_value['state'] == 'success':
                 bk_value['process'] = 100
                 try:
                     bk_old = self.db.get_bk_state(super_context, bk_value['id'])
