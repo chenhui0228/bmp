@@ -7,6 +7,7 @@
 
 # This is script which auto-setuping datebase backup software sfbp
 
+#TODO:
 logDate=$(date +%Y%m%d)
 curDate="date +%Y-%m-%d%t%H:%M:%S"
 
@@ -223,7 +224,8 @@ funStartProcess(){
     fi
 }
 
-
+# TODO: Command start, receive two paramenters. $1 is action(eg:initial,start,stop) that is what are you doing; $2 is \
+#       option is the type of program you want to run.
 option=$2
 action=$1
 case "$action" in 

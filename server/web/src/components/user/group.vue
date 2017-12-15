@@ -269,7 +269,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
@@ -326,7 +329,10 @@
             });
           }
           else{
-            alert('输入有误，提交失败')
+            this.$message({
+              message: '输入有误，请检查',
+              type: 'warning'
+            });
           }
         });
       },
@@ -348,7 +354,7 @@
           }).catch((err) => {
             if(err.response.status == 403){
               this.$message({
-                message: '删除失败,组内还有用,请先删除用户',
+                message: '删除失败,请先删除组内所有用户',
                 type: 'error'
               });
             }else{

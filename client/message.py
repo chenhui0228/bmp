@@ -80,7 +80,7 @@ class Message:
     def __init__(self, ms_type):
         global q
         cp = ConfigParser.ConfigParser()
-        cp.read('/etc/SFbackup/client.conf')
+        cp.read('/etc/fbmp/client.conf')
         server_ip = cp.get('server', 'ip')
         server_port = cp.get('server', 'server_port')
         client_port = cp.get('client', 'client_port')
@@ -118,7 +118,7 @@ class Message:
                 # init client:
                 # self.updclient =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
-                server_thread.daemon = True
+                server_thread.setDaemon(True)
                 server_thread.start()
                 self.server_thread.append(server_thread)
             except Exception as e:

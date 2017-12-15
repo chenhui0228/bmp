@@ -2,7 +2,11 @@ routes
 cherrypy
 sqlalchemy
 six
+xlwt
 eventlet
 pyjwt
 pymysql
-
+ipaddress
+PyYAML
+requests
+MySQL-python

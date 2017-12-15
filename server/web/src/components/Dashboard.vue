@@ -364,6 +364,7 @@
           success: [],
           failed: [],
           running: [],
+          aborted: [],
           unknown: [],
         },
         OplogList: [],
@@ -402,6 +403,7 @@
         this.taskStateSummary.success = [];
         this.taskStateSummary.failed = [];
         this.taskStateSummary.running = [];
+        this.taskStateSummary.aborted = [];
         this.taskStateSummary.unknown = [];
         this.taskStateSummary.total = data.total;
         for (var i in data) {
@@ -423,6 +425,11 @@
               this.taskStateSummary.failed.push(data[i].failed);
             } else {
               this.taskStateSummary.failed.push(0);
+            }
+            if (typeof(data[i].aborted) !== "undefined") {
+              this.taskStateSummary.aborted.push(data[i].aborted);
+            } else {
+              this.taskStateSummary.aborted.push(0);
             }
             if (typeof(data[i].null) !== "undefined") {
               this.taskStateSummary.unknown.push(data[i].null);
@@ -683,9 +690,9 @@
               text: '任务执行状况概览',
             },
             legend: {
-              data: ['成功', '执行中', '失败', '未知']
+              data: ['成功', '执行中', '失败', '中断', '未知']
             },
-            color: ['#98F898', '#00BFFF', '#FF4500', 'grey'],
+            color: ['#98F898', '#00BFFF', '#FF4500', '#FF9933','grey'],
 
             grid: {
               left: '3%',
@@ -819,6 +826,18 @@
                   }
                 },
                 data: this.taskStateSummary.failed
+              },
+              {
+                name: '中断',
+                type: 'bar',
+                stack: '总数',
+                label: {
+                  normal: {
+                    show: false,
+                    position: 'inside'
+                  }
+                },
+                data: this.taskStateSummary.aborted
               },
               {
                 name: '未知',

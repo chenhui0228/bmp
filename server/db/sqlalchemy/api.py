@@ -73,7 +73,7 @@ class Database(object):
                     engine.execute("USE {0}".format(database))
                     Base.metadata.create_all(engine)
 
-                path = 'mysql+mysqldb://{0}:{1}@{2}:{3}/{4}'. \
+                path = 'mysql+mysqldb://{0}:{1}@{2}:{3}/{4}?charset=utf8'. \
                     format(user, password, host, port, database)
 
         else:
@@ -781,7 +781,8 @@ class API(object):
             digest = auth_basic.calculate_digest(user.name, password, values['key'])
             values['password'] = digest
         for k, v in params.items():
-            params[k] = values.get(k, params[k])
+            if values.get(k):
+                params[k] = values.get(k)
         user.update(params)
         self.db.flush(session)
         return self._get_user(session, id=id)
@@ -1554,4 +1555,33 @@ def get_database(conf):
     :return:
     '''
     return Database(conf)
+
+def sync(conf):
+    if isinstance(conf.get('database'), dict):
+        database_conf = conf['database']
+        logger.info('database config %s' % database_conf)
+    else:
+        database_conf = conf
+    driver = database_conf.get('driver')
+    if driver == 'sqlite':
+        path = database_conf.get('path')
+        path = 'sqlite:///%s' % path
+        engine = create_engine(path)
+        Base.metadata.bind = engine
+        path = database_conf.get('path', '/var/backup/backup.db')
+        Base.metadata.create_all(engine)
+    elif driver == 'mysql' or driver == 'mariadb':
+        user = database_conf.get('user')
+        password = database_conf.get('password')
+        host = database_conf.get('host')
+        port = database_conf.get('port', 3306)
+        database = database_conf.get('database')
+        if user and password and host and port and database:
+            url = 'mysql+mysqldb://{0}:{1}@{2}:{3}'. \
+                format(user, password, host, port)
+            engine = create_engine(url)
+            engine.connect()
+            engine.execute("CREATE DATABASE IF NOT EXISTS {0} CHARSET=utf8".format(database))
+            engine.execute("USE {0}".format(database))
+            Base.metadata.create_all(engine)
 
