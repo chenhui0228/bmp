@@ -3,7 +3,7 @@
     font-size: 0;
   }
   .table-expand label {
-    width: 90px;
+    width: 100px;
     color: #99a9bf;
   }
   .table-expand .el-form-item {
@@ -115,6 +115,9 @@
               </el-form-item>
               <el-form-item label="更新时间">
                 <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
+              </el-form-item>
+              <el-form-item label="首次执行时间">
+                <span>{{ props.row.task.start_time | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="任务策略" v-if="isBackupTask">
                 <span>{{ props.row.policy.name }}</span>
