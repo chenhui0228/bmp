@@ -87,6 +87,7 @@ class WorkerPool(threading.Thread):
             self.work_id = self.work_id + 1
             if self.queue.empty():
                 continue
+            task = None
             if not self.queue.empty():
                 try:
 
@@ -105,7 +106,7 @@ class WorkerPool(threading.Thread):
             获取的数据是通过http格式拿到的json 格式数据，通过转换为dicts 后进行处理
             打桩测试的数据也已经转换为json 格式的本地文本
             """
-            if True:
+            if task:
                 task_d = eval(task[0])
                 #print "bay bay", task
                 #print "task_d is:", task_d

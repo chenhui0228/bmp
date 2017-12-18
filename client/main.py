@@ -70,7 +70,7 @@ if __name__ == '__main__':
     else:
         usage_tip = '''
         Usage:
-            python start.py <command> 
+            python main.py <command> 
         Commands:
             start:start client
                         

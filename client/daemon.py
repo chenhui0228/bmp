@@ -50,13 +50,14 @@ def send_server(message,log,send_type,**kwargs):
         pass
 
 class Backup:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update):
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
         self.task_sum= task_update.task_sum
+        self.scheduler=scheduler
 
     def __call__(self, message_dict):
         dict = message_dict['data']
@@ -72,27 +73,27 @@ class Backup:
             send_server(self.message,self.log,'state',id=dict['id'], state='waiting')
 
     def addtask(self,data,do_type):
-        scheduler = BackgroundScheduler()
         dict = data['data']
         ms = dict['id']
         if self.task_dict.has_key(ms):
             return
         dict['op'] =data['type']
         self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
-        new_task = SingleTask(ms, scheduler, dict, self.q, self.glusterip_list, self.log)
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
         send_server(self.message,self.log,'state', id=dict['id'], state='waiting')
 
 class Update:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update):
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
         self.task_sum=task_update.task_sum
+        self.scheduler=scheduler
 
     def __call__(self, message_dict):
         dict = message_dict['data']
@@ -100,12 +101,11 @@ class Update:
         ms = dict['id']
         if self.task_dict.has_key(ms):
             try:
-                scheduler = BackgroundScheduler()
                 self.task_dict[ms].do_remove_job()
                 del self.task_dict[ms]
                 self.task_sum = self.task_sum - 1
                 dict['op'] = dict['sub']
-                new_task = SingleTask(ms, scheduler, dict, self.q, self.glusterip_list, self.log)
+                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log)
                 new_task.start(dict['run_sub'])
                 self.task_dict[ms] = new_task
                 self.task_sum = self.task_sum + 1
@@ -191,13 +191,14 @@ class Deleted:
                 t.start()
 
 class Dump:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update ):
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler ):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
         self.task_sum=task_update.task_sum
+        self.scheduler=scheduler
 
     def __call__(self, message_dict):
         dict = message_dict['data']
@@ -213,14 +214,13 @@ class Dump:
             send_server(self.message,self.log,'state', id=dict['id'], state='waiting')
 
     def addtask( self, data, do_type ):
-        scheduler = BackgroundScheduler()
         dict = data['data']
         ms = dict['id']
         if self.task_dict.has_key(ms):
             return
         dict['op'] = data['type']
         self.log.logger.info('create a new %s dump work,the id of it is %s' % (do_type, ms))
-        new_task = SingleTask(ms, scheduler, dict, self.q, self.glusterip_list, self.log)
+        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
@@ -303,21 +303,21 @@ class Task_Undate:
         self.version=client.version
         self.group=client.group
         self.task_sum=0
+        self.scheduler = BackgroundScheduler()
         self.command_initialization()
 
     def periodic_deletion(self):
-        scheduler = BackgroundScheduler()
-        ret = scheduler.add_job(self.command_dict['delete'].deleteBackupData, 'cron', hour='0', minute='0', second='0')
-        scheduler.start()
+        ret = self.scheduler.add_job(self.command_dict['delete'].deleteBackupData, 'cron', hour='0', minute='0', second='0')
+        self.scheduler.start()
 
 
 
     def command_initialization(self):
-        backup=Backup(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self)
-        update=Update(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self)
+        backup=Backup(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler)
+        update=Update(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler)
         recover=Recover(self.log,self.task_dict,self.glusterip_list,self.q,self.message)
         delete=Deleted(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self)
-        dump=Dump(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self)
+        dump=Dump(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler)
         keepalive=Keepalive(self.log,self.message,self.ip,self.hostname,self.version,self.group)
         pause=Pause(self.log,self.tp,self.workpool_workid_dict)
         pauseall=Pauseall(self.log,self.tp,self.workpool_workid_dict,self.client)
