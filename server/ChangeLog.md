@@ -1,5 +1,17 @@
 2017-12-15  zhaowei  <zhaowei11@sf-express.com>
 
+	Merge branch 'dev' of http://10.202.16.216/cloudStorage/fbmp into dev
+
+	fix ChangeLog.md format
+
+2017-12-15  SF\01369584  <yongtianzhang@sf-express.com>
+
+	修改脚本执行方式
+
+	修改bug
+
+2017-12-15  zhaowei  <zhaowei11@sf-express.com>
+
 	change readme.md
 
 2017-12-15  SF\01369584  <yongtianzhang@sf-express.com>

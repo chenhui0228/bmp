@@ -276,13 +276,14 @@ class API(object):
         return task
 
     def get_task(self, context, id, detail=True, deleted=False,
-                 group_id=None, session=None):
+                 group_id=None, user_id=None, session=None):
         logger.info('trying to get a task , id = %s'%id)
         if not context.get('is_superuser'):
             group_id = context.get('group_id')
 
         task = self._get_task(session, id=id, detail=detail,
-                              group_id=group_id, deleted=deleted)
+                              group_id=group_id, user_id=user_id,
+                              deleted=deleted)
         if not task:
             logger.error('task not found, %s' % id)
             raise NotFound()
@@ -348,6 +349,10 @@ class API(object):
         if not session:
             session = self.db.get_session()
         task = self.get_task(context, task_id, False, session=session)
+        if not context.get('is_admin') and not context['is_superuser']:
+            user = context.get('user_id')
+            if user != task.user_id:
+                raise HTTPError(403, 'not permitted')
         task_dict = task.to_dict()
         self.db.soft_delete(session, task)
         return task_dict
