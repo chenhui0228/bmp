@@ -31,6 +31,14 @@ MYPATH = os.path.abspath(__file__)
 MYDIR = os.path.dirname(MYPATH)
 BACKUP_VER = "1.1"
 
+def get_version():
+    file = 'version'
+    openfile = open(file, 'r')
+    version = openfile.readline()
+    openfile.close()
+    return version
+
+
 def db_cmd(parsed_args):
     db_conf = Config()
     config_path = parsed_args.backupconf
@@ -73,7 +81,11 @@ def parse_cmdargs(args=None, target=''):
                         default='etc/server.conf',
                         help='backup configuration file')
 
-    ver = 'backup server version {0} '.format(BACKUP_VER)
+    try:
+        version = get_version()
+    except IOError:
+        version = BACKUP_VER
+    ver = 'backup server version {0} '.format(version)
     parser.add_argument('--version', '-v', action="version", version=ver,
                         help="display version")
 
