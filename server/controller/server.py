@@ -434,11 +434,14 @@ class Server:
             except Exception as e:
                 logger.error(e)
 
-    def pause(self,id,deleted=False):
+    def pause(self,id,deleted=False,stopped=False):
         task = self.db.get_task(super_context,id,deleted=deleted)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
-        data = "{'type':'pause','data':{'id':'%s'}}" % (id)
+        if stopped:
+            data = "{'type':'pause','data':{'id':'%s','stop':'True'}}" % (id)
+        else:
+            data = "{'type':'pause','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -454,7 +457,7 @@ class Server:
         task = self.db.get_task(super_context,id)
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
-        self.pause(id)
+        self.pause(id,False,True)
         data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
