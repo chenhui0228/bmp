@@ -32,11 +32,11 @@ MYDIR = os.path.dirname(MYPATH)
 BACKUP_VER = "1.1"
 
 def get_version():
-    file = 'version'
+    file = os.path.dirname(os.path.realpath(__file__)) + '/version'
     openfile = open(file, 'r')
     version = openfile.readline()
     openfile.close()
-    return version
+    return version.strip()
 
 
 def db_cmd(parsed_args):

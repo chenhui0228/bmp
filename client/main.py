@@ -37,11 +37,11 @@ def create_dir(path):
             pass
 
 def get_version():
-    file = 'version'
+    file = os.path.dirname(os.path.realpath(__file__)) + '/version'
     openfile = open(file, 'r')
     version = openfile.readline()
     openfile.close()
-    return version
+    return version.strip()
 
 if __name__ == '__main__':
     conf_dir='/etc/fbmp/client.conf'
