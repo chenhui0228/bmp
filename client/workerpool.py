@@ -117,6 +117,23 @@ class WorkerPool(threading.Thread):
             """
             建立工作实例，Work 类提供了对glusterfs 的各种操作，此时开始进行读写等操作
             """
+            self.log.logger.info('todo work:%s' % (self.threadID))
+            self.log.logger.info('self.workpool_workid_dict::%s' % str(self.workpool_workid_dict))
+            repeating_work=False
+            if not self.arglist['op'] == 'delete':  # 删除操作将无视此规则，直接执行
+                for workerpool_id,task_id in self.workpool_workid_dict.items():
+                    self.log.logger.debug((workerpool_id,task_id))
+                    if task_id == self.arglist['id'] :
+
+                            self.log.logger.warning('%s %s is wroking now,in order to reduce duplication, we terminate the current job'%(self.arglist['id'],self.arglist['name']))
+                            repeating_work=True
+                    else:
+                        self.log.logger.debug('%s %s'%(task_id,self.arglist['id']))
+            if repeating_work:
+                continue
+            else:
+                self.log.logger.debug(str(self.workpool_workid_dict))
+            self.workpool_workid_dict[self.name] = self.arglist['id']
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
@@ -137,7 +154,7 @@ class WorkerPool(threading.Thread):
                     self.send_ta(self.arglist['id'],'stopped')
                 else:
                     self.send_ta(self.arglist['id'], 'waiting')
-                self.log.logger.debug('1 the work %s state'%self.arglist['name'])
+                self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
             if self.workpool_workid_dict.has_key(self.name):

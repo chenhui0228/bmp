@@ -476,7 +476,7 @@ class Server:
         info = {}
         info['data'] = data
         info['addr'] = addr
-        if task.state == 'waiting' or task.state == 'running_w':
+        if (task.state == 'waiting' or task.state == 'running_w') and (task.type == 'backup' or task.type == 'dump'):
             try:
                 self.message.issued(info)
                 self.db.update_task(super_context, task_value)
