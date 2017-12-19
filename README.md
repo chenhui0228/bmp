@@ -79,7 +79,9 @@
 安装MySql数据库方法请参照MySql官方文档，这里不做详述。
 为备份软件创建用户并配置用户权限命令如下：
 
-	#
+	mysql 
+	GRANT ALL PRIVILEGES ON fbmp.* TO 'fbmp'@'%' IDENTIFIED BY 'fbmp@fbmp';
+	FLUSH   PRIVILEGES;
 
 #### 2. 环境初始化 ####
 
@@ -88,7 +90,17 @@
 我们约定使用python版本为2.7，如果当前系统python版本小于2.7，我们将为你安装python-2.7.8。这不会影响你已有python应用的正常使用，且不会替换原来的python版本。
 执行命令如下：
 
-	#
+- **Python环境初始化**
+	
+		cd /usr/local/fbmp
+		chmod +x setup	 #如果已经是可执行文件，此步可不执行
+		./setup initial -p
+
+- **服务Python端依赖安装**
+
+		cd /usr/local/fbmp
+		chmod +x setup	 #如果已经是可执行文件，此步可不执行
+		./setup initial -s
 
 > <font color=red>**注意：**</font>	原系统Python版本如果小于2.7版本，安装的Python-2.7.8路径为<font color=red>**/usr/local/bin/python2.7**</font>，使用python运行时请使用绝对路径运行 *.py 文件
 
@@ -412,7 +424,7 @@
 	进入/usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/rpms目录，执行安装命令：
 	
 		cd /usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/rpms
-		yum install glusterfs-fuse
+		yum install glusterfs-*.rpm -y
 
 - 方式二：安装动态链接库
 
@@ -469,7 +481,17 @@
 我们约定使用python版本为2.7，如果当前系统python版本小于2.7，我们将为你安装python-2.7.8。这不会影响你已有python应用的正常使用，且不会替换原来的python版本。
 执行命令如下：
 
-	#
+- **Python环境初始化**
+	
+		cd /usr/local/fbmp
+		chmod +x setup	 #如果已经是可执行文件，此步可不执行
+		./setup initial -p
+
+- **服务Python端依赖安装**
+
+		cd /usr/local/fbmp
+		chmod +x setup	 #如果已经是可执行文件，此步可不执行
+		./setup initial -s
 
 > <font color=red>**注意：**</font>	原系统Python版本如果小于2.7版本，安装的Python-2.7.8路径为<font color=red>**/usr/local/bin/python2.7**</font>，使用python运行时请使用绝对径运行 *.py 文件
 
@@ -485,7 +507,7 @@
 	
 	可以在目录下找到文件client.conf，即为客户端服务配置文件。需要将此文件拷贝到/etc/fbmp目录下
 
-		mkdir /etc/fbmp
+		mkdir /etc/fbmp		#如果该目录已经存在，无需新建
 		cp  client.conf /etc/fbmp/
 
 	拷贝后对/etc/fbmp/client.conf进行修改

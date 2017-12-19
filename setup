@@ -15,11 +15,11 @@ project_name='fbmp'
 glusterfs_version='3.10.8'
 
 # system path
-etc_path='/etc/' + ${project_name}
-log_path='/var/log/' + ${project_name}
-run_path='/var/run/' + ${project_name}
-server_conf_path=${etc_path} + server.conf
-client_conf_path=${etc_path} + client.conf
+etc_path='/etc/'${project_name}
+log_path='/var/log/'${project_name}
+run_path='/var/run/'${project_name}
+server_conf_path=${etc_path}server.conf
+client_conf_path=${etc_path}client.conf
 
 # project file path
 root_path=$(cd "$(dirname "$0")"; pwd)
@@ -147,10 +147,10 @@ funSetupGlusterFsByYum(){
     os_v=$1
     if [[ $os_v = 'el6' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el6/rpms
-        yum install glusterfs-*-${glusterfs_version}-*.rpm -y
+        yum install glusterfs-*${glusterfs_version}*.rpm -y
     elif [[ $os_v = 'el7' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el7/rpms
-        yum install glusterfs-*-${glusterfs_version}-*.rpm -y
+        yum install glusterfs-*${glusterfs_version}*.rpm -y
     fi
     cd $root_path
 }
@@ -206,32 +206,32 @@ funStartProcess(){
 option=$2
 action=$1
 
-if [ -d ${etc_path} ]; then
-    echo "Project system configure directory is " + ${etc_path}
-else
-    echo "mkdir system configure directory " + ${etc_path}
-    mkdir ${etc_path}
-fi
-
-if [ -d ${log_path} ]; then
-    echo "Project system log directory is " + ${log_path}
-else
-    echo "mkdir system log directory " + ${log_path}
-    mkdir ${log_path}
-fi
-
-if [ -d ${run_path} ]; then
-    echo "Project system runtime file directory is " + ${run_path}
-else
-    echo "mkdir system runtime file directory " + ${run_path}
-    mkdir ${run_path}
-fi
 
 cd $root_path
 
 case "$action" in 
     initial)
         # funPrintInfo
+        if [ -d ${etc_path} ]; then
+            echo "Project system configure directory is "${etc_path}
+        else
+            echo "mkdir system configure directory "${etc_path}
+            mkdir ${etc_path}
+        fi
+
+        if [ -d ${log_path} ]; then
+            echo "Project system log directory is "${log_path}
+        else
+            echo "mkdir system log directory "${log_path}
+            mkdir ${log_path}
+        fi
+
+        if [ -d ${run_path} ]; then
+            echo "Project system runtime file directory is "${run_path}
+        else
+            echo "mkdir system runtime file directory "${run_path}
+            mkdir ${run_path}
+        fi
         case "$option" in
             -c|--client)
                 funcInitialGlusterFS
