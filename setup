@@ -7,23 +7,31 @@
 
 # This is script which auto-setuping datebase backup software sfbp
 
-#TODO:
+# TODO:
 logDate=$(date +%Y%m%d)
 curDate="date +%Y-%m-%d%t%H:%M:%S"
 
-#config file path
-conf_path=$(cd "$(dirname "$0")"; pwd)/config
+project_name='fbmp'
+glusterfs_version='3.10.8'
+
+# system path
+etc_path='/etc/' + ${project_name}
+log_path='/var/log/' + ${project_name}
+run_path='/var/run/' + ${project_name}
+server_conf_path=${etc_path} + server.conf
+client_conf_path=${etc_path} + client.conf
+
+# project file path
 root_path=$(cd "$(dirname "$0")"; pwd)
 
-glfsip=$(cat ${conf_path} | grep "glusterfs_ip =" | awk '{print $3}')
-webip=$(cat ${conf_path} | grep "web_ip =" | awk '{print $3}') 
 hostname=$(hostname)
+
 os_version=$(cat /etc/redhat-release | grep -o -G '[0-9][.0-9]*')
 py_version=$(/usr/bin/python -V 2>&1 | awk -F " " '{print $2}')
 
 #pid
-client_pid="/var/log/bak/watch_process.pid"
-server_pid="/var/run/backuppid"
+client_pid="/var/run/fbmp/client.pid"
+server_pid="/var/run/fbmp/backup.pid"
 
 os_version_array=("6.6" "6.8" "7.0" "7.1" "7.2")
 py_version_array=("2.6" "2.7" "3.0")
@@ -33,16 +41,9 @@ DOUBPLET="==================="
 
 # compare version
 funCompareVersion(){
-    #if version_gt $1 $2; then
-    #    echo ">"
-    #fi
     if version_le $1 $2; then
-        #return -1
         return 0
     fi
-    #if version_lt $1 $2; then
-    #    echo "<"
-    #fi
     if version_ge $1 $2; then
         return 1
     fi
@@ -72,7 +73,7 @@ funCheckpip(){
 }
 
 funSetupPypi(){
-    cd $root_path/requirePackage
+    cd $root_path/requirePackages/pypi
     tar xzf ${2}.tar.gz
     cd $2
     $1 setup.py install
@@ -90,12 +91,12 @@ funSetupPypi(){
 funSetupPy27(){
     yum install zlib
     yum install zlib-devel
-    cd $root_path/requirePackage
+    cd $root_path/requirePackages/pypi
     tar xf Python-2.7.8.tgz
     cd Python-2.7.8
     ./configure --prefix=/usr/local
     make && make install
-    cd $root_path/requirePackage
+    cd $root_path/requirePackages/pypi
     rm -rf Python-2.7.8
     funSetupPypi /usr/local/bin/python2.7 setuptools-23.1.0
     funSetupPypi /usr/local/bin/python2.7 pip-9.0.1
@@ -110,7 +111,6 @@ funSetupPy(){
             ;;
         pyLib)
             funCheckpip /usr/bin/python
-            funSetupPyLib /usr/bin/python
             ;;
     esac
 }
@@ -129,70 +129,47 @@ funInitialPy(){
 }
 
 funSetupPipyByRequirements(){
+    requirements_paht=$1
     cd $root_path
     funCompareVersion $py_version 2.6
     py26=$?
     funCompareVersion $py_version 2.7
     py27=$?
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
-        /usr/local/bin/python2.7 -m pip install --no-index -f requirePackage -r requirements.txt
+        /usr/local/bin/python2.7 -m pip install --no-index -f requirePackages/pypi -r $1
     else
-        /usr/bin/python -m pip install --no-index -f requirePackage -r requirements.txt
+        /usr/bin/python -m pip install --no-index -f requirePackages/pypi -r $1
     fi
 }
 
-funPrintInfo(){
-    echo $DOUBPLET" STARTING"
-    echo $DOUBPLET" Config is"
-    printf "%-20s %-15s\n" "glusterfs addr" $glfsip
-    printf "%-20s %-15s\n" "web server addr" $webip
-    echo "[${hostname}] "$(${curDate})" INFO: This host OS version is Centos release "$os_version
-    echo "[${hostname}] "$(${curDate})" INFO: This host Python version is "$py_version
-}
 
-funSetupLibs(){
-    echo "[${hostname}] "$(${curDate})" INFO: setuping lib*.so..."
-    cd $root_path/glusterSo
-    tar xzf ${1}.tar.gz
-    cp -f libs/lib* /lib64/
-    rm -rf libs
-    cd /lib64
-    ln -s libgfapi.so.0.0.0 libgfapi.so.0
-    ln -s libgfrpc.so.0.0.1 libgfrpc.so.0
-    ln -s libgfxdr.so.0.0.1 libgfxdr.so.0
-    ln -s libglusterfs.so.0.0.1 libglusterfs.so.0
-    ln -s libgfchangelog.so.0.0.1 libgfchangelog.so.0
+funSetupGlusterFsByYum(){
+    os_v=$1
+    if [[ $os_v = 'el6' ]]; then
+        cd $root_path/requirePackages/glusterfs_fuse_packages/el6/rpms
+        yum install glusterfs-*-${glusterfs_version}-*.rpm -y
+    elif [[ $os_v = 'el7' ]]; then
+        cd $root_path/requirePackages/glusterfs_fuse_packages/el7/rpms
+        yum install glusterfs-*-${glusterfs_version}-*.rpm -y
+    fi
     cd $root_path
-    funCompareVersion $py_version 2.6
-    py26=$?
-    funCompareVersion $py_version 2.7
-    py27=$?
-    echo "[${hostname}] "$(${curDate})" INFO: setuping libgfapi-python "
-    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
-        funSetupPypi /usr/local/bin/python2.7 libgfapi-python
-    else
-        funSetupPypi /usr/bin/python libgfapi-python
-    fi
 }
 
-funcInitialOs(){
-    echo "[${hostname}] "$(${curDate})" INFO: Create dir /data/work/"
-    mkdir -p /data/work/    
+funcInitialGlusterFS(){
     funCompareVersion $os_version 6.6
     os66=$?
-    #funCompareVersion $os_version 6.7
-    #os67=$?
-    #funCompareVersion $os_version 6.8
-    #os68=$?
     funCompareVersion $os_version 6.9
     os69=$?
     funCompareVersion $os_version 7.0
     os70=$?
     if [[ $os69 -eq 0 ]]; then
-        funSetupLibs libs-6
+        # funSetupLibs libs-6
+        funSetupGlusterFsByYum el6
     elif [[ $os70 -eq 1 ]]; then
-        funSetupLibs libs-7
+        # funSetupLibs libs-7
+        funSetupGlusterFsByYum el7
     fi
+    cd $root_path
 }
 
 funStopProcess(){
@@ -211,15 +188,15 @@ funStartProcess(){
     py27=$?
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
         if [[ $1 == "client" ]]; then
-            /usr/local/bin/python2.7 $root_path/client/start.py start $glfsip $webip
+            /usr/local/bin/python2.7 $root_path/client/main.py start
         else
-            /usr/local/bin/python2.7 $root_path/server/server.py
+            /usr/local/bin/python2.7 $root_path/server/server.py -c /etc/fbmp/server.conf run
         fi
     else
         if [[ $1 == "client" ]]; then
-            /usr/bin/python $root_path/client/start.py start $glfsip $webip
+            /usr/bin/python $root_path/client/main.py start
         else 
-            /usr/bin/python $root_path/server/server.py
+            /usr/bin/python $root_path/server/server.py -c /etc/fbmp/server.conf run
         fi
     fi
 }
@@ -228,23 +205,48 @@ funStartProcess(){
 #       option is the type of program you want to run.
 option=$2
 action=$1
+
+if [ -d ${etc_path} ]; then
+    echo "Project system configure directory is " + ${etc_path}
+else
+    echo "mkdir system configure directory " + ${etc_path}
+    mkdir ${etc_path}
+fi
+
+if [ -d ${log_path} ]; then
+    echo "Project system log directory is " + ${log_path}
+else
+    echo "mkdir system log directory " + ${log_path}
+    mkdir ${log_path}
+fi
+
+if [ -d ${run_path} ]; then
+    echo "Project system runtime file directory is " + ${run_path}
+else
+    echo "mkdir system runtime file directory " + ${run_path}
+    mkdir ${run_path}
+fi
+
+cd $root_path
+
 case "$action" in 
     initial)
-        funPrintInfo
+        # funPrintInfo
         case "$option" in
             -c|--client)
-                funcInitialOs
+                funcInitialGlusterFS
+                funSetupPipyByRequirements client/requirements.txt
                 ;;
             -s|--serverr)
-                funSetupPipyByRequirements
+                funSetupPipyByRequirements server/requirements.txt
                 ;;
             -a|--all)
                 funInitialPy
-                funcInitialOs
-                funSetupPipyByRequirements
+                funcInitialGlusterFS
+                funSetupPipyByRequirements requirements.txt
                 ;;
             -p|--python)
-		funInitialPy
+		        funInitialPy
                 ;;
             *)
                 printf "Usage:\n"
@@ -260,7 +262,7 @@ case "$action" in
     start)
         case "$option" in
             -c|--client)
-                funPrintInfo
+                # funPrintInfo
                 funStartProcess client
                 ;;
             -s|--serverr)
@@ -278,7 +280,7 @@ case "$action" in
     stop)
         case "$option" in
             -c|--client)
-                funPrintInfo
+                # funPrintInfo
                 funStopProcess client
                 ;;
             -s|--serverr)

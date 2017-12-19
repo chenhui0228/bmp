@@ -21,41 +21,41 @@
 
     .
     ├── client  #备份客户端程序目录
-    │   ├── client.conf #客户端配置文件
+    │   ├── client.conf		#客户端配置文件
     │   └── ...
     ├── README.md
-    ├── requirements.txt#项目依赖清单
-    ├── requirePackages #依赖包，包含python相关依赖包和Glusterfs fuse client安装依赖的动态库
+    ├── requirements.txt	#项目依赖清单
+    ├── requirePackages		#依赖包，包含python相关依赖包和Glusterfs fuse client安装依赖的动态库
     │   ├── glusterfs_fuse_packages
-    │   │   ├── el6 #适合Centos6.x版本的依赖，包含rpms依赖和Glusterfs Fuse Client编译出来的动态链接库
+    │   │   ├── el6		#适合Centos6.x版本的依赖，包含rpms依赖和Glusterfs Fuse Client编译出来的动态链接库
     │   │   │   └── rpms
     │   │   │   ├──
     │   │   │   └── ...
-    │   │   └── el7 #适合Centos7.x版本的依赖
+    │   │   └── el7		#适合Centos7.x版本的依赖
     │   │   └── rpms
     │   │   └── ...
-    │   └── pypi#运行软件所需的所有Python依赖
+    │   └── pypi			#运行软件所需的所有Python依赖
     │   └── ...
-    ├── server  #服务端程序，含web server的服务端程序和备份客户端的服务端程序
+    ├── server			#服务端程序，含web server的服务端程序和备份客户端的服务端程序
     │   ├── ...
-    │   ├── etc #配置文件目录
+    │   ├── etc			#配置文件目录
     │   │   ├── logging.conf
     │   │   ├── policy.json
     │   │   └── server.conf
-    │   ├── requirements.txt#服务端依赖清单
+    │   ├── requirements.txt		#服务端依赖清单
     │   ├── ...
-    │   └── web #前端模块
-    │   ├── build   #构建打包配置
+    │   └── web					#前端模块
+    │   ├── build				#构建打包配置
     │   │   └── ...
-    │   ├── config  #构建打包配置
+    │   ├── config				#构建打包配置
     │   │   └── ...
-    │   ├── dist#打包后web项目目录
+    │   ├── dist					#打包后web项目目录
     │   │   ├── index.html
     │   │   └── static
     │   │   └── ...
     │   ├── index.html
-    │   ├── node_modules#web前端项目依赖包
-    │   ├── package.json#web前端项目依赖配置文件
+    │   ├── node_modules			#web前端项目依赖包
+    │   ├── package.json			#web前端项目依赖配置文件
     │   ├── README.md
     │   └── src
     │   ├── api
@@ -67,7 +67,7 @@
 我们默认把解压出来的目录拷贝到/user/local/目录下
 
 	mkdir /usr/local/fbmp
-	cp -r -f fbmp-xxx/* /usr/local/fbmp
+	cp -r -f fbmp-xxx/* /usr/local/fbmp/
 
 ---
 
@@ -108,7 +108,7 @@
 	需要将上述三个配置文件拷贝到系统的/etc目录下,在/etc目录下新建目录/fbmp
 	
 		mkdir /etc/fbmp
-		cp -f /usr/local/fbmp/server/etc/* /etc/fbmp
+		cp -f /usr/local/fbmp/server/etc/* /etc/fbmp/
 	
 	拷贝完之后对/etc/fbmp目录下的配置文件进行修改
 
@@ -198,7 +198,7 @@
 	**3) RESTFul访问权限配置文件policy.json**
 
 		# 各角色对各接口的权限配置表，super user无需进行权限配置，它已经拥有最高的权限，默认super user为root，
-		# 密码可以在第一次启动服务端程序后的日子中获取，第一次登陆后必须修改super user用户密码。
+		# 密码可以在第一次启动服务端程序后的日志中获取，第一次登陆后必须修改super user用户密码。
 		{
 		  # admin角色权限
 		  "admin_role": "role:admin",
@@ -296,15 +296,106 @@
 		/bin/python2.7 /usr/local/fbmp/server/server.py db --sync
 		/bin/python2.7 /usr/local/fbmp/server/server.py role --create-default
 	
-	
+	> <font color=red>**提示：**</font>如果是首次启动服务，会生成默认的超级管理员用户root和随机密码，请从服务日志中获取root初始密码，并首次登陆后进行修改。
 	
 	启动server
 	
 		/bin/python2.7 /usr/local/fbmp/server/server.py -c /etc/fbmp/server.conf run
+
+	
 	
 	停止server时，只需要kill掉进程即可
 
+#### 3. Nginx配置安装 ####
 
+解压目录/usr/local/fbmp/requirePackages/tengine下的tengine-sf.tar.gz包
+
+	cd /usr/local/fbmp/requirePackages/tengine
+	tar zxf tengine-sf.tar.gz
+
+打开解压后的目录
+
+	cd tengine-sf
+
+拷贝tengine到/usr/local目录下
+
+	cp -rf tengine /usr/local/
+
+拷贝tenginesf到/etc/init.d/目录下
+	
+	cp tenginesf /etc/init.d/
+
+创建日志目录
+
+	mkdir /var/log/tenginesf
+
+修改/usr/local/tengine/conf/目录下的配置文件nginx.conf
+
+	...
+	
+	upstream fbmpserver
+	{	
+		# 备份服务端端口默认为9090，如果修改了备份服务端配置文件server.conf的server.socket_port，此处应跟随修改
+	    server 127.0.0.1:9090;	
+	}
+	
+	http {
+
+	    ...
+
+		# 为了方便浏览器访问，默认开启80端口
+	    server {
+	        listen      80;
+	        server_name fbmp;
+			# 重定向到HTTPS服务
+	        return 301 https://$host$request_uri;
+	    }
+	
+	    server {
+			listen  443 ssl default_server;
+			server_name  fbmp;
+			# 配置HTTPS证书，拷贝/usr/local/fbmp/requirePackages/tengine目录下cert.crt和cert.key到/home下
+			ssl_certificate           /home/cert.crt;
+			ssl_certificate_key       /home/cert.key;
+			ssl on;
+		
+			ssl_session_cache  builtin:1000  shared:SSL:10m;
+			ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
+			ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+			ssl_prefer_server_ciphers on;
+		
+			location / {
+				# 配置根目录以及index.html
+				root /usr/local/fbmp/server/web/dist;
+				try_files $uri $uri/ /index.html;
+			}
+		
+			location /backup {
+			    proxy_pass_request_headers on;
+				proxy_set_header    HTTP_AUTHORIZATION $http_authorization;
+				proxy_set_header    Host $host;
+				proxy_pass          fbmpserver;
+			}
+		
+			location /login{
+				proxy_pass_request_headers on;
+				proxy_set_header    REMOTE_ADDR    $remote_addr;
+				proxy_set_header    HTTP_AUTHORIZATION $http_authorization;
+				proxy_set_header    Host $host;
+				proxy_pass          fbmpserver;
+			}
+	    }
+	}
+
+> <font color=red>**提示：**</font>	如果你不清楚配置项具体含义和用处，只需要拷贝/usr/local/fbmp/requirePackages/tengine目录下cert.crt和cert.key到/home下，其他使用默认配置既可
+
+启动tenginesf 
+
+	service  tenginesf  start
+
+停止tenginesf
+
+	service  tenginesf  stop
 
 ### 二、备份客户端备份节点部署安装 ###
 
@@ -332,7 +423,7 @@
 
 	拷贝将解压出的glusterfs到/usr/local目录下
 	
-		cp -rf glusterfs /usr/local
+		cp -rf glusterfs /usr/local/
 	
 	编辑系统profile文件
 	

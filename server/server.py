@@ -97,7 +97,7 @@ def parse_cmdargs(args=None, target=''):
 
     run = subparsers.add_parser('run', help='start server')
     run.add_argument('-p', '--pid-file', dest='pidfile',
-                        default='/var/run/backup.pid',
+                        default='/var/run/fbmp/backup.pid',
                         help='where pid is writen to ')
     run.add_argument('-f', dest='foreground',
                         action="store_true",
