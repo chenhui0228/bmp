@@ -365,7 +365,7 @@ class Listen(threading.Thread):
                 #time.sleep(1)
 
 class Daemon:
-    def __init__( self, pidfile,  mylogger, stdin='/dev/stderr', stdout='/dev/stderr',
+    def __init__(self, pidfile,  mylogger, version, stdin='/dev/stderr', stdout='/dev/stderr',
                   stderr='/dev/stderr' ):
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
@@ -381,7 +381,7 @@ class Daemon:
         self.workpool_size = int(cp.get('client', 'workpool_size')) # 线程池大小
 
         self.immediate_workpool_size = int(cp.get('client', 'immediate_workpool_size'))
-        self.version=cp.get('client', 'version')
+        self.version = version
         self.group = cp.get('client', 'group')
         self.client_port = cp.get('client', 'client_port')
         self.info_l = ""

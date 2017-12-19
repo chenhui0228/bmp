@@ -36,6 +36,13 @@ def create_dir(path):
         except:
             pass
 
+def get_version():
+    file = 'version'
+    openfile = open(file, 'r')
+    version = openfile.readline()
+    openfile.close()
+    return version
+
 if __name__ == '__main__':
     conf_dir='/etc/fbmp/client.conf'
     if not os.path.exists(conf_dir):
@@ -54,19 +61,22 @@ if __name__ == '__main__':
         os.makedirs(log_file_dir)
     log_file_name=log_file_dir+'client.log'
     mylogger = MyLogging(log_level,log_file_name)   # 初始化log
+    version = get_version()
     if not os.path.exists(pid_dir):
         os.mkdir(pid_dir)
     if 'start' == sys.argv[1]:
-        daemon = Daemon(pid_file,  mylogger)
+        daemon = Daemon(pid_file,  mylogger, version)
         daemon.start()
     elif  'restart' == sys.argv[1]:
-        daemon = Daemon(pid_file, mylogger)
+        daemon = Daemon(pid_file, mylogger, version)
         daemon.restart()
     elif 'stop' == sys.argv[1]:
-        daemon = Daemon(pid_file,  mylogger)
+        daemon = Daemon(pid_file,  mylogger, version)
         time.sleep(0.2)
         daemon.stop()
         sys.exit(1)
+    elif 'version' == sys.argv[1]:
+        print version
     else:
         usage_tip = '''
         Usage:
@@ -77,6 +87,10 @@ if __name__ == '__main__':
             stop: stop client
             
             restart: restart client
+
+            version: get client's version
+
+            help: get help info
         '''
         print usage_tip
     sys.exit(0)
