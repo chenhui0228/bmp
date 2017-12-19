@@ -1443,7 +1443,6 @@
             }
 
             reqAddTask(user, para).then((res) => {
-              console.log("reqAdd")
               this.addLoading = false;
               if(res.data.exist && res.data.exist === 'True') {
                 this.$message({
@@ -1774,6 +1773,8 @@
                 this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
                 this.tasks[i].state.message = res.data.tasks[i].state.message;
                 this.tasks.splice(i, {'state.message': res.data.tasks[i].state.message});
+              }else if(res.data.tasks[i].state && !this.tasks[i].state){
+                this.tasks[i].state = res.data.tasks[i].state;
               }
             }
           }
