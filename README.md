@@ -96,7 +96,7 @@
 		chmod +x setup	 #如果已经是可执行文件，此步可不执行
 		./setup initial -p
 
-- **服务Python端依赖安装**
+- **服务端Python依赖安装**
 
 		cd /usr/local/fbmp
 		chmod +x setup	 #如果已经是可执行文件，此步可不执行
@@ -419,14 +419,14 @@
 
 在/usr/local/fbmp/requirePackages/glusterfs_fuse_packages/目录下有el6和el7两个子目录分别是Glusterfs Fuse Client 在Centos-6.x和Centos-7.x系统上运行所需的库。每个目录下都有rpms和libs目录，是为了方便使用YUM安装或者使用动态链接库来安装。我们建议使用动态链接库安装。自动化安装脚本中也使用了动态链接库来安装客户端环境。因为MySql数据库集群目前大多使用了Centos-6.x版本的操作系统，我们也以在Centos-6.x上安装为例进行说明
 
-- 方式一：YUM安装 
+- 方式一：YUM安装(只需要在第一次安装)
 
 	进入/usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/rpms目录，执行安装命令：
 	
 		cd /usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/rpms
 		yum install glusterfs-*.rpm -y
 
-- 方式二：安装动态链接库
+- 方式二：安装动态链接库(只需要在第一次安装)
 
 	解压/usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/libs目录下的sf-glusterfs-xxx-el6.tar.gz
 
@@ -481,13 +481,13 @@
 我们约定使用python版本为2.7，如果当前系统python版本小于2.7，我们将为你安装python-2.7.8。这不会影响你已有python应用的正常使用，且不会替换原来的python版本。
 执行命令如下：
 
-- **Python环境初始化**
+- **Python环境初始化**(只需要在第一次初始化)
 	
 		cd /usr/local/fbmp
 		chmod +x setup	 #如果已经是可执行文件，此步可不执行
 		./setup initial -p
 
-- **服务Python端依赖安装**
+- **客户端Python依赖安装**(只需要在第一次初始化)
 
 		cd /usr/local/fbmp
 		chmod +x setup	 #如果已经是可执行文件，此步可不执行
@@ -497,7 +497,7 @@
 
 #### 2. 客户端服务配置与安装 ####
 
-- **客户端服务配置说明**
+- **客户端服务配置说明**(只需要在第一次配置)
 
 	打开目录/usr/local/fbmp/client
 
