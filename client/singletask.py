@@ -7,7 +7,7 @@ from message import Message
 
 
 class SingleTask():
-    def __init__( self, name, schd, info, q, glusterip,log):
+    def __init__( self, name, schd, info, q, glusterip,log,queue_task_list,workpool_workid_dict):
         # self.logger = logging.getLogger(__name__)
         self.log = log
         ms = Message("tcp")
@@ -25,6 +25,8 @@ class SingleTask():
         self.police = {}
         self.st["date"] = ""
         self.stop = False
+        self.queue_task_list=queue_task_list
+        self.workpool_workid_dict=workpool_workid_dict
 
 
 
@@ -45,7 +47,17 @@ class SingleTask():
             self.log.logger.info(
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             try:
-                self.queue.put([str(self.st), self.sumid], block=True, timeout=7200)
+                put_in_queue = True
+                for workpool_id, task_id in self.workpool_workid_dict.items():
+                    if task_id == self.st['id']:
+                        put_in_queue = False
+                if self.st['id'] in self.queue_task_list:
+                    put_in_queue = False
+                if put_in_queue:
+                    self.queue.put([str(self.st), self.sumid], block=True, timeout=7200)
+                    self.queue_task_list.append(self.st['id'])
+                else:
+                    self.log.logger.warning('%s %s is in doing or in queue'%(self.st['id'],self.st['name']))
             except Exception as e:
                 self.log.logger.error('can put work msg in workerpool queue,%s'%str(e))
 

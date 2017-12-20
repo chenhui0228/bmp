@@ -1,1 +1,4 @@
-apscheduler
+six
+APScheduler
+eventlet
+requests
