@@ -152,6 +152,7 @@
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
               <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: orangered">中断</el-button>
             </span>
+            <span v-else-if="scope.row.task.state == 'end' && scope.row.state.state == 'success'" style="color: green">成功</span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
           </template>
