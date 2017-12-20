@@ -303,7 +303,7 @@
 		    db                  database operation
 
 
-	<font color=red face="黑体" size=4>第一次启动server之前</font>我们需要先初始化数据库，然后初始化用户角色，命令如下：
+	<font color=red size=3>**第一次启动server之前**</font>我们需要先初始化数据库，然后初始化用户角色，命令如下：
 	
 		/bin/python2.7 /usr/local/fbmp/server/server.py db --sync
 		/bin/python2.7 /usr/local/fbmp/server/server.py role --create-default
