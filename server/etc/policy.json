@@ -30,7 +30,6 @@
   "user:update": "rule:default",
   "user:delete": "rule:admin_role",
 
-
   "worker:index": "rule:default",
   "worker:detail": "rule:default",
   "worker:show": "rule:default",
@@ -51,7 +50,6 @@
   "role:create": "rule:admin_role",
   "role:update": "rule:admin_role",
   "role:delete": "rule:admin_role",
-
 
   "volume:index": "rule:default",
   "volume:detail": "rule:default",
@@ -81,6 +79,4 @@
   "tag:update": "rule:default",
   "tag:delete": "rule:default",
   "tag:add": "rule:default"
-
-
 }

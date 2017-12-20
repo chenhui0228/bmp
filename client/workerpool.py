@@ -12,7 +12,7 @@ import  uuid
 
 
 class WorkerPool(threading.Thread):
-    def __init__(self, workq, i,n ,workpool_workid_dict,log):
+    def __init__(self, workq, i,n ,workpool_workid_dict,log,queue_task_list):
         # self.logger = logging.getLogger(__name__)
         threading.Thread.__init__(self)
         self.log = log
@@ -20,6 +20,7 @@ class WorkerPool(threading.Thread):
         self.message=ms
         self.queue = workq
         self.thread_stop = False
+        self.queue_task_list=queue_task_list
        # print "tp to init ", i
         #  self.logger.debug('tp to init: ' + str(i))
         self.work_id = 0
@@ -28,6 +29,7 @@ class WorkerPool(threading.Thread):
         self.allcron=n
         self.workpool_workid_dict = workpool_workid_dict
         self.arglist = {}
+        self.change_tasktable=True
         if self.workpool_workid_dict.has_key(self.name):
             del self.workpool_workid_dict[self.name]
 
@@ -87,6 +89,7 @@ class WorkerPool(threading.Thread):
             self.work_id = self.work_id + 1
             if self.queue.empty():
                 continue
+            task = None
             if not self.queue.empty():
                 try:
 
@@ -105,7 +108,7 @@ class WorkerPool(threading.Thread):
             获取的数据是通过http格式拿到的json 格式数据，通过转换为dicts 后进行处理
             打桩测试的数据也已经转换为json 格式的本地文本
             """
-            if True:
+            if task:
                 task_d = eval(task[0])
                 #print "bay bay", task
                 #print "task_d is:", task_d
@@ -116,6 +119,11 @@ class WorkerPool(threading.Thread):
             """
             建立工作实例，Work 类提供了对glusterfs 的各种操作，此时开始进行读写等操作
             """
+            self.log.logger.info('todo work:%s' % (self.threadID))
+
+
+            self.workpool_workid_dict[self.name] = self.arglist['id']
+            self.queue_task_list.remove(self.arglist['id'])
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if self.name>=self.allcron and self.arglist['state']=='stoped':
@@ -127,26 +135,28 @@ class WorkerPool(threading.Thread):
             if not self.work:
                 self.log.logger.error('work create failed %s'% (self.threadID))
 
-            self.log.logger.info('todo work:%s' % (self.threadID))
-            self.workpool_workid_dict[self.name]=self.arglist['id']
             ret = self.work.start()
             self.queue.task_done()  # 完成一个任务
             if self.arglist['op'] == 'backup' or self.arglist['op'] == 'dump':
-                if self.name>=self.allcron and (self.arglist['state']=='stoped' or self.arglist['state']=='running_s'):
-                    self.send_ta(self.arglist['id'],'stopped')
+                if  self.arglist['state']=='stoped' or self.arglist['state']=='running_s':
+                    if self.change_tasktable:
+                        self.send_ta(self.arglist['id'],'stopped')
                 else:
-                    self.send_ta(self.arglist['id'], 'waiting')
+                    if self.change_tasktable:
+                        self.send_ta(self.arglist['id'], 'waiting')
                 self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
             if self.workpool_workid_dict.has_key(self.name):
                 del self.workpool_workid_dict[self.name]
+            self.change_tasktable=True
             res = self.queue.qsize()  # 判断消息队列大小
             if res > 0:
                 #print("ahua!There are still %d tasks to do" % (res))
                 self.log.logger.warning("There are still %d tasks to do" % (res))
 
-    def stopwork(self):
+    def stopwork(self,change_tasktable=True):
+        self.change_tasktable=change_tasktable
         self.work.stop()
 
 
