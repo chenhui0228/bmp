@@ -67,12 +67,17 @@
               this.logining = false;
               if (err.response.status == 401) {
                 this.$message({
-                  message: "用户名不存在或者密码错误！",
+                  message: "密码错误！",
+                  type: 'error'
+                });
+              } else if (err.response.status == 404) {
+                this.$message({
+                  message: "用户名不存！",
                   type: 'error'
                 });
               } else {
                 this.$message({
-                  message: "请求异常",
+                  message: "请求异常！",
                   type: 'error'
                 });
               }

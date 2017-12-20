@@ -3,7 +3,7 @@
     font-size: 0;
   }
   .table-expand label {
-    width: 90px;
+    width: 100px;
     color: #99a9bf;
   }
   .table-expand .el-form-item {
@@ -115,6 +115,9 @@
               </el-form-item>
               <el-form-item label="更新时间">
                 <span>{{ props.row.task.updated_at | timeStamp2datetime }}</span>
+              </el-form-item>
+              <el-form-item label="首次执行时间">
+                <span>{{ props.row.task.start_time | timeStamp2datetime }}</span>
               </el-form-item>
               <el-form-item label="任务策略" v-if="isBackupTask">
                 <span>{{ props.row.policy.name }}</span>
@@ -348,7 +351,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.source" auto-complete="off"></el-input>
+              <el-input v-model="editForm.source" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -363,7 +366,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.destination" auto-complete="off"></el-input>
+              <el-input v-model="editForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
@@ -444,7 +447,7 @@
           </el-form-item>
           <el-form-item prop="source" label="源">
             <el-col :span="3">
-              <el-select v-model="addForm.source_type" placeholder="请选择类型">
+              <el-select v-model="addForm.source_type" placeholder="请选择类型" @change="handleSourceTypeChange">
                 <el-option
                   v-for="type in sourceTypes"
                   :key="type.value"
@@ -454,7 +457,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.source" auto-complete="off"></el-input>
+              <el-input v-model="addForm.source" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -469,7 +472,9 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.destination" auto-complete="off"></el-input>
+              <el-input v-model="addForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头"
+                        onkeypress="return event.keyCode !== 32">
+              </el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
@@ -573,7 +578,10 @@
             </span>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
-            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"></el-input>
+            <el-input v-model="createRecoverTaskForm.destination" auto-complete="off"
+                      placeholder="请输入目的地址，请以 '/' 开头"
+                      onkeypress="return event.keyCode !== 32">
+            </el-input>
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
@@ -683,6 +691,37 @@
         this.checkStarTimeError = false;
         callback();
       };
+      var validateBackupSourceAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，源地址不能为空'));
+        }else if(this.sourceType === ''){
+          callback(new Error('请选择源地址类型'))
+        }else{
+          callback()
+        }
+      };
+      var validateBackupDestAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，目的地址不能为空'));
+        }else if(this.volumeName === ''){
+          callback(new Error('请选择卷'))
+        }else{
+          callback()
+        }
+      };
+      var validateRecoverDestAddr = (rule, value, callback) => {
+        if (value !== '' && value[0] !== '/') {
+          callback(new Error('输入格式不正确，请以"/"开头'));
+        }else if(value === ''){
+          callback(new Error('输入格式不正确，目的地址不能为空'));
+        }else{
+          callback()
+        }
+      };
       //TODO: data return
       return {
         sysUserName: '',
@@ -708,9 +747,10 @@
           value: '1'
         },
         {
-          label: 'shell脚本',
+          label: 'dump脚本',
           value: '2'
         }],
+        sourceType: '', //选择了哪一个type
         workers:[],
         volumes:[],
         policies:[],
@@ -760,10 +800,10 @@
             {required: true, message: '请选择作业机', trigger: 'blur'}
           ],
           source: [
-            {required: true, message: '源地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateBackupSourceAddr}
           ],
           destination: [
-            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateBackupDestAddr}
           ]
         },
         editForm: {
@@ -790,7 +830,7 @@
             {required: true, message: '请选择作业机'}
           ],
           destination: [
-            {required: true, message: '目的地址不能为空', trigger: 'blur'}
+            {required: true, validator: validateRecoverDestAddr}
           ]
         },
 
@@ -1230,9 +1270,11 @@
         if(row.task.type === 'backup'){
           if(source.search("file:") >= 0){
             row.task.source_type = '1';
+            this.sourceType = '1';
             source = source.replace(/file:\//i,'');
           }else if (source.search("shell:") >= 0){
             row.task.source_type = '2';
+            this.sourceType = '2';
             source = source.replace(/shell:\//i,'');
           }
           var re = new RegExp("glusterfs:\/\/"+volumeName,"i");
@@ -1253,6 +1295,8 @@
       //取消编辑
       cancelEdit: function () {
         this.editFormVisible = false;
+        this.volumeName = '';
+        this.sourceType = '';
         this.$refs['editForm'].resetFields();
         this.getTasks();
       },
@@ -1306,6 +1350,8 @@
                 });
                 this.$refs['editForm'].resetFields();
                 this.editFormVisible = false;
+                this.volumeName = '';
+                this.sourceType = '';
                 this.getTasks();
               });
             });
@@ -1339,6 +1385,8 @@
       //取消提交
       cancelAdd: function () {
         this.addFormVisible = false;
+        this.volumeName = '';
+        this.sourceType = '';
         this.$refs['addForm'].resetFields();
       },
       handleChange: function (value) {
@@ -1350,6 +1398,11 @@
           });
           this.volumeName = volume.name;
 //          this.destination_prefix = this.destination_prefix + this.volumeName;
+        }
+      },
+      handleSourceTypeChange: function (value) {
+        if(typeof(value) !== "undefined"){
+          this.sourceType = value;
         }
       },
       failedMsgbox(row){
@@ -1416,6 +1469,8 @@
               this.$refs['addForm'].resetFields();
               this.addFormVisible = false;
             });
+            this.volumeName = '';
+            this.sourceType = '';
           }
           else{
             this.$message({
@@ -1718,6 +1773,8 @@
                 this.tasks.splice(i, {'state.total_size': res.data.tasks[i].state.total_size});
                 this.tasks[i].state.message = res.data.tasks[i].state.message;
                 this.tasks.splice(i, {'state.message': res.data.tasks[i].state.message});
+              }else if(res.data.tasks[i].state && !this.tasks[i].state){
+                this.tasks[i].state = res.data.tasks[i].state;
               }
             }
           }
