@@ -48,7 +48,7 @@ class SingleTask():
                 "put workerpool time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
             try:
                 put_in_queue = True
-                for workpool_id, task_id in self.workpool_workid_dict:
+                for workpool_id, task_id in self.workpool_workid_dict.items():
                     if task_id == self.st['id']:
                         put_in_queue = False
                 if self.st['id'] in self.queue_task_list:

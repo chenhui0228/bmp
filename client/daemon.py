@@ -72,7 +72,7 @@ class Backup:
             dict['op'] = "backup"
             dict['ip'] = self.glusterip_list
             put_in_queue=True
-            for workpool_id,task_id in self.workpool_workid_dict:
+            for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
@@ -146,7 +146,7 @@ class Recover:
             dict['op'] = "recover"
             dict['ip'] = self.glusterip_list
             put_in_queue=True
-            for workpool_id,task_id in self.workpool_workid_dict:
+            for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
@@ -258,7 +258,7 @@ class Dump:
             dict['op'] = "dump"
             dict['ip'] = self.glusterip_list
             put_in_queue=True
-            for workpool_id,task_id in self.workpool_workid_dict:
+            for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
