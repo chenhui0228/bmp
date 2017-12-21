@@ -88,6 +88,8 @@ class Backup:
         dict = data['data']
         ms = dict['id']
         if self.task_dict.has_key(ms):
+            self.log.logger.warning('the work %s is in client'%ms)
+            send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] =data['type']
         self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
@@ -208,7 +210,7 @@ class Deleted:
         dict['op'] = 'delete'
         dict['state'] = 'deleting'
         dict['ip']=self.glusterip_list
-        if duration != None or vol != None or dir != None:
+        if duration != None or vol != None or dir != None or id != None:
             self.q.put([str(dict), 2], block=True, timeout=None)
             self.queue_task_list.append(dict['id'])
 
@@ -274,6 +276,8 @@ class Dump:
         dict = data['data']
         ms = dict['id']
         if self.task_dict.has_key(ms):
+            self.log.logger.warning('the work %s is in client'%ms)
+            send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] = data['type']
         self.log.logger.info('create a new %s dump work,the id of it is %s' % (do_type, ms))
@@ -310,6 +314,7 @@ class Pause:
                     try:
                         if dict.has_key('stop'):
                             t.stopwork(False)
+
                         else:
                             t.stopwork()
                     except Exception as e:
@@ -317,16 +322,20 @@ class Pause:
                     break
 
 class Pauseall:
-    def __init__(self,log,tp ,workpool_workid_dict,client):
+    def __init__(self,log,tp ,workpool_workid_dict,client,task_update):
         self.log=log
         self.tp=tp
         self.workpool_workid_dict=workpool_workid_dict
         self.client=client
+        self.task_update=task_update
 
     def __call__(self, message_dict):
+        self.task_update.client_stop=True
+        self.client.backup_and_dump_queue.queue.clear()
+        self.client.recover_and_workimmediately_queue.queue.clear()
         self.pauseall()
         self.log.logger.info('pause all work')
-        time.sleep(3)
+        time.sleep(10)
         self.client.stopclient()
 
     def pauseall(self):
@@ -336,7 +345,7 @@ class Pauseall:
                     t.stopwork()
                 except Exception as e:
                     self.log.logger.error(e.message)
-                break
+                    break
 
 class First:
     def __init__(self,log):
@@ -365,6 +374,7 @@ class Task_Undate:
         self.group=client.group
         self.task_sum=0
         self.scheduler = BackgroundScheduler()
+        self.client_stop=False
         self.command_initialization()
 
     def periodic_deletion(self):
@@ -381,7 +391,7 @@ class Task_Undate:
         dump=Dump(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler,self.queue_task_list,self.workpool_workid_dict)
         keepalive=Keepalive(self.log,self.message,self.ip,self.hostname,self.version,self.group)
         pause=Pause(self.log,self.tp,self.workpool_workid_dict)
-        pauseall=Pauseall(self.log,self.tp,self.workpool_workid_dict,self.client)
+        pauseall=Pauseall(self.log,self.tp,self.workpool_workid_dict,self.client,self)
         first=First(self.log)
         self.command_dict['backup'] = backup
         self.command_dict['update'] = update
@@ -400,7 +410,8 @@ class Task_Undate:
             self.log.logger.error('the message %s is incomplete')
             return
         else:
-            self.command_dict[type](message_dict)
+            if not self.client_stop:
+                self.command_dict[type](message_dict)
 
 class Listen(threading.Thread):
     def __init__(self,message,log,task_update):
@@ -534,7 +545,7 @@ class Daemon:
         info['data']=data
         info['addr']=addr
         self.message.issued(info)
-        time.sleep(5)
+        time.sleep(10)
         try:
             # self.message.closeall()
             pf = file(self.pidfile, 'r')
@@ -547,7 +558,7 @@ class Daemon:
             while 1:
                 os.kill(pid, SIGTERM)
                 time.sleep(0.1)
-        except OSError as err:
+        except Exception as err:
             err = str(err)
             if err.find('No such process') > 0:
                 if os.path.exists(self.pidfile):

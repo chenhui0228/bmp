@@ -75,6 +75,9 @@ class UDPServer(BaseRequestHandler):
                 self.request[1].sendto(response, self.client_address)
                 self.finish()
 
+class MyThreadingTCPServer(ThreadingTCPServer):
+    allow_reuse_address = True
+    pass
 
 class Message:
     def __init__(self, ms_type):
@@ -114,7 +117,7 @@ class Message:
         # init server:
         if self.ms_type == "tcp":
             try:
-                self.tcpserver = ThreadingTCPServer(ADDR, TCPServer)
+                self.tcpserver = MyThreadingTCPServer(ADDR, TCPServer)
                 # init client:
                 # self.updclient =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
