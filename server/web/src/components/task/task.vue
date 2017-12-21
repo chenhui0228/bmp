@@ -162,7 +162,7 @@
           width="150rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
-              <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" >正在dump...</span>
+              <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && (scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s')" >正在dump...</span>
               <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end')
               && scope.row.state.process !== '200' && scope.row.state.state !== 'failed' && scope.row.state.state !== 'aborted'" :percentage="parseInt(scope.row.state.process)"></el-progress>
             </span>
@@ -213,7 +213,7 @@
               </svg>
             </el-tooltip>
             <el-tooltip content="停止" placement="top"
-                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask">
+                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
