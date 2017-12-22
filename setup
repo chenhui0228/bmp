@@ -12,7 +12,7 @@ logDate=$(date +%Y%m%d)
 curDate="date +%Y-%m-%d%t%H:%M:%S"
 
 project_name='fbmp'
-glusterfs_version='3.10.8'
+glusterfs_version='3.10.8-1'
 
 # system path
 etc_path='/etc/'${project_name}
@@ -55,21 +55,36 @@ function version_le() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" 
 function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
 function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; }
 
+
+funCheckToolsFromRepos(){
+    yum list | grep '^'$1 > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo install $1
+        yum install $1 -y
+    else
+        echo $1 ... yes
+    fi
+}
+
 #check pip
 funCheckpip(){
-    pip > /dev/null 2>&1
+    pip -V | grep -o 9.0.1 > /dev/null 2>&1
     if [[ "$?" != "0" ]]; then
-        echo "[${hostname}] "$(${curDate})" INFO: pip is not setuped"
-        echo "[${hostname}] "$(${curDate})" INFO: setuping pip..."
-        cnt=$(find /usr/lib* -name site-packages | wc -l)
-        if [[ $cnt -ge 2 ]]; then
-            funSetupPypi $1 pip-9.0.1
-        else
-            echo "[${hostname}] "$(${curDate})" INFO: Not found setuptools, setup it first..."
-            funSetupPypi $1 setuptools-23.1.0
-            funSetupPypi $1 pip-9.0.1
-        fi
+        echo "[${hostname}] "$(${curDate})" INFO: pip is not found or must update"
+        echo "[${hostname}] "$(${curDate})" INFO: setuping(updateing) setuptools, pip..."
+        funSetupPypi $1 setuptools-23.1.0
+        funSetupPypi $1 pip-9.0.1
+    else
+        echo pip-9.0.1 ... yes
     fi
+    echo "check python devel env..."
+    funCheckToolsFromRepos gcc
+    funCheckToolsFromRepos python-devel
+    #funCheckDevel libevent-devel
+    #funCheckToolsFromRepos libffi-devel
+    funCheckToolsFromRepos zlib-devel
+    funCheckToolsFromRepos openssl-devel
 }
 
 funSetupPypi(){
@@ -79,13 +94,26 @@ funSetupPypi(){
     $1 setup.py install
     if [[ "$?" != "0" ]]; then
         echo "[${hostname}] "$(${curDate})" ERROR: setup $2 failed"
-        exit 1
+        exit -1
     else
         echo "[${hostname}] "$(${curDate})" INFO: setup $2 success"
     fi
     cd ../
     rm -rf $2
     cd $root_path
+}
+
+funCheckPython(){
+    if [[ $1 == "py27" ]]; then
+        /usr/local/bin/python2.7 -V > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo python2.7.8 ... no
+            echo install python2.7.8
+            funSetupPy27
+        else
+            echo python2.7.8 ... yes
+        fi
+    fi
 }
 
 funSetupPy27(){
@@ -107,10 +135,12 @@ funSetupPy27(){
 funSetupPy(){
     case $1 in
         py27)
-            funSetupPy27
+            funCheckPython py27
+            echo you must use /usr/local/bin/python2.7 to run all python programes "in" fbmp project .
             ;;
         pyLib)
             funCheckpip /usr/bin/python
+            echo you must use /usr/bin/python to run all python programes "in" fbmp project.
             ;;
     esac
 }
@@ -122,14 +152,15 @@ funInitialPy(){
     py27=$?
     
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        echo system python version is lower "then" 2.7
         funSetupPy py27
     else
+        echo system python version is 2.7.x
         funSetupPy pyLib
     fi
 }
 
 funSetupPipyByRequirements(){
-    requirements_paht=$1
     cd $root_path
     funCompareVersion $py_version 2.6
     py26=$?
@@ -147,10 +178,12 @@ funSetupGlusterFsByYum(){
     os_v=$1
     if [[ $os_v = 'el6' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el6/rpms
-        yum install glusterfs-*${glusterfs_version}*.rpm -y
+        funCheckGlusterfs
+        #yum install glusterfs-*${glusterfs_version}*.rpm -y
     elif [[ $os_v = 'el7' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el7/rpms
-        yum install glusterfs-*${glusterfs_version}*.rpm -y
+        funCheckGlusterfs
+        #yum install glusterfs-*${glusterfs_version}*.rpm -y
     fi
     cd $root_path
 }
@@ -186,6 +219,7 @@ funStartProcess(){
     py26=$?
     funCompareVersion $py_version 2.7
     py27=$?
+
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
         if [[ $1 == "client" ]]; then
             /usr/local/bin/python2.7 $root_path/client/main.py start
@@ -195,10 +229,31 @@ funStartProcess(){
     else
         if [[ $1 == "client" ]]; then
             /usr/bin/python $root_path/client/main.py start
-        else 
+        else
             /usr/bin/python $root_path/server/server.py -c /etc/fbmp/server.conf run
         fi
     fi
+}
+
+funCheckGlusterFsAndInstallFromLocal(){
+    rpm -qa | grep $1"-"$glusterfs_version".el6.x86_64" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo install $1 ...
+        rpm -ivh --nodeps $1"-"$glusterfs_version"*" > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            echo install $1 ... ok
+        fi
+    else
+        echo $1 ... yes
+    fi
+}
+
+funCheckGlusterfs(){
+    funCheckGlusterFsAndInstallFromLocal glusterfs
+    funCheckGlusterFsAndInstallFromLocal glusterfs-libs
+    funCheckGlusterFsAndInstallFromLocal glusterfs-client-xlators
+    funCheckGlusterFsAndInstallFromLocal glusterfs-fuse
 }
 
 # TODO: Command start, receive two paramenters. $1 is action(eg:initial,start,stop) that is what are you doing; $2 is \
