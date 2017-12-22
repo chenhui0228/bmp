@@ -457,7 +457,7 @@ class Daemon:
         self.group = cp.get('client', 'group')
         self.client_port = cp.get('client', 'client_port')
         self.info_l = ""
-        self.glusterip_list = cp.get('client', 'glusterip').split()
+        self.glusterip_list = cp.get('client', 'gluster_ip').split()
         self.task_list = {}
         self.work_list=[]
         self.message = Message("tcp")

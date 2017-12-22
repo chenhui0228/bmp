@@ -84,7 +84,7 @@ class Message:
         global q
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
-        server_ip = cp.get('server', 'ip')
+        server_ip = cp.get('server', 'server_ip')
         server_port = cp.get('server', 'server_port')
         client_port = cp.get('client', 'client_port')
         # self.locahost=socket.gethostname
