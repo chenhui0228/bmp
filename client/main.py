@@ -67,6 +67,9 @@ if __name__ == '__main__':
     if 'start' == sys.argv[1]:
         daemon = Daemon(pid_file,  mylogger, version)
         daemon.start()
+    elif  'restart' == sys.argv[1]:
+        daemon = Daemon(pid_file, mylogger, version)
+        daemon.restart()
     elif 'stop' == sys.argv[1]:
         daemon = Daemon(pid_file,  mylogger, version)
         time.sleep(0.2)
@@ -82,6 +85,8 @@ if __name__ == '__main__':
             start:start client
                         
             stop: stop client
+            
+            restart: restart client
 
             version: get client's version
 
