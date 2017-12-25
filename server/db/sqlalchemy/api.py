@@ -183,9 +183,9 @@ class API(object):
             query = query.options(
                 joinedload(models.Task.policy),
                 joinedload(models.Task.worker),
-                joinedload(models.Task.states),
                 joinedload(models.Task.user)
             )
+
 
         query = query.filter(models.Task.type == type)
 
@@ -859,6 +859,20 @@ class API(object):
         if not state:
             logger.error('state not found for id %s'%id)
             raise NotFound('state not found for id %s'%id)
+        return state
+
+
+    def bk_get_latest(self, task_id, session=None, **kwargs):
+        if not session:
+            session = self.db.get_session()
+        query = model_query(session, models.BackupState)
+        query = query.filter(models.BackupState.task_id == task_id)
+        if 'deleted' not in kwargs:
+            query = query.filter(models.BackupState.deleted == 'False')
+        sort_key = kwargs.get('sort_key', 'updated_at')
+        sort_dir = kwargs.get('sort_dir', 'desc')
+        query = Database.sort(models.BackupState, query, sort_key, sort_dir)
+        state = query.first()
         return state
 
     def bk_update(self, context, bk_values, session=None):
