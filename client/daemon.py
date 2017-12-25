@@ -125,7 +125,7 @@ class Update:
                 new_task.start(dict['run_sub'])
                 self.task_dict[ms] = new_task
                 self.task_sum = self.task_sum + 1
-                send_server(self.message,self.log, 'state', id=dict['id'], state='waiting')
+                #send_server(self.message,self.log, 'state', id=dict['id'], state='waiting')
             except:
                 pass
         else:
@@ -335,7 +335,8 @@ class Pauseall:
         self.client.recover_and_workimmediately_queue.queue.clear()
         self.pauseall()
         self.log.logger.info('pause all work')
-        time.sleep(10)
+        while len(self.workpool_workid_dict) !=0:
+            time.sleep(1)
         self.client.stopclient()
 
     def pauseall(self):
@@ -457,10 +458,12 @@ class Daemon:
         self.group = cp.get('client', 'group')
         self.client_port = cp.get('client', 'client_port')
         self.info_l = ""
-        self.glusterip_list = cp.get('client', 'gluster_ip').split()
+        self.glusterip_list = cp.get('client', 'glusterip').split()
+        self.work_dir=cp.get('client','work_dir')
         self.task_list = {}
         self.work_list=[]
-        self.message = Message("tcp")
+        self.message = Message("tcp",self.log)
+        self.umount_dir()
         self.tp = []
         self.hostname = str(socket.gethostname())
         self.ip = socket.gethostbyname(self.hostname)
@@ -545,29 +548,6 @@ class Daemon:
         info['data']=data
         info['addr']=addr
         self.message.issued(info)
-        time.sleep(10)
-        try:
-            # self.message.closeall()
-            pf = file(self.pidfile, 'r')
-            pid = int(pf.read().strip())
-            pf.close()
-        except IOError:
-            pid = None
-
-        try:
-            while 1:
-                os.kill(pid, SIGTERM)
-                time.sleep(0.1)
-        except Exception as err:
-            err = str(err)
-            if err.find('No such process') > 0:
-                if os.path.exists(self.pidfile):
-                    os.remove(self.pidfile)
-            else:
-                message = 'stop client'
-                sys.stderr.write(message)
-                # print str(err)
-                sys.exit(1)
 
     def stopclient( self ):
         # 从pid文件中获取pid
@@ -636,6 +616,26 @@ class Daemon:
         self.t.start()
 
 
+    def umount_dir(self):
+        fp = open('/proc/mounts', 'r')
+        lines = fp.readlines()
+        for line in lines:
+            list = line.split()
+            try:
+                dir = list[1]
+                leng=len(self.work_dir)
+                if leng>=1:
+                    if dir[0:leng] == self.work_dir:
+                        cmd = 'umount %s' % dir
+                        ret = os.system(cmd)
+                        if ret != 0:
+                            self.log.logger.error('umount work_dir failed ')
+            except Exception ,e:
+                print e
+                self.log.logger.error(e)
+                self.stopclient()
+
+
     """
     守护进程主体：
     启动timer，此timer 主要更新备份周期的功能
@@ -648,9 +648,15 @@ class Daemon:
         self.hostname = socket.gethostname()
         os.system("ulimit -n " + "65535")
         self.log.logger.debug("To start  listen:")
+
         try:
-            self.message.start_server()
+            ret=self.message.start_server()
+            if ret!=0:
+                sys.stderr.write('client message start error\n')
+                self.log.logger.error('client message start error')
+                self.stopclient()
         except:
+            sys.stderr.write('client message start error\n')
             self.log.logger.error('client message start error')
             self.stopclient()
         self.log.logger.debug("to start timer:")

@@ -16,7 +16,7 @@ class WorkerPool(threading.Thread):
         # self.logger = logging.getLogger(__name__)
         threading.Thread.__init__(self)
         self.log = log
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
         self.queue = workq
         self.thread_stop = False
@@ -171,7 +171,7 @@ class Delete:
         self.ip = kwargs.get('ip')
         self.name=kwargs.get('name')
         self.id=kwargs.get('id')
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
 
     def send_bk(self,sub,**kwargs):

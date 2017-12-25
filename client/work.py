@@ -17,7 +17,7 @@ class Work():
         self.log =log
         self.proclen=0
         self.proctotal=0
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
         self.sendpro=0
         #print "to init arglist"

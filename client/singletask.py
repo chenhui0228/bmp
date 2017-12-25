@@ -10,7 +10,7 @@ class SingleTask():
     def __init__( self, name, schd, info, q, glusterip,log,queue_task_list,workpool_workid_dict):
         # self.logger = logging.getLogger(__name__)
         self.log = log
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
         self.info = info
         self.name = name
