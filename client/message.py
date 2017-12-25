@@ -80,11 +80,11 @@ class MyThreadingTCPServer(ThreadingTCPServer):
     pass
 
 class Message:
-    def __init__(self, ms_type):
+    def __init__(self, ms_type,log):
         global q
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
-        server_ip = cp.get('server', 'ip')
+        server_ip = cp.get('server', 'server_ip')
         server_port = cp.get('server', 'server_port')
         client_port = cp.get('client', 'client_port')
         # self.locahost=socket.gethostname
@@ -103,7 +103,7 @@ class Message:
         self.tcpclient = ''
         self.server_thread = []
         self.q = q
-        #self.log =mylogger
+        self.log =log
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
@@ -125,8 +125,8 @@ class Message:
                 server_thread.start()
                 self.server_thread.append(server_thread)
             except Exception as e:
-                #self.log.logger.error('start TCP listen server failed %s'%e)
-                pass
+                self.log.logger.error('start TCP listen server failed %s'%e)
+
         # start server
         self.send_status = "start"
         # self.udpserver.serve_forever()
@@ -145,15 +145,15 @@ class Message:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     self.tcpclient.sendto(info['data'], address)
                 except Exception as e:
-                    #self.log.logger.error('UDP send failed %s'%e)
-                    return e
+                    self.log.logger.error('UDP send failed %s'%e)
+
             else:
                 #print "error:data or address not exist ?"
-                #self.log.logger.error("error:data or address not exist!")
+                self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
             #print "error:data or address not exist ?"
-            #self.log.logger.error("error:data or address not exist!")
+            self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
 
@@ -176,30 +176,32 @@ class Message:
                     #print server_reply
                     self.tcpclient.close()
                 except Exception as e:
-                    #self.log.logger.error('UDP send failed %s' % e)
+                    self.log.logger.error('UDP send failed %s' % e)
                     return e
             else:
                 #print "error:data or address not exist ?"
-                #self.log.logger.error("error:data or address not exist!")
+                self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
             #print "error:data or address not exist ?"
-            #self.log.logger.error("error:data or address not exist!")
+            self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
 
     def issued(self,info):    # server发给client
+        ret=None
         if self.ms_type == "tcp":
             ret=self.tcpsend(info)
-        if self.ms_type == "udp":
+        elif self.ms_type == "udp":
             ret=self.udpsend(info)
         return ret
 
     def send(self, data):       # client发给server
+        ret=None
+        info = {}
+        info['data'] = str(data)
+        info['addr'] = (self.send_ip, self.server_port)
         if self.ms_type == "tcp":
-            info={}
-            info['data']=str(data)
-            info['addr']=(self.send_ip,self.server_port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)
