@@ -642,7 +642,7 @@ class API(object):
                 raise Duplicated
             except NotFound:
                 pass
-        filter = ('start_at', 'deleted', 'deleted_at','created_at', 'updated_at')
+        filter = ('deleted', 'deleted_at','created_at', 'updated_at')
         params = worker.generate_param(filter)
         for k, v in params.items():
             if values.get(k):
