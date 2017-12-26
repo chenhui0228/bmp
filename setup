@@ -18,6 +18,7 @@ glusterfs_version='3.10.8-1'
 etc_path='/etc/'${project_name}
 log_path='/var/log/'${project_name}
 run_path='/var/run/'${project_name}
+project_path='/usr/local/'${project_name}
 server_conf_path=${etc_path}server.conf
 client_conf_path=${etc_path}client.conf
 
@@ -145,6 +146,61 @@ funSetupPy(){
     esac
 }
 
+funCheckGlusterFsEnv(){
+    rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo please install $1"-"$glusterfs_version".$2.x86_64" user command "./setup install -c"
+        exit -1
+    else
+        echo $1 ... yes
+    fi
+}
+
+funChecckEnv(){
+    # check python
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        /usr/local/bin/python2.7 -V > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo python2.7.8 ... no
+            echo please install python2.7.8 user command "./setup install -c"
+            exit -1
+        else
+            echo python2.7.8 ... yes
+        fi
+    else
+        echo 2.7.x ... yes
+    fi
+
+    # check glusterfs
+    funCompareVersion $os_version 6.6
+    os66=$?
+    funCompareVersion $os_version 6.9
+    os69=$?
+    funCompareVersion $os_version 7.0
+    os70=$?
+    if [[ $os69 -eq 0 ]]; then
+        # funSetupLibs libs-6
+        funCheckGlusterFsEnv glusterfs el6
+        funCheckGlusterFsEnv glusterfs-libs el6
+        funCheckGlusterFsEnv glusterfs-client-xlators el6
+        funCheckGlusterFsEnv glusterfs-fuse el6
+    elif [[ $os70 -eq 1 ]]; then
+        # funSetupLibs libs-7
+        funCheckGlusterFsEnv glusterfs el7
+        funCheckGlusterFsEnv glusterfs-libs el7
+        funCheckGlusterFsEnv glusterfs-client-xlators el7
+        funCheckGlusterFsEnv glusterfs-fuse el7
+    fi
+
+    # check pip
+    funSetupPipyByRequirements client/requirements.txt
+}
+
 funInitialPy(){
     funCompareVersion $py_version 2.6
     py26=$?
@@ -178,11 +234,11 @@ funSetupGlusterFsByYum(){
     os_v=$1
     if [[ $os_v = 'el6' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el6/rpms
-        funCheckGlusterfs
+        funCheckGlusterfs el6
         #yum install glusterfs-*${glusterfs_version}*.rpm -y
     elif [[ $os_v = 'el7' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el7/rpms
-        funCheckGlusterfs
+        funCheckGlusterfs el7
         #yum install glusterfs-*${glusterfs_version}*.rpm -y
     fi
     cd $root_path
@@ -206,8 +262,16 @@ funcInitialGlusterFS(){
 }
 
 funStopProcess(){
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
     if [[ $1 == "client" ]]; then
-        kill -9 `cat $client_pid`
+        if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+            /usr/local/bin/python2.7 $project_path/client/main.py stop
+        else
+            /usr/bin/python $project_path/client/main.py stop
+        fi
     elif [[ $1 == "server" ]]; then
         kill -9 `cat $server_pid`
     fi
@@ -236,7 +300,7 @@ funStartProcess(){
 }
 
 funCheckGlusterFsAndInstallFromLocal(){
-    rpm -qa | grep $1"-"$glusterfs_version".el6.x86_64" > /dev/null 2>&1
+    rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo $1 ... no
         echo install $1 ...
@@ -250,10 +314,16 @@ funCheckGlusterFsAndInstallFromLocal(){
 }
 
 funCheckGlusterfs(){
-    funCheckGlusterFsAndInstallFromLocal glusterfs
-    funCheckGlusterFsAndInstallFromLocal glusterfs-libs
-    funCheckGlusterFsAndInstallFromLocal glusterfs-client-xlators
-    funCheckGlusterFsAndInstallFromLocal glusterfs-fuse
+    funCheckGlusterFsAndInstallFromLocal glusterfs $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-libs $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-client-xlators $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-fuse $1
+}
+
+funVersionUpgrade(){
+    # 1.stop service
+    funStopProcess $1
+    rm -rf ${project_path}/*
 }
 
 # TODO: Command start, receive two paramenters. $1 is action(eg:initial,start,stop) that is what are you doing; $2 is \
@@ -289,6 +359,7 @@ case "$action" in
         fi
         case "$option" in
             -c|--client)
+                funInitialPy
                 funcInitialGlusterFS
                 funSetupPipyByRequirements client/requirements.txt
                 ;;
@@ -301,7 +372,7 @@ case "$action" in
                 funSetupPipyByRequirements requirements.txt
                 ;;
             -p|--python)
-	        funInitialPy
+	            funInitialPy
                 ;;
             *)
                 printf "Usage:\n"
@@ -313,6 +384,9 @@ case "$action" in
                 printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
                 ;;
         esac
+        ;;
+    check)
+        funChecckEnv
         ;;
     start)
         case "$option" in
@@ -357,6 +431,7 @@ case "$action" in
         printf "%-20s %-50s\n" "  initial" "Runtime environment initialization."
         printf "%-20s %-50s\n" "  start" "Startup Programs."
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
+        printf "%-20s %-50s\n" "  check" "check the server runtime env, you do not set options"
         printf "Initial Options:\n"
         printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
         printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
