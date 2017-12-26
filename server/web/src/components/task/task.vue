@@ -45,25 +45,32 @@
   .transfer-dialog-body {
     margin: -30px 0px;
   }
-  .on_round {
-    width:12px;
-    height:12px;
-    background-color: green;
-    border-radius: 6px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
-    -moz-border-radius: 6px; /* Mozilla浏览器的私有属性 */
-    -webkit-border-radius: 6px; /* Webkit浏览器的私有属性 */
+  .worker_on_round {
+    width:10px;
+    height:10px;
+    background-color: #98F898;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
     line-height: 100%;
-    margin: 6px 0px;
+    margin: 7px 10px 0px 2px;
+    float: right;
   }
-  .off_round {
-    width:12px;
-    height:12px;
-    background-color: red;
-    border-radius: 6px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
-    -moz-border-radius: 6px; /* Mozilla浏览器的私有属性 */
-    -webkit-border-radius: 6px; /* Webkit浏览器的私有属性 */
+  .worker_off_round {
+    width:10px;
+    height:10px;
+    background-color: #FF4500;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
     line-height: 100%;
-    margin: 6px 0px;
+    margin: 7px 10px 0px 2px;
+    float: right;
+  }
+  .worker_name_overflow {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
 </style>
@@ -162,21 +169,23 @@
         </el-table-column>
         <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" sortable width="180rem">
         </el-table-column>
-        <el-table-column prop="worker.name" label="作业机" sortable width="200rem" show-overflow-tooltip>
+        <el-table-column prop="worker.name" label="作业机" sortable width="180rem" show-overflow-tooltip>
           <template slot-scope="scope">
             <el-row>
-              <el-col :span="20">
+              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15">
+                <div slot="content">{{ scope.row.worker.name }}</div>
+                <el-col :span="20" class="worker_name_overflow">
+                  {{ scope.row.worker.name }}
+                </el-col>
+              </el-tooltip>
+              <el-col :span="20" v-else>
                 {{ scope.row.worker.name }}
               </el-col>
               <span v-if="scope.row.worker.status == 'Offline'">
-                <el-col :span="4">
-                  <div class="off_round"></div>
-                </el-col>
+                <div class="worker_off_round"></div>
               </span>
               <span v-if="scope.row.worker.status == 'Active'">
-                <el-col :span="4">
-                  <div class="on_round"></div>
-                </el-col>
+                <div class="worker_on_round"></div>
                 <!--{{ scope.row.worker.status }}-->
               </span>
             </el-row>

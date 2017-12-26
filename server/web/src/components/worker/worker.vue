@@ -588,22 +588,22 @@
     width: 35%
   }
   .on_round {
-    width:12px;
-    height:12px;
-    background-color: green;
-    border-radius: 6px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
-    -moz-border-radius: 6px; /* Mozilla浏览器的私有属性 */
-    -webkit-border-radius: 6px; /* Webkit浏览器的私有属性 */
+    width:10px;
+    height:10px;
+    background-color: #98F898;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
     line-height: 100%;
     margin: 6px 0px;
   }
   .off_round {
-    width:12px;
-    height:12px;
-    background-color: red;
-    border-radius: 6px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
-    -moz-border-radius: 6px; /* Mozilla浏览器的私有属性 */
-    -webkit-border-radius: 6px; /* Webkit浏览器的私有属性 */
+    width:10px;
+    height:10px;
+    background-color: #FF4500;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
     line-height: 100%;
     margin: 6px 0px;
   }
