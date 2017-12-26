@@ -594,7 +594,7 @@ class API(object):
         if not context['is_superuser']:
             group_id = context['group_id']
         else:
-            group_id = group_id if group_id else 'supergroup'
+            group_id = group_id
         worker = self._get_worker(session, name=worker_name,
                                   group_id=group_id,
                                   group_name=group_name,
