@@ -429,6 +429,8 @@ class API(object):
 
     def get_policy(self, context, id, session=None, with_tasks=False, group_id=None):
         logger.info('trying to get a policy %s'%id)
+        if not session:
+            session = self.db.get_session()
         policy = self._get_policy(session, id=id, with_user=True,
                                   with_tasks=with_tasks, group_id=group_id)
         if not policy:
@@ -437,6 +439,8 @@ class API(object):
         return policy
 
     def get_policy_by_name(self, context,  name, group_id=None, session=None, deleted=False):
+        if not session:
+            session = self.db.get_session()
         if not context['is_superuser']:
             group_id = context['group_id']
         else:
@@ -876,6 +880,7 @@ class API(object):
         sort_key = kwargs.get('sort_key', 'updated_at')
         sort_dir = kwargs.get('sort_dir', 'desc')
         query = Database.sort(models.BackupState, query, sort_key, sort_dir)
+        query = query.limit(1)
         state = query.first()
         return state
 
