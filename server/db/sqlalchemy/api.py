@@ -510,6 +510,7 @@ class API(object):
         name = kwargs.get('name', 'unkown')
         name_like = kwargs.get('name_like')
         group_id = kwargs.get('group_id')
+        ip = kwargs.get('ip')
         query = model_query(session, models.Worker)
 
         query = Database.sort(models.Worker, query, sort_key, sort_dir)
@@ -525,6 +526,9 @@ class API(object):
         if name_like:
             like_str = '%{0}%'.format(name_like)
             query = query.filter(models.Worker.name.like(like_str))
+
+        if ip:
+            query = query.filter(models.Worker.ip == ip)
 
         total = query.count()
         if limit:
