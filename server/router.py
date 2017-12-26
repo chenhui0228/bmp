@@ -182,27 +182,28 @@ class TasksController(Controller):
             result.append(p.to_dict())
         return {'total': total, 'tasks': result}
 
+
     @Controller.authorize
     @json_out
     def detail(self, action_args):
         logger.info('list tasks with detail ')
         logger.debug('action_args :  %s'% action_args)
-        tasks, total=  self.db.get_tasks_all(**action_args)
+        tasks, total = self.db.get_tasks_all(**action_args)
         result = list()
 
         for t in tasks:
             task = {}
             policy = t.policy
             worker = t.worker
-            states = t.states
             user = t.user
             task['task'] = t.to_dict()
             if policy:
                 task['policy'] = policy.to_dict()
             if worker:
                 task['worker'] = worker.to_dict()
-            if states:
-                task['state'] = states[0].to_dict()
+            state = self.db.bk_get_latest(t.id)
+            if state:
+                task['state'] = state.to_dict()
             if user:
                 task['user'] = user.name
             result.append(task)

@@ -183,9 +183,9 @@ class API(object):
             query = query.options(
                 joinedload(models.Task.policy),
                 joinedload(models.Task.worker),
-                joinedload(models.Task.states),
                 joinedload(models.Task.user)
             )
+
 
         query = query.filter(models.Task.type == type)
 
@@ -429,6 +429,8 @@ class API(object):
 
     def get_policy(self, context, id, session=None, with_tasks=False, group_id=None):
         logger.info('trying to get a policy %s'%id)
+        if not session:
+            session = self.db.get_session()
         policy = self._get_policy(session, id=id, with_user=True,
                                   with_tasks=with_tasks, group_id=group_id)
         if not policy:
@@ -437,6 +439,8 @@ class API(object):
         return policy
 
     def get_policy_by_name(self, context,  name, group_id=None, session=None, deleted=False):
+        if not session:
+            session = self.db.get_session()
         if not context['is_superuser']:
             group_id = context['group_id']
         else:
@@ -510,6 +514,7 @@ class API(object):
         name = kwargs.get('name', 'unkown')
         name_like = kwargs.get('name_like')
         group_id = kwargs.get('group_id')
+        ip = kwargs.get('ip')
         query = model_query(session, models.Worker)
 
         query = Database.sort(models.Worker, query, sort_key, sort_dir)
@@ -525,6 +530,9 @@ class API(object):
         if name_like:
             like_str = '%{0}%'.format(name_like)
             query = query.filter(models.Worker.name.like(like_str))
+
+        if ip:
+            query = query.filter(models.Worker.ip == ip)
 
         total = query.count()
         if limit:
@@ -859,6 +867,21 @@ class API(object):
         if not state:
             logger.error('state not found for id %s'%id)
             raise NotFound('state not found for id %s'%id)
+        return state
+
+
+    def bk_get_latest(self, task_id, session=None, **kwargs):
+        if not session:
+            session = self.db.get_session()
+        query = model_query(session, models.BackupState)
+        query = query.filter(models.BackupState.task_id == task_id)
+        if 'deleted' not in kwargs:
+            query = query.filter(models.BackupState.deleted == 'False')
+        sort_key = kwargs.get('sort_key', 'updated_at')
+        sort_dir = kwargs.get('sort_dir', 'desc')
+        query = Database.sort(models.BackupState, query, sort_key, sort_dir)
+        query = query.limit(1)
+        state = query.first()
         return state
 
     def bk_update(self, context, bk_values, session=None):

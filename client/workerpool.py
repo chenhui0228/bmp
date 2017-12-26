@@ -16,7 +16,7 @@ class WorkerPool(threading.Thread):
         # self.logger = logging.getLogger(__name__)
         threading.Thread.__init__(self)
         self.log = log
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
         self.queue = workq
         self.thread_stop = False
@@ -126,7 +126,7 @@ class WorkerPool(threading.Thread):
             self.queue_task_list.remove(self.arglist['id'])
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
-            if self.name>=self.allcron and self.arglist['state']=='stoped':
+            if  self.arglist['state']=='stopped':
                 self.send_ta(self.arglist['id'],'running_s',self.arglist['bk_id'])
             else:
                 self.send_ta(self.arglist['id'], 'running_w',self.arglist['bk_id'])
@@ -135,13 +135,14 @@ class WorkerPool(threading.Thread):
             if not self.work:
                 self.log.logger.error('work create failed %s'% (self.threadID))
 
-            ret = self.work.start()
+            self.work.start()
             self.queue.task_done()  # 完成一个任务
             if self.arglist['op'] == 'backup' or self.arglist['op'] == 'dump':
-                if  self.arglist['state']=='stoped' or self.arglist['state']=='running_s':
+                if  self.arglist['state']=='stopped' or self.arglist['state']=='running_s':
                     if self.change_tasktable:
                         self.send_ta(self.arglist['id'],'stopped')
                 else:
+                    self.log.logger.debug('=============================change_tasktable %s' % self.change_tasktable)
                     if self.change_tasktable:
                         self.send_ta(self.arglist['id'], 'waiting')
                 self.log.logger.debug('change the work %s state'%self.arglist['name'])
@@ -158,6 +159,7 @@ class WorkerPool(threading.Thread):
     def stopwork(self,change_tasktable=True):
         self.change_tasktable=change_tasktable
         self.work.stop()
+        self.log.logger.debug(self.change_tasktable)
 
 
 class Delete:
@@ -169,7 +171,7 @@ class Delete:
         self.ip = kwargs.get('ip')
         self.name=kwargs.get('name')
         self.id=kwargs.get('id')
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
 
     def send_bk(self,sub,**kwargs):
@@ -192,7 +194,7 @@ class Delete:
                 return -1
             if os.path.ismount(self.mount_dir):
                 self.log.logger.error("the dir has mounted,maybe there is a delete work doing now")
-                return -1
+                self.close()
             while n > 0:
                 self.glusterip = self.ip[n - 1]
                 try:
