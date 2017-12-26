@@ -121,9 +121,14 @@ class WorkerPool(threading.Thread):
             """
             self.log.logger.info('todo work:%s' % (self.threadID))
 
+            try:
+                self.workpool_workid_dict[self.name] = self.arglist['id']
+                self.queue_task_list.remove(self.arglist['id'])
+            except Exception,e:
+                self.log.logger.error(e)
+                self.log.logger.error(self.arglist)
+                continue
 
-            self.workpool_workid_dict[self.name] = self.arglist['id']
-            self.queue_task_list.remove(self.arglist['id'])
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if  self.arglist['state']=='stopped':

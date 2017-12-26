@@ -163,6 +163,7 @@ class Message:
                 #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.tcpclient.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.send(ms)
                     #server_reply = self.tcpclient.recv(1024)
