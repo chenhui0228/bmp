@@ -179,7 +179,7 @@ class Message:
                     #print server_reply
                     self.tcpclient.close()
                 except Exception as e:
-                    self.log.logger.error('UDP send failed %s' % e)
+                    self.log.logger.error('TCP send failed %s' % e)
                     return e
             else:
                 #print "error:data or address not exist ?"

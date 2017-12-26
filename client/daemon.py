@@ -92,7 +92,7 @@ class Backup:
             send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] =data['type']
-        self.log.logger.info('create a new %s backup work,the id of it is %s' %(do_type,ms) )
+        self.log.logger.debug('create a new %s backup work,the id of it is %s' %(do_type,ms) )
         new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
@@ -113,7 +113,7 @@ class Update:
 
     def __call__(self, message_dict):
         dict = message_dict['data']
-        self.log.logger.info('change a work,the id of it is %s' % dict['id'])
+        self.log.logger.info('update a work,the id of it is %s' % dict['id'])
         ms = dict['id']
         if self.task_dict.has_key(ms):
             try:
@@ -280,7 +280,7 @@ class Dump:
             send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] = data['type']
-        self.log.logger.info('create a new %s dump work,the id of it is %s' % (do_type, ms))
+        self.log.logger.debug('create a new %s dump work,the id of it is %s' % (do_type, ms))
         new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
@@ -428,9 +428,25 @@ class Listen(threading.Thread):
                 if not self.message.q.empty():
                         msg = self.message.get_queue()
                         self.message.con.release()
-                        msg_data = msg.split(":", 1)[1]
-                        self.log.logger.info(msg_data)
-                        message_dict = eval(msg_data)
+                        message_dict = []
+                        try:
+                            msg_data = msg.split(":", 1)[1]
+                            msg_list=msg_data.split("}{")
+                            if len(msg_list) == 1:
+                                message_dict = eval(msg_data)
+                                self.log.logger.debug(message_dict)
+                            elif len(msg_list) > 1:
+                                for i in range(len(msg_list)):
+                                    if i == 0:
+                                        msg_list[i] = msg_list[i] + "}"
+                                    else:
+                                        msg_list[i] = "{"+msg_list[i]
+                                for msg_data_inlist in msg_list:
+                                    message_dict = eval(msg_data_inlist)
+                                    self.log.logger.debug(message_dict)
+                        except Exception as e:
+                            self.log.logger.error(e.message)
+                            continue
                         self.task_update.updatetask(message_dict)
                 else:
                         self.message.con.wait(1)
@@ -443,6 +459,7 @@ class Daemon:
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
         self.log=mylogger
+        self.message = Message("tcp", self.log)
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -462,8 +479,6 @@ class Daemon:
         self.work_dir=cp.get('client','work_dir')
         self.task_list = {}
         self.work_list=[]
-        self.message = Message("tcp",self.log)
-        self.umount_dir()
         self.tp = []
         self.hostname = str(socket.gethostname())
         self.ip = socket.gethostbyname(self.hostname)
@@ -548,6 +563,27 @@ class Daemon:
         info['data']=data
         info['addr']=addr
         self.message.issued(info)
+        while True:
+            try:
+                pf = file(self.pidfile, 'r')
+                pid = int(pf.read().strip())
+                pf.close()
+            except IOError:
+                pid = None
+            if pid:
+                if os.path.exists('/proc/%s' % pid):
+                   time.sleep(1)
+                else:
+                    message = 'clinet stop success\n'
+                    self.log.logger.info('clinet stop success')
+                    sys.stderr.write(message)
+                    break
+            else:
+                message = 'clinet stop success\n'
+                self.log.logger.info('clinet stop success')
+                sys.stderr.write(message)
+                break
+
 
     def stopclient( self ):
         # 从pid文件中获取pid
@@ -627,13 +663,25 @@ class Daemon:
                 if leng>=1:
                     if dir[0:leng] == self.work_dir:
                         cmd = 'umount %s' % dir
-                        ret = os.system(cmd)
+                        ret,out=commands.getstatusoutput(cmd)
                         if ret != 0:
-                            self.log.logger.error('umount work_dir failed ')
+                            self.log.logger.error('umount work_dir failed %s'%out)
             except Exception ,e:
                 print e
                 self.log.logger.error(e)
                 self.stopclient()
+
+
+    def check_listen(self):
+        try:
+            while 1:
+                time.sleep(0.1)
+                pid = os.popen("netstat -anp|grep %s |awk '{print $7}'"%self.client_port).read().split('/')[0]
+                os.popen('kill -9 {0}'.format(int(pid)))
+                self.log.logger.debug('stop a listen process')
+        except:
+            pass
+        self.log.logger.debug('now client port is available')
 
 
     """
@@ -644,6 +692,8 @@ class Daemon:
 
     def _run( self ):
         """ run your fun"""
+        self.check_listen()
+        self.umount_dir()
         now = datetime.now()
         self.hostname = socket.gethostname()
         os.system("ulimit -n " + "65535")
