@@ -301,7 +301,7 @@ case "$action" in
                 funSetupPipyByRequirements requirements.txt
                 ;;
             -p|--python)
-		        funInitialPy
+	        funInitialPy
                 ;;
             *)
                 printf "Usage:\n"
