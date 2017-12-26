@@ -6,10 +6,17 @@
         <a href="/"><img src="../assets/logo.png" style="padding-left:8px;"></a>
       </div>
       <div class="topbar-logos" v-show="!collapsed">
-        <a href="/"><img src=""></a>
+        <a href="/"><img src="../assets/logo2.png"></a>
       </div>
       <div class="topbar-title">
         <span style="font-size: 18px;color: #fff;">备份管理系统</span>
+      </div>
+      <div style="float: right;margin-right: 15px;color: #fff">
+        <el-tooltip content="退出登录" placement="bottom">
+          <svg class="icon" aria-hidden="true" @click="logout">
+            <use xlink:href="#icon-logout"></use>
+          </svg>
+        </el-tooltip>
       </div>
       <div class="topbar-account topbar-btn">
         <el-dropdown trigger="click">
@@ -29,7 +36,6 @@
               <router-link :to="'/selfinfo/changepwd'"><span style="color: #555;font-size: 14px;">修改密码</span>
               </router-link>
             </el-dropdown-item>
-            <el-dropdown-item divided @click.native="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
       </div>
@@ -262,7 +268,7 @@
       }
       .topbar-account {
         float: right;
-        padding-right: 12px;
+        padding-right: 5px;
       }
       .userinfo-inner {
         cursor: pointer;

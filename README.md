@@ -526,7 +526,7 @@
 		work_dir = /mnt/fbmp/
 		#This is the ip address of the gluster cluster
 		# 配置glusterfs集群IP
-		glusterip = 10.202.125.82
+		gluster_ip = 10.202.125.82
 		#This is the port on which the client receives the message sent by the server
 		client_port = 11112
 		#This is the client's version number
@@ -545,7 +545,7 @@
 		[server]
 		#This is the server's ip address
 		# 备份服务端IP
-		ip = 10.202.127.11
+		server_ip = 10.202.127.11
 		#This is the port on which the server receives the information sent by the client
 		server_port = 11111
 		#you must configure glusterip and ip at installation time	

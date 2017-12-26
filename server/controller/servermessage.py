@@ -5,7 +5,8 @@ from SocketServer import BaseRequestHandler, ThreadingTCPServer, ThreadingUDPSer
 import threading
 import socket  # 套接字
 import Queue
-import ConfigParser
+import logging
+logger=logging.getLogger('backup')
 
 
 
@@ -85,7 +86,7 @@ class Message:
         ip = socket.gethostbyname(hostname)
         self.local_ip = ip
         self.server_port = int(server_port)
-        self.client_prot = int(client_port)
+        self.client_port = int(client_port)
         self.send_ip=ip
         self.recv_state = "stop"
         self.send_status = "stop"
@@ -118,7 +119,7 @@ class Message:
                 self.server_thread.append(server_thread)
             except Exception as e:
                 #self.log.logger.error('start TCP listen server failed %s'%e)
-                pass
+                logger.error(e.message)
         # start server
         self.send_status = "start"
         # self.udpserver.serve_forever()
@@ -162,6 +163,7 @@ class Message:
                 #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.tcpclient.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.send(ms)
                     #server_reply = self.tcpclient.recv(1024)
@@ -181,17 +183,20 @@ class Message:
         return 0
 
     def issued(self,info):    # server发给client
+        ret=None
         if self.ms_type == "tcp":
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)
-        return ret
+        if ret!=0:
+            logger.error(str(ret))
 
     def send(self, data):       # client发给server
+        ret=None
+        info = {}
+        info['data'] = str(data)
+        info['addr'] = (self.send_ip, self.client_port)
         if self.ms_type == "tcp":
-            info={}
-            info['data']=str(data)
-            info['addr']=(self.send_ip,self.client_port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)
