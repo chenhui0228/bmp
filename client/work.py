@@ -17,7 +17,7 @@ class Work():
         self.log =log
         self.proclen=0
         self.proctotal=0
-        ms = Message("tcp")
+        ms = Message("tcp",self.log)
         self.message=ms
         self.sendpro=0
         #print "to init arglist"
@@ -65,10 +65,16 @@ class Work():
     def do_mount(self):       # Let gluster cluster mount to the local
         n=len(self.arglist['ip'])
         if os.path.ismount(self.mount_dir):
-            self.errormessage="the dir has mounted,maybe there is a direct work doing now"
-            self.log.logger.error("the dir has mounted,maybe there is a direct work doing now")
+            self.errormessage="the dir has mounted"
+            self.log.logger.error("the dir has mounted")
+            try:
+                ret=self.do_close()
+                if ret!=0:
+                    return -1
+            except Exception,e:
+                self.log.logger.error(str(e))
+                return -1
             #self.send_bk('message','the dir has mounted,maybe there is a direct work doing now')
-            return -1
         while n>0:
             self.glusterip=self.arglist['ip'][n-1]
             try:
@@ -78,17 +84,15 @@ class Work():
                 #print "do mount succeed"
                 if ret!=0:
                     self.errormessage='mount %s:/%s falied'%(self.glusterip, self.vol)
-                    return -1
                 self.log.logger.info("do mount succeed")
                 return 0
-
             except Exception as e:
                 #print ("do mount failed %s"%e)
                 #self.send_bk('message',"do mount failed %s"%e)
                 self.errormessage = str(e)
                 self.log.logger.warning("do mount failed %s"%e)
-                return -1
             n=n-1
+        return -1
 
     def do_mkdir(self,dir):    # Create a folder
         if os.path.exists('%s'%dir):
@@ -152,6 +156,8 @@ class Work():
             self.send_bk('run', process=200, current_size=str(write_now))
             self.log.logger.info('the work dump %s'%str(write_now))
             time.sleep(1)
+            if self.pause:
+                self.process.kill()
             if self.process.poll() != None:
                 write_now = self.get_file_size(self.mount_dir+'/'+self.vfile)
                 self.send_bk('run', process=200, current_size=str(write_now))
@@ -211,6 +217,8 @@ class Work():
                         self.sendpro=pro
                         self.log.logger.debug('the work %s '%str(pro))
                 time.sleep(1)
+            if self.pause:
+                self.process.kill()
             if self.process.poll() != None:
                 list=pd.split('/')
                 new_file=os.path.join(vd,list[-1])
@@ -292,19 +300,16 @@ class Work():
             if not os.path.exists(self.pfile):
                 self.errormessage = '%s is not exist'%self.pfile
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
-                time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.proctotal = self.get_file_size(self.pfile)
             timeArray = time.localtime(start_time)
             if self.proctotal < 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
-                time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             elif self.proctotal == 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
-                time.sleep(5)
                 self.errormessage='the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
@@ -320,26 +325,34 @@ class Work():
                 if self.errormessage == "":
                     self.errormessage = 'mount %s:/%s failed'%(self.glusterip, self.vol)
                 self.send_bk('last', state='failed',end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
-                self.do_close()
                 #print "mkdir failed"
                 if self.errormessage == "":
                     self.errormessage = 'mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             ret = self.do_work(self.pfile,self.mount_dir+'/'+self.vfile)
             if ret != 0:
                 #print "work failed"
-                if self.errormessage == "":
-                    self.errormessage = 'backup work %s failed'%self.arglist['name']
+
                 if self.pause:
                     self.log.logger.info('backup aborted')
                     self.send_bk('last', state='aborted', end_time=str(time.time()))
                     self.errormessage = 'backup aborted'
                 else:
-                    self.errormessage = 'backup work %s failed' % self.arglist['name']
+                    self.log.logger.error('backup work %s failed' % self.arglist['name'])
+                    if self.errormessage == "":
+                        self.errormessage = 'backup work %s failed' % self.arglist['name']
                     self.send_bk('last', state='failed', end_time=str(time.time()))
                 try:
                     self.do_close()
@@ -349,7 +362,10 @@ class Work():
             ret = self.do_close()
             if ret != 0:
                 self.errormessage = 'umont %s failed'%self.mount_dir
-                self.do_close()
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
         elif self.op=='dump':
@@ -366,7 +382,6 @@ class Work():
             if not os.path.exists(path):
                 self.errormessage = 'the shell %s is not exist'%path
                 self.send_bk('frist', total_size=-1, start_time=str(start_time))
-                time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_mount()
@@ -374,32 +389,50 @@ class Work():
                 if  self.errormessage == "":
                     self.errormessage = 'mount %s:/%s failed'%(self.glusterip,self.vol)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             ret = self.do_mkdir(self.mount_dir+'/'+self.vfile)
             if ret != 0:
-                self.do_close()
                 #print "mkdir failed"
                 if self.errormessage == "":
                     self.errormessage = 'mkdir %s/%s failed'%(self.mount_dir,self.vfile)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             cmd = '%s %s %s/%s' % (path, instance, self.mount_dir, self.vfile)
             ret=self.do_dump(cmd)
             if ret!=0:
-                self.do_close()
-                if self.errormessage == "":
-                    self.errormessage = 'dump failed,the command executed is %s'%cmd
-                self.send_bk('last', state='failed', end_time=str(time.time()))
+                if self.pause:
+                    self.log.logger.info('dump aborted')
+                    self.send_bk('last', state='aborted', end_time=str(time.time()))
+                    self.errormessage = 'dump aborted'
+                else:
+                    self.log.logger.error('dump work %s failed'%self.arglist['name'])
+                    if self.errormessage== '':
+                        self.errormessage = 'dump work %s failed' % self.arglist['name']
+                    self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception as e:
+                    self.log.logger.error(e)
                 return
             self.send_bk('run', process=200, current_size=self.get_file_size(self.mount_dir+'/'+self.vfile))
             ret = self.do_close()
             #print "end do_cloes"
             if ret != 0:
-                time.sleep(2)
                 if self.errormessage == "":
                     self.errormessage = 'umount %s failed'%self.mount_dir
-                self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
         elif self.op=='recover':
             #if self.arglist.has_key('destination _ip'):
@@ -415,35 +448,37 @@ class Work():
             if not os.path.exists(self.mount_dir + self.pfile):
                 self.errormessage = '%s is not exist'%self.pfile
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
-                time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             if self.proctotal < 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
-                time.sleep(5)
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 self.do_close()
                 return
             elif self.proctotal == 0:
                 self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
-                time.sleep(5)
                 self.errormessage = 'the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
-                self.do_close()
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
-                self.do_close()
                 if self.errormessage == "":
                     self.errormessage='mkdir failed'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             #self.vfile=os.path.join(self.vfile)
             ret = self.do_work(self.mount_dir+self.pfile,self.vfile)
             if ret != 0:
-                self.do_close()
                 if self.pause:
                     self.log.logger.info('recover pause')
                     self.errormessage = 'recover pause'
@@ -453,13 +488,20 @@ class Work():
                     if self.errormessage == "":
                         self.errormessage = 'recover failed'
                     self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
             ret = self.do_close()
             if ret != 0:
                 if self.errormessage == "":
                     self.errormessage = 'umont %s failed'%self.mount_dir
-                self.do_close()
                 self.send_bk('last', state='failed', end_time=str(time.time()))
+                try:
+                    self.do_close()
+                except Exception,e:
+                    self.log.logger.error(str(e))
                 return
         else:
             return
@@ -469,8 +511,6 @@ class Work():
         return
 
     def stop(self):
-        if self.process!='':
-            self.pause=True
-            self.process.kill()
-            self.log.logger.info('kill process')
+        self.pause = True
+        self.log.logger.info('kill process')
 

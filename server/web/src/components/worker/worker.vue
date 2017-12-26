@@ -1,6 +1,7 @@
 /**
  *Modified by 01369634 on 2017/11/2
 */
+
 <template>
   <el-row class="warp">
     <el-col :span="24" class="warp-breadcrum">
@@ -43,6 +44,24 @@
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态">
+          <template slot-scope="scope">
+            <el-row>
+              <span v-if="scope.row.status == 'Offline'">
+                <el-col :span="2">
+                  <div class="off_round"></div>
+                </el-col>
+              </span>
+              <span v-if="scope.row.status == 'Active'">
+                <el-col :span="2">
+                  <div class="on_round"></div>
+                </el-col>
+                <!--{{ scope.row.worker.status }}-->
+              </span>
+              <el-col :span="22">
+                {{ scope.row.status }}
+              </el-col>
+            </el-row>
+          </template>
         </el-table-column>
         <el-table-column prop="owner" label="属组">
         </el-table-column>
@@ -567,5 +586,25 @@
   }
   .export-dialog .el-dialog {
     width: 35%
+  }
+  .on_round {
+    width:10px;
+    height:10px;
+    background-color: #98F898;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
+    line-height: 100%;
+    margin: 6px 0px;
+  }
+  .off_round {
+    width:10px;
+    height:10px;
+    background-color: #FF4500;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
+    line-height: 100%;
+    margin: 6px 0px;
   }
 </style>
