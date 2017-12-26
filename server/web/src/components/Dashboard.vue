@@ -129,10 +129,10 @@
                   </el-row>
                   <el-row>
                     <el-col :span="16" class="bar-card-info-key">
-                      任务停止数：
+                      未知状态数：
                     </el-col>
                     <el-col :span="8" class="bar-card-info-value">
-                      {{ recoveryTaskSummary.currStopped }}
+                      {{ recoveryTaskSummary.unknown }}
                     </el-col>
                   </el-row>
                 </section>
@@ -387,8 +387,8 @@
           currWaiting: 0,
           currStopped: 0,
           currRunning: 0,
-          currEnd: 0
-
+          currEnd: 0,
+          unknown: 0
         }
       },
       initializeWorkerSummary() {
@@ -547,6 +547,10 @@
           this.recoveryTaskSummary.currEnd = data.end;
           this.recoveryTaskSummary.total = this.recoveryTaskSummary.total + this.recoveryTaskSummary.currEnd;
         }
+        if (data.null != null) {
+          this.recoveryTaskSummary.unknown = data.null;
+          this.recoveryTaskSummary.total = this.recoveryTaskSummary.total + this.recoveryTaskSummary.unknown;
+        }
         this.chartRecoverySummary.setOption({
           tooltip: {
             trigger: 'item',
@@ -566,11 +570,11 @@
                 icon: 'circle',
               },
               {
-                name: '已停止',
+                name: '已完成',
                 icon: 'circle',
               },
               {
-                name: '已完成',
+                name: '未知',
                 icon: 'circle',
               }
             ]
@@ -584,8 +588,8 @@
               data: [
                 {value: this.recoveryTaskSummary.currWaiting, name: '等待中', itemStyle: {normal: {color: '#f7c410'}}},
                 {value: this.recoveryTaskSummary.currRunning, name: '执行中', itemStyle: {normal: {color: '#00BFFF'}}},
-                {value: this.recoveryTaskSummary.currStopped, name: '已停止', itemStyle: {normal: {color: '#FF4500'}}},
-                {value: this.recoveryTaskSummary.currEnd, name: '已完成', itemStyle: {normal: {color: '#98F898'}}}
+                {value: this.recoveryTaskSummary.currEnd, name: '已完成', itemStyle: {normal: {color: '#98F898'}}},
+                {value: this.recoveryTaskSummary.unknown, name: '未知', itemStyle: {normal: {color: '#c28300'}}}
               ],
               itemStyle: {
                 emphasis: {
