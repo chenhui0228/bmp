@@ -354,6 +354,14 @@
                 :value="policy.id">
               </el-option>
             </el-select>
+            <span v-for="policy in policies"
+                  v-if="editForm.policy_id == policy.id"
+                  style="margin-left:10px; color:#99a9bf">
+              <span v-for="group in groups"
+                    v-if="policy.group_id == group.id"
+                    style="margin-left:10px; color:#99a9bf">属组：{{ group.name }}
+              </span>
+            </span>
           </el-form-item>
           <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="editForm.worker_id" placeholder="请选择">
