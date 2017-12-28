@@ -150,7 +150,8 @@ class WorkerPool(threading.Thread):
                         self.work.start(True)
                     except Exception,e:
                         self.log.logger.error(e)
-
+                if self.workpool_workid_dict.has_key(self.name):
+                    del self.workpool_workid_dict[self.name]
                 continue
 
             self.work = Work(self.arglist, self.log)
