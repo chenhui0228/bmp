@@ -571,6 +571,14 @@ class Server:
         except Exception as e:
             logger.error(e.message)
             return
+        task_value={}
+        task_value['id']=task.id
+        task_value['state']='waiting'
+        try:
+            self.db.update_task(super_context,task_value)
+        except Exception as e:
+            logger.error(e.message)
+            return
         if task.type=='backup':
             self.backup(id)
         elif task.type=='recover':
@@ -584,6 +592,14 @@ class Server:
             logger.error(e.message)
             return
         if task.state == 'stopped' or task.state == 'running_s':
+            if isRestart:
+                task_value={}
+                task_value['id']=task.id
+                task_value['state']='stopped'
+                try:
+                    self.db.update_task(super_context,task_value)
+                except Exception as e:
+                    logger.error(e.message)
             return
         worker = task.worker
         policy = task.policy
@@ -791,11 +807,12 @@ class Listen(threading.Thread):
                         msg = self.message.get_queue()
                         self.message.con.release()
                         message_dict = []
+                        logger.info(msg)
                         try:
-                            msg_data = msg.split(":", 1)[1]
-                            msg_list=msg_data.split("}{")
+
+                            msg_list=msg.split("}{")
                             if len(msg_list) == 1:
-                                message_dict = eval(msg_data)
+                                message_dict = eval(msg)
                                 logger.debug(message_dict)
                             elif len(msg_list) > 1:
                                 for i in range(len(msg_list)):
@@ -807,7 +824,7 @@ class Listen(threading.Thread):
                                     message_dict = eval(msg_data_inlist)
                                     logger.debug(message_dict)
                         except Exception as e:
-                            logger.error(e.message)
+                            logger.error(e)
                             continue
                         self.choose(message_dict)
                 else:

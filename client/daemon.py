@@ -15,6 +15,7 @@ from message import Message
 from singletask import SingleTask
 from workerpool import WorkerPool,Delete
 import ConfigParser
+import commands
 import logging
 #logging.basicConfig()
 
@@ -57,6 +58,7 @@ class Backup:
         self.task_dict=task_dict
         self.message=message
         self.task_sum= task_update.task_sum
+        self.task_update=task_update
         self.scheduler=scheduler
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
@@ -78,8 +80,8 @@ class Backup:
             if dict['id'] in self.queue_task_list:
                 put_in_queue=False
             if put_in_queue:
-                self.q.put([str(dict), 2], block=True, timeout=None)
                 self.queue_task_list.append(dict['id'])
+                self.q.put([str(dict), 2], block=True, timeout=None)
                 send_server(self.message,self.log,'state',id=dict['id'], state='waiting')
             else:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
@@ -93,7 +95,7 @@ class Backup:
             return
         dict['op'] =data['type']
         self.log.logger.debug('create a new %s backup work,the id of it is %s' %(do_type,ms) )
-        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+        new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
@@ -108,6 +110,7 @@ class Update:
         self.message=message
         self.task_sum=task_update.task_sum
         self.scheduler=scheduler
+        self.task_update=task_update
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
 
@@ -121,7 +124,7 @@ class Update:
                 del self.task_dict[ms]
                 self.task_sum = self.task_sum - 1
                 dict['op'] = dict['sub']
-                new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+                new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
                 new_task.start(dict['run_sub'])
                 self.task_dict[ms] = new_task
                 self.task_sum = self.task_sum + 1
@@ -154,8 +157,8 @@ class Recover:
             if dict['id'] in self.queue_task_list:
                 put_in_queue=False
             if put_in_queue:
-                self.q.put([str(dict), 2], block=True, timeout=None)
                 self.queue_task_list.append(dict['id'])
+                self.q.put([str(dict), 2], block=True, timeout=None)
                 send_server(self.message,self.log,'state',id=dict['id'], state='waiting')
             else:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
@@ -211,8 +214,9 @@ class Deleted:
         dict['state'] = 'deleting'
         dict['ip']=self.glusterip_list
         if duration != None or vol != None or dir != None or id != None:
-            self.q.put([str(dict), 2], block=True, timeout=None)
             self.queue_task_list.append(dict['id'])
+            self.q.put([str(dict), 2], block=True, timeout=None)
+
 
     def deleteBackupData(self):
         task_dict=self.task_dict
@@ -246,6 +250,7 @@ class Dump:
         self.message=message
         self.task_sum=task_update.task_sum
         self.scheduler=scheduler
+        self.task_update=task_update
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
 
@@ -266,8 +271,8 @@ class Dump:
             if dict['id'] in self.queue_task_list:
                 put_in_queue=False
             if put_in_queue:
-                self.q.put([str(dict), 2], block=True, timeout=None)
                 self.queue_task_list.append(dict['id'])
+                self.q.put([str(dict), 2], block=True, timeout=None)
                 send_server(self.message,self.log,'state',id=dict['id'], state='waiting')
             else:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
@@ -281,7 +286,7 @@ class Dump:
             return
         dict['op'] = data['type']
         self.log.logger.debug('create a new %s dump work,the id of it is %s' % (do_type, ms))
-        new_task = SingleTask(ms, self.scheduler, dict, self.q, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+        new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
@@ -430,10 +435,9 @@ class Listen(threading.Thread):
                         self.message.con.release()
                         message_dict = []
                         try:
-                            msg_data = msg.split(":", 1)[1]
-                            msg_list=msg_data.split("}{")
+                            msg_list=msg.split("}{")
                             if len(msg_list) == 1:
-                                message_dict = eval(msg_data)
+                                message_dict = eval(msg)
                                 self.log.logger.debug(message_dict)
                             elif len(msg_list) > 1:
                                 for i in range(len(msg_list)):

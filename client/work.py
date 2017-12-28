@@ -7,7 +7,7 @@ import time
 from message import Message
 import tempfile
 import ConfigParser
-
+import commands
 
 class Work():
     # def
@@ -78,12 +78,11 @@ class Work():
         while n>0:
             self.glusterip=self.arglist['ip'][n-1]
             try:
-                cmd = ("mount.glusterfs %s:/%s %s 2>/dev/null" % (self.glusterip, self.vol, self.mount_dir))
-
-                ret = os.system(cmd)
+                cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
+                ret,out=commands.getstatusoutput(cmd)
                 #print "do mount succeed"
                 if ret!=0:
-                    self.errormessage='mount %s:/%s falied'%(self.glusterip, self.vol)
+                    self.errormessage='mount %s:/%s falied %s'%(self.glusterip, self.vol,out)
                 self.log.logger.info("do mount succeed")
                 return 0
             except Exception as e:
@@ -99,12 +98,12 @@ class Work():
             return 0
         else:
             try:
-                cmd = ("mkdir -p %s  2>/dev/null" % dir)
-                ret = os.system(cmd)
+                cmd = ("mkdir -p %s" % dir)
+                ret, out = commands.getstatusoutput(cmd)
                # print "do mkidr succeed"
                 if ret!=0:
-                    self.errormessage='mkdir %s failed'%dir
-                    self.log.logger.error('mkdir %s failed'%dir)
+                    self.errormessage='mkdir %s failed %s'%(dir,out)
+                    self.log.logger.error('mkdir %s failed %s'%(dir,out))
                     return -1
                 self.log.logger.info("do mkdir succeed")
                 return 0
@@ -183,7 +182,7 @@ class Work():
         seek_old=0
         seek_now=0
         self.log.logger.info('write file %s'%pd)
-        cmd = ('rsync -avlP %s %s' % (pd, vd))
+        cmd = ('rsync -avlP %s %s ' % (pd, vd))
         #print cmd
         try:
             fp = tempfile.TemporaryFile(mode='w+t')
@@ -262,10 +261,10 @@ class Work():
     def do_close(self):
         try:
             cmd = ('umount %s' % (self.mount_dir))
-            ret = os.system(cmd)
+            ret, out = commands.getstatusoutput(cmd)
            # print "do close succeed"
             if ret !=0:
-                self.log.logger.error("do close %s failed"%self.mount_dir)
+                self.log.logger.error("do close %s failed %s"%(self.mount_dir,out))
                 return -1
             else:
                 self.log.logger.info("do close succeed")
