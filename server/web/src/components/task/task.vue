@@ -167,9 +167,9 @@
         </el-table-column>
         <el-table-column prop="task.name" label="任务名" width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" width="180rem">
         </el-table-column>
-        <el-table-column prop="worker.name" label="作业机" sortable width="180rem" show-overflow-tooltip>
+        <el-table-column prop="worker.name" label="作业机" width="180rem" show-overflow-tooltip>
           <template slot-scope="scope">
             <el-row>
               <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15" open-delay="500">
@@ -222,7 +222,7 @@
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="开始时间" sortable width="180rem">
+        <el-table-column label="开始时间" width="180rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
               <span
