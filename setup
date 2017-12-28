@@ -113,13 +113,14 @@ funCheckPython(){
             funSetupPy27
         else
             echo python2.7.8 ... yes
+            funCheckpip /usr/local/bin/python2.7
         fi
     fi
 }
 
 funSetupPy27(){
-    yum install zlib
-    yum install zlib-devel
+    yum install zlib -y
+    yum install zlib-devel -y
     cd $root_path/requirePackages/pypi
     tar xf Python-2.7.8.tgz
     cd Python-2.7.8
@@ -171,6 +172,12 @@ funChecckEnv(){
             exit -1
         else
             echo python2.7.8 ... yes
+            pip -V | grep -o 9.0.1 > /dev/null 2>&1
+                if [[ "$?" != "0" ]]; then
+                    echo pip9.0.1 ... no
+                else
+                    echo pip9.0.1 ... yes
+                fi
         fi
     else
         echo 2.7.x ... yes
