@@ -172,7 +172,7 @@
         <el-table-column prop="worker.name" label="作业机" width="180rem" show-overflow-tooltip>
           <template slot-scope="scope">
             <el-row>
-              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15" open-delay="500">
+              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15" :open-delay=500>
                 <div slot="content">{{ scope.row.worker.name }}</div>
                 <el-col :span="20" class="worker_name_overflow">
                   {{ scope.row.worker.name }}
