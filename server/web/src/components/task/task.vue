@@ -138,8 +138,8 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
-              <el-form-item v-if="props.row.task.description" label="任务描述">
-                <span>{{ props.row.task.description }}</span>
+              <el-form-item label="任务ID">
+                <span>{{ props.row.task.id }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
                 <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
@@ -161,6 +161,9 @@
               </el-form-item>
               <el-form-item label="目的地址">
                 <span>{{ props.row.task.destination }}</span>
+              </el-form-item>
+              <el-form-item v-if="props.row.task.description" label="任务描述">
+                <span>{{ props.row.task.description }}</span>
               </el-form-item>
             </el-form>
           </template>

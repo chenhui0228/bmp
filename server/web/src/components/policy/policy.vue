@@ -34,6 +34,9 @@
                 <el-form-item label="策略名">
                   <span>{{ scope.row.name }}</span>
                 </el-form-item>
+                <el-form-item label="策略ID">
+                  <span>{{ scope.row.id }}</span>
+                </el-form-item>
                 <el-form-item label="策略说明" v-if="scope.row.description">
                   <span>{{ scope.row.description }}</span>
                 </el-form-item>
