@@ -51,10 +51,8 @@ class TCPServer(BaseRequestHandler):
             data = self.request.recv(4096)
             if len(data) > 0:
                 #print "address=", address, "pid",pid,"recv data:", data
-                cur_thread = threading.current_thread()
-                response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
-                do_put(response)
+                do_put(data)
                 #self.request.sendto(response, self.client_address)
                 #print "address=", address, "recv data:", data
                 self.finish()
@@ -178,8 +176,9 @@ class Message:
                     #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
+                    self.log.logger.info(info)
                 except Exception as e:
-                    self.log.logger.error('UDP send failed %s' % e)
+                    self.log.logger.error('TCP send failed %s' % e)
                     return e
             else:
                 #print "error:data or address not exist ?"

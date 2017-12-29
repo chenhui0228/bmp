@@ -52,10 +52,8 @@ class TCPServer(BaseRequestHandler):
             data = self.request.recv(4096)
             if len(data) > 0:
                 #print "address=", address, "pid",pid,"recv data:", data
-                cur_thread = threading.current_thread()
-                response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
-                do_put(response)
+                do_put(data)
                 #self.request.sendto(response, self.client_address)
                 #print "address=", address, "recv data:", data
                 self.finish()
@@ -70,8 +68,6 @@ class UDPServer(BaseRequestHandler):
             data = self.request[0]
             if len(data) > 0:
                 #print "address=", address, "recv data:", data
-                cur_thread = threading.current_thread()
-                response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
                 self.request[1].sendto(response, self.client_address)
                 self.finish()
@@ -163,11 +159,13 @@ class Message:
                 #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.tcpclient.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.send(ms)
                     #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
+                    logger.info(info)
                 except Exception as e:
                     #self.log.logger.error('UDP send failed %s' % e)
                     return e

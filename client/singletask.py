@@ -82,17 +82,23 @@ class SingleTask():
         """
         #print "**********************set start time:", time.asctime(time.localtime(time.time())), " name is:", self.name
         if sub=='cron':
-            self.log.logger.info("Set start time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
-            cronconf = self.st['cron']
-            self.job = self.schd.add_job(self.do_insert_job, 'cron', year=cronconf['year'], month=cronconf['month'],
+            try:
+                self.log.logger.info("Set start time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
+                cronconf = self.st['cron']
+                self.job = self.schd.add_job(self.do_insert_job, 'cron', year=cronconf['year'], month=cronconf['month'],
                                      day=cronconf['day'], week=cronconf['week'], day_of_week=cronconf['day_of_week'],
                                      hour=cronconf['hour'], minute=cronconf['minute'], second=cronconf['second'],
                                      start_date=cronconf['start_date'], id=self.name)
+            except Exception as e:
+                self.log.logger.error(e)
         elif sub=='date':
-            self.log.logger.info(
-                "Set start time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
-            cronconf = self.st['cron']
-            if datetime.strptime(cronconf['start_date'], "%Y-%m-%d %H:%M:%S")>datetime.now():
-                self.job = self.schd.add_job(self.do_insert_job, 'date', run_date=cronconf['start_date'])
-            else:
-                self.job = self.schd.add_job(self.do_insert_job, 'date')
+            try:
+                self.log.logger.info(
+                    "Set start time:" + time.asctime(time.localtime(time.time())) + " name is:" + self.name)
+                cronconf = self.st['cron']
+                if datetime.strptime(cronconf['start_date'], "%Y-%m-%d %H:%M:%S")>datetime.now():
+                    self.job = self.schd.add_job(self.do_insert_job, 'date', run_date=cronconf['start_date'])
+                else:
+                    self.job = self.schd.add_job(self.do_insert_job, 'date')
+            except Exception as e:
+                self.log.logger.error(e)

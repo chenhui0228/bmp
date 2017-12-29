@@ -9,7 +9,8 @@ import os
 import  ConfigParser
 import shutil
 import  uuid
-
+import commands
+import  sys
 
 class WorkerPool(threading.Thread):
     def __init__(self, workq, i,n ,workpool_workid_dict,log,queue_task_list):
@@ -121,15 +122,38 @@ class WorkerPool(threading.Thread):
             """
             self.log.logger.info('todo work:%s' % (self.threadID))
 
+            try:
+                self.workpool_workid_dict[self.name] = self.arglist['id']
+                self.queue_task_list.remove(self.arglist['id'])
+            except Exception,e:
+                self.log.logger.error(e)
+                self.log.logger.error(self.arglist)
+                continue
 
-            self.workpool_workid_dict[self.name] = self.arglist['id']
-            self.queue_task_list.remove(self.arglist['id'])
             self.arglist['threadId'] = self.name
             self.arglist['bk_id'] = self.generate_uuid()
             if  self.arglist['state']=='stopped':
                 self.send_ta(self.arglist['id'],'running_s',self.arglist['bk_id'])
             else:
                 self.send_ta(self.arglist['id'], 'running_w',self.arglist['bk_id'])
+            op=self.arglist.get('op')
+            if op == 'delete':
+                duration=self.arglist.get('duration')
+                vol=self.arglist.get('vol')
+                dir=self.arglist.get('dir')
+                ip=self.arglist.get('ip')
+                name=self.arglist.get('name')
+                id=self.arglist.get('id')
+                if duration != None and vol != None and dir != None and ip != None and name != None and id != None  :
+                    try:
+                        self.work=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=ip,name=name,id=id)
+                        self.work.start(True)
+                    except Exception,e:
+                        self.log.logger.error(e)
+                if self.workpool_workid_dict.has_key(self.name):
+                    del self.workpool_workid_dict[self.name]
+                continue
+
             self.work = Work(self.arglist, self.log)
 
             if not self.work:
@@ -198,33 +222,30 @@ class Delete:
             while n > 0:
                 self.glusterip = self.ip[n - 1]
                 try:
-                    cmd = ("mount.glusterfs %s:/%s %s 2>/dev/null" % (self.glusterip, self.vol, self.mount_dir))
+                    cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
                     try:
-                        ret = os.system(cmd)
+                        ret, out = commands.getstatusoutput(cmd)
                         # print "do mount succeed"
                         if ret != 0:
-                            self.log.logger.error("do mount failed ")
-                            return -1
+                            self.log.logger.error("do mount failed %s"%out)
                         return 0
                     except  Exception as e:
                         # print ("do mount failed %s"%e)
                         # self.send_bk('message',"do mount failed %s"%e)
                         self.log.logger.warning("do mount failed%s"%e.message)
-                        return -1
                 except Exception as e:
                     # print ("do mount failed %s"%e)
                     # self.send_bk('message',"do mount failed %s"%e)
                     self.log.logger.warning("do mount failed%s"%e.message)
-                    return -1
                 n = n - 1
 
     def close(self):
         try:
             cmd = ('umount %s' % (self.mount_dir))
-            ret = os.system(cmd)
+            ret, out = commands.getstatusoutput(cmd)
            # print "do close succeed"
             if ret !=0:
-                self.log.logger.error("do close failed" )
+                self.log.logger.error("do close failed %s"%out )
                 return -1
             self.log.logger.info("do close succeed")
             return 0
@@ -259,6 +280,10 @@ class Delete:
         old= time.localtime(int(time.time())-24*3600*int(dt))
         old_timeint=int(time.strftime("%Y%m%d", old))
         return old_timeint
+
+    def stop(self):
+        print 'there is deleting some backupdata,if you really want stop,please use kill -9,and remember delete the data after starting'
+        self.log.logger.error('there is deleting some backupdata,if you really want stop,please use kill -9,and remember delete the data after starting')
 
     def start(self,delAll=False):
         if int(self.duration)==-1:

@@ -10,6 +10,7 @@ from threading import Lock
 import threading
 import six
 import logging
+import Queue
 logger=logging.getLogger('backup')
 
 def translate_date(sub,start_time,every,weekday):
@@ -197,6 +198,7 @@ class State:
             task_dict['deleted'] == 'deleted'
         try:
             self.db.update_task(super_context, task_dict)
+            logger.debug('the work %s state change to %s'%(task_dict['id'],task_dict['state']))
         except Exception as e:
             logger.error(e.message)
         logger.info('change task state')
@@ -331,7 +333,8 @@ class Process_returnMessagedict:
             self.command_dict[type](message_dict)
 
 
-class send_Keepalive(threading.Thread):
+
+class Send_Keepalive(threading.Thread):
     def __init__(self,db,server):
         threading.Thread.__init__(self)
         self.db=db
@@ -384,6 +387,56 @@ class send_Keepalive(threading.Thread):
         self.t.setDaemon(True)
         self.t.start()
 
+class Workerpool(threading.Thread):
+    def __init__(self,i,process_returnMessagedict):
+        threading.Thread.__init__(self)
+        self.con=threading.Condition()
+        self.queue=Queue.Queue()
+        self.name=i
+        self.process_returnMessagedict=process_returnMessagedict
+
+    def run(self):
+        logger.debug('Workerpool %s    start')
+        while True:
+            if self.con.acquire():
+                if not self.queue.empty():
+                        message_dict = self.queue.get_nowait()
+                        self.con.release()
+                        self.process_returnMessagedict.processMessage(message_dict)
+                        logger.debug("workerpool %s is end a work %s"%(self.name,message_dict))
+                else:
+                        self.con.wait(1)
+                        self.con.release()
+
+
+class Choose_workerpool:
+    def __init__(self,workerpool_list):
+        self.workerpool_list=workerpool_list
+
+    def __call__(self, message_dict):
+        data = message_dict.get('data')
+        id = data.get('id')
+        if id != None :
+            workerpool_id=hash(id)%len(self.workerpool_list)
+        else:
+            min_queue_size=65536
+            index=0
+            for i in range(len(self.workerpool_list)):
+                queue_size=self.workerpool_list[i].queue.qsize()
+                if queue_size<min_queue_size:
+                    index=i
+                    min_queue_size=queue_size
+            workerpool_id=index
+        try:
+            logger.debug("%s %s" % (workerpool_id, id))
+            self.workerpool_list[workerpool_id].con.acquire()
+            self.workerpool_list[workerpool_id].queue.put_nowait(message_dict)
+            self.workerpool_list[workerpool_id].con.notify()
+            self.workerpool_list[workerpool_id].con.release()
+        except Exception as e:
+            logger.error(e.message)
+
+
 @six.add_metaclass(Singleton)
 class Server:
     def __init__(self,conf):
@@ -397,7 +450,7 @@ class Server:
         logger.info(str(server_dict))
         self.server_port=server_dict['server_port']
         self.client_port=server_dict['client_port']
-        self.worker_size=server_dict['worker_size']
+        self.worker_size=int(server_dict['worker_size'])
         self.timer_interval=server_dict['timer_interval']
         if self.server_port==None or self.timer_interval == None or self.worker_size == None or self.client_port == None:
             logger.error('conf is lost')
@@ -412,30 +465,41 @@ class Server:
         self.alivelock=threading.Lock()
         self.workstatelock = threading.Lock()
         self.workeralivedict={}
-        self.create_Process_returnMessagedict()
+        self.workerpool_list=[]
+        self.process_returnMessagedict = Process_returnMessagedict(self.db, self)
         self.create_workerpool()
+        self.choose_workerpool=Choose_workerpool(self.workerpool_list)
+        self.create_listen()
         self.create_sendKeepalive()
 
 
+    def create_workerpool(self):
+        for i in range(self.worker_size):
+            t=Workerpool(i,self.process_returnMessagedict)
+            t.setDaemon(True)
+            self.workerpool_list.append(t)
+            t.start()
+
     def create_sendKeepalive(self):
-        t=send_Keepalive(self.db,self)
+        t=Send_Keepalive(self.db,self)
         t.setDaemon(True)
         t.start()
 
-    def create_Process_returnMessagedict(self):
-        self.process_returnMessagedict=Process_returnMessagedict(self.db,self)
 
-    def create_workerpool(self):
-        for i in range(int(self.worker_size)):
-            t=Workerpool(self.message,i,self.process_returnMessagedict)
-            t.setDaemon(True)
-            try:
-                t.start()
-            except Exception as e:
-                logger.error(e)
+    def create_listen(self):
+        listen=Listen(self.message,self.choose_workerpool)
+        listen.setDaemon(True)
+        try:
+            listen.start()
+        except Exception as e:
+            logger.error(e)
 
     def pause(self,id,deleted=False,stopped=False):
-        task = self.db.get_task(super_context,id,deleted=deleted)
+        try:
+            task = self.db.get_task(super_context,id,deleted=deleted)
+        except Exception as e:
+            logger.error(e.message)
+            return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         if stopped:
@@ -454,7 +518,11 @@ class Server:
             logger.error('Can not pause in waiting or stopped')
 
     def stop(self,id):
-        task = self.db.get_task(super_context,id)
+        try:
+            task = self.db.get_task(super_context,id)
+        except Exception as e:
+            logger.error(e.message)
+            return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         self.pause(id,False,True)
@@ -468,7 +536,11 @@ class Server:
             logger.error(e)
 
     def delete(self,id):
-        task = self.db.get_task(super_context,id,deleted=True)
+        try:
+            task = self.db.get_task(super_context,id,deleted=True)
+        except Exception as e:
+            logger.error(e.message)
+            return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         self.pause(id,True)
@@ -494,7 +566,19 @@ class Server:
                 logger.error(e)
 
     def resume(self,id):
-        task = self.db.get_task(super_context,id)
+        try:
+            task = self.db.get_task(super_context,id)
+        except Exception as e:
+            logger.error(e.message)
+            return
+        task_value={}
+        task_value['id']=task.id
+        task_value['state']='waiting'
+        try:
+            self.db.update_task(super_context,task_value)
+        except Exception as e:
+            logger.error(e.message)
+            return
         if task.type=='backup':
             self.backup(id)
         elif task.type=='recover':
@@ -502,8 +586,20 @@ class Server:
 
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
-        task = self.db.get_task(super_context,id)
+        try:
+            task = self.db.get_task(super_context,id)
+        except Exception as e:
+            logger.error(e.message)
+            return
         if task.state == 'stopped' or task.state == 'running_s':
+            if isRestart:
+                task_value={}
+                task_value['id']=task.id
+                task_value['state']='stopped'
+                try:
+                    self.db.update_task(super_context,task_value)
+                except Exception as e:
+                    logger.error(e.message)
             return
         worker = task.worker
         policy = task.policy
@@ -564,12 +660,17 @@ class Server:
 
     def update_worker(self,id,isRestart=False,**kwargs):
         logger.debug('update_worker start')
-        tasks_all=self.db.get_tasks(super_context,worker_id=id)
+        try:
+            tasks_all=self.db.get_tasks(super_context,worker_id=id)
+        except Exception as e:
+            logger.error(e.message)
+            return
         tasks=tasks_all[0]
         try:
             worker = self.db.get_worker(super_context, id)
         except Exception as e:
             logger.error(e)
+            return
         logger.debug('get worker ')
         if kwargs.has_key('ip'):
             old_ip=kwargs.get('ip')
@@ -600,14 +701,21 @@ class Server:
                     self.update_task(task.id)
 
     def update_policy(self,id):
-        tasks=self.db.get_tasks(super_context)[0]
+        try:
+            tasks=self.db.get_tasks(super_context)[0]
+        except Exception as e:
+            logger.error(e.message)
+            return
         for task in tasks:
             if task.policy_id == id:
                 self.update_task(task.id)
 
     def backup(self,id,do_type=False):
-
-        task = self.db.get_task(super_context,id)
+        try:
+            task = self.db.get_task(super_context,id)
+        except Exception as e:
+            logger.error(e.message)
+            return
         worker = task.worker
         policy = task.policy
         addr = (worker.ip, int(self.client_port))
@@ -671,7 +779,7 @@ class Server:
             destination = task.destination.split('/', 1)[1]
         except Exception as e:
             logger.error(e)
-            pass
+            return
         run_sub='immediately'
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
@@ -685,26 +793,39 @@ class Server:
         pass
 
 
-class Workerpool(threading.Thread):
-    def __init__(self,message,i,process_returnMessagedict):
+class Listen(threading.Thread):
+    def __init__(self,message,choose_workerpool):
         threading.Thread.__init__(self)
         self.message=message
-        self.name=i
-        self.p=process_returnMessagedict
+        self.choose=choose_workerpool
 
     def run(self):  # listen msg from clien
-        logger.debug('workerpool  %s start'%self.name)
+        logger.debug('Listen   start')
         while True:
             if self.message.con.acquire():
                 if not self.message.q.empty():
                         msg = self.message.get_queue()
                         self.message.con.release()
-                        msg_data = msg.split(":", 1)[1]
-                        #logger.debug(self.name,'get meg',str(msg_data))
-                        message_dict = eval(msg_data)
-                        self.p.processMessage(message_dict)
-
-
+                        message_dict = []
+                        logger.info(msg)
+                        try:
+                            msg_list=msg.split("}{")
+                            if len(msg_list) == 1:
+                                message_dict = eval(msg)
+                                logger.debug(message_dict)
+                            elif len(msg_list) > 1:
+                                for i in range(len(msg_list)):
+                                    if i == 0:
+                                        msg_list[i] = msg_list[i] + "}"
+                                    else:
+                                        msg_list[i] = "{"+msg_list[i]
+                                for msg_data_inlist in msg_list:
+                                    message_dict = eval(msg_data_inlist)
+                                    logger.debug(message_dict)
+                        except Exception as e:
+                            logger.error(e)
+                            continue
+                        self.choose(message_dict)
                 else:
                         self.message.con.wait(1)
                         self.message.con.release()

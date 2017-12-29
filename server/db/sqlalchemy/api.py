@@ -594,7 +594,7 @@ class API(object):
         if not context['is_superuser']:
             group_id = context['group_id']
         else:
-            group_id = group_id if group_id else 'supergroup'
+            group_id = group_id
         worker = self._get_worker(session, name=worker_name,
                                   group_id=group_id,
                                   group_name=group_name,
@@ -642,7 +642,7 @@ class API(object):
                 raise Duplicated
             except NotFound:
                 pass
-        filter = ('start_at', 'deleted', 'deleted_at','created_at', 'updated_at')
+        filter = ('deleted', 'deleted_at','created_at', 'updated_at')
         params = worker.generate_param(filter)
         for k, v in params.items():
             if values.get(k):

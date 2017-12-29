@@ -138,8 +138,8 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
-              <el-form-item v-if="props.row.task.description" label="任务描述">
-                <span>{{ props.row.task.description }}</span>
+              <el-form-item label="任务ID">
+                <span>{{ props.row.task.id }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
                 <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
@@ -162,17 +162,20 @@
               <el-form-item label="目的地址">
                 <span>{{ props.row.task.destination }}</span>
               </el-form-item>
+              <el-form-item v-if="props.row.task.description" label="任务描述">
+                <span>{{ props.row.task.description }}</span>
+              </el-form-item>
             </el-form>
           </template>
         </el-table-column>
         <el-table-column prop="task.name" label="任务名" width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" width="180rem">
         </el-table-column>
-        <el-table-column prop="worker.name" label="作业机" sortable width="180rem" show-overflow-tooltip>
+        <el-table-column prop="worker.name" label="作业机" width="180rem" show-overflow-tooltip>
           <template slot-scope="scope">
             <el-row>
-              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15">
+              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15" :open-delay=500>
                 <div slot="content">{{ scope.row.worker.name }}</div>
                 <el-col :span="20" class="worker_name_overflow">
                   {{ scope.row.worker.name }}
@@ -222,7 +225,7 @@
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="开始时间" sortable width="180rem">
+        <el-table-column label="开始时间" width="180rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
               <span
@@ -354,6 +357,14 @@
                 :value="policy.id">
               </el-option>
             </el-select>
+            <span v-for="policy in policies"
+                  v-if="editForm.policy_id == policy.id"
+                  style="margin-left:10px; color:#99a9bf">
+              <span v-for="group in groups"
+                    v-if="policy.group_id == group.id"
+                    style="margin-left:10px; color:#99a9bf">属组：{{ group.name }}
+              </span>
+            </span>
           </el-form-item>
           <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="editForm.worker_id" placeholder="请选择">
