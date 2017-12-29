@@ -4,12 +4,18 @@ var webpack = require('webpack')
 var config = require('../config')
 var merge = require('webpack-merge')
 var baseWebpackConfig = require('./webpack.base.conf')
-var CopyWebpackPlugin = require('copy-webpack-plugin')
+//var CopyWebpackPlugin = require('copy-webpack-plugin')
 var HtmlWebpackPlugin = require('html-webpack-plugin')
 var ExtractTextPlugin = require('extract-text-webpack-plugin')
 var OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
+var GenerateAssetPlugin = require('generate-asset-webpack-plugin');
 
 var env = config.build.env
+
+var createServerConfig=function(compilation){
+  let cfgJson={ApiUrl:"https://10.202.127.11:443"};
+  return JSON.stringify(cfgJson);
+}
 
 var webpackConfig = merge(baseWebpackConfig, {
   module: {
@@ -84,13 +90,20 @@ var webpackConfig = merge(baseWebpackConfig, {
       chunks: ['vendor']
     }),
     // copy custom static assets
-    new CopyWebpackPlugin([
-      {
-        from: path.resolve(__dirname, '../static'),
-        to: config.build.assetsSubDirectory,
-        ignore: ['.*']
-      }
-    ])
+    // new CopyWebpackPlugin([
+    //   {
+    //     from: path.resolve(__dirname, '../static'),
+    //     to: config.build.assetsSubDirectory,
+    //     ignore: ['.*']
+    //   }
+    // ]),
+    new GenerateAssetPlugin({
+      filename: 'serverConfig.json',
+      fn: (compilation, cb) => {
+        cb(null, createServerConfig(compilation));
+      },
+      extraFiles: []
+    })
   ]
 })
 
