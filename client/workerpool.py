@@ -264,7 +264,7 @@ class Delete:
         for filename in filename_list:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
-                if int(filename[n+1:n+9]) < oldtime or delAll :
+                if int(filename[n+1:n+9]) < oldtime or delAll:
                     realdir=os.path.join(tardir,filename)
                     start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
