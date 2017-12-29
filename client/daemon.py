@@ -492,8 +492,6 @@ class Daemon:
         try:
             pid = os.fork()  # 第一次fork，生成子进程，脱离父进程
             if pid > 0:
-                print "backup work start in backend!"
-                self.log.logger.info("backup work start in backend!")
                 sys.exit(0)  # 退出主进程
         except OSError as e:
             sys.stderr.write('fork #1 failed: %d (%s)\n' %
@@ -656,6 +654,26 @@ class Daemon:
         self.t.start()
 
 
+    def check_gluster(self):
+        ret=-1
+        for gluster_ip in self.glusterip_list:
+            cmd='ping -c 3 %s'%gluster_ip
+            ret,out = commands.getstatusoutput(cmd)
+            if ret == 0:
+                return ret
+            self.log.logger.warning('Can not connect ip %s'%gluster_ip)
+        return ret
+
+    def check_server(self):
+        ret = -1
+        cmd = 'ping -c 3 %s' % self.message.send_ip
+        ret, out = commands.getstatusoutput(cmd)
+        if ret == 0:
+            return ret
+        self.log.logger.error('Can not connect ip %s' % self.message.send_ip)
+        return ret
+
+
     def umount_dir(self):
         fp = open('/proc/mounts', 'r')
         lines = fp.readlines()
@@ -698,6 +716,12 @@ class Daemon:
         """ run your fun"""
         self.check_listen()
         self.umount_dir()
+        ret=self.check_gluster()
+        if ret!=0:
+            message = 'Error,can not connect gluster cluster'
+            self.log.logger.error(message)
+            sys.stderr.write(message )
+            self.stopclient()
         now = datetime.now()
         self.hostname = socket.gethostname()
         os.system("ulimit -n " + "65535")
@@ -712,6 +736,12 @@ class Daemon:
         except:
             sys.stderr.write('client message start error\n')
             self.log.logger.error('client message start error')
+            self.stopclient()
+        ret=self.check_server()
+        if ret!=0:
+            message = 'Error,can not connect server '
+            self.log.logger.error(message)
+            sys.stderr.write(message )
             self.stopclient()
         self.log.logger.debug("to start timer:")
         self.t = Timer(self.timer_interval, self._timer_func)
@@ -736,3 +766,4 @@ class Daemon:
         send_server(self.message, self.log, 'initialize', ip=self.ip, hostname=self.hostname, version=self.version,group=self.group)
         self.t.start()
         self.log.logger.debug("start threadpool over")
+        self.log.logger.info("backup work start in backend!")
