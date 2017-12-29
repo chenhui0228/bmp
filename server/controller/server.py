@@ -809,7 +809,6 @@ class Listen(threading.Thread):
                         message_dict = []
                         logger.info(msg)
                         try:
-
                             msg_list=msg.split("}{")
                             if len(msg_list) == 1:
                                 message_dict = eval(msg)
