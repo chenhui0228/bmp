@@ -5,8 +5,14 @@
 </template>
 
 <script>
+import axios from 'axios'
 export default {
-  name: 'app'
+  name: 'app',
+  mounted() {
+    axios.get("serverConfig.json").then((res) => {
+      localStorage.setItem('ApiUrl', res.data.ApiUrl);
+    });
+  }
 }
 
 </script>

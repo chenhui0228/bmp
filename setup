@@ -5,7 +5,7 @@
 #          version     : 0.0.1                       #
 ######################################################
 
-# This is script which auto-setuping datebase backup software sfbp
+# This is script which auto-setuping datebase backup software fbmp
 
 # TODO:
 logDate=$(date +%Y%m%d)
@@ -113,13 +113,14 @@ funCheckPython(){
             funSetupPy27
         else
             echo python2.7.8 ... yes
+            funCheckpip /usr/local/bin/python2.7
         fi
     fi
 }
 
 funSetupPy27(){
-    yum install zlib
-    yum install zlib-devel
+    yum install zlib -y
+    yum install zlib-devel -y
     cd $root_path/requirePackages/pypi
     tar xf Python-2.7.8.tgz
     cd Python-2.7.8
@@ -171,6 +172,12 @@ funChecckEnv(){
             exit -1
         else
             echo python2.7.8 ... yes
+            pip -V | grep -o 9.0.1 > /dev/null 2>&1
+                if [[ "$?" != "0" ]]; then
+                    echo pip9.0.1 ... no
+                else
+                    echo pip9.0.1 ... yes
+                fi
         fi
     else
         echo 2.7.x ... yes
@@ -299,6 +306,40 @@ funStartProcess(){
     fi
 }
 
+funRemove(){
+    #stop server
+    if [ -f /var/run/fbmp/client.pid ]; then
+        echo stop client ...
+        funStopProcess $1
+    fi
+    #remove /etc/fbmp
+    if [ -d /etc/fbmp ]; then
+        echo rm /etc/fbmp ...
+        rm -rf /etc/fbmp
+    fi
+    #remove /var/log/fbmp
+    if [ -d /var/log/fbmp ]; then
+        echo rm /var/log/fbmp ...
+        rm -rf /var/log/fbmp
+    fi
+    #remove /var/rum/fbmp
+    if [ -d /var/run/fbmp ]; then
+        echo rm /var/run/fbmp ...
+        rm -rf /var/run/fbmp
+    fi
+    #remove /usr/local/fbmp_bak
+    if [ -d /usr/local/fbmp_bak ]; then
+        echo rm /usr/local/fbmp_bak ...
+        rm -rf /usr/local/fbmp_bak
+    fi
+    #remove gluster client
+    for i in `rpm -qa | grep gluster`
+    do
+        echo remove $i
+        rpm -e --nodeps $i
+    done
+}
+
 funCheckGlusterFsAndInstallFromLocal(){
     rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
@@ -380,13 +421,30 @@ case "$action" in
                 printf "Initial Options:\n"
                 printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
                 printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
-                printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
-                printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+                printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the server runtime environment."
+                printf "%-20s %-50s\n" "  -a, --all" "Initialized to the server and client runtime environment."
                 ;;
         esac
         ;;
     check)
         funChecckEnv
+        ;;
+    remove)
+        case "$option" in
+            -c|--client)
+                funRemove client
+                ;;
+            -s|--serverr)
+                funRemove server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 remove <options>\n"
+                printf "Remove Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Remove client program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Remove server program on the host."
+                ;;
+        esac
         ;;
     start)
         case "$option" in
@@ -402,7 +460,7 @@ case "$action" in
                 printf "  $0 start <options>\n"
                 printf "Start Options:\n"
                 printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
-                printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
                 ;;
         esac
         ;;
@@ -420,7 +478,7 @@ case "$action" in
                 printf "  $0 stop <options>\n"
                 printf "Stop Options:\n"
                 printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
-                printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Stop server program on the host."
                 ;;
         esac
         ;;
@@ -432,16 +490,20 @@ case "$action" in
         printf "%-20s %-50s\n" "  start" "Startup Programs."
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
         printf "%-20s %-50s\n" "  check" "check the server runtime env, you do not set options"
+        printf "%-20s %-50s\n" "  remove" "stop programs and remove client runing environment"
         printf "Initial Options:\n"
         printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
         printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
-        printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
-        printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+        printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the server runtime environment."
+        printf "%-20s %-50s\n" "  -a, --all" "Initialized to the server and client runtime environment."
         printf "Start Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
-        printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
         printf "Stop Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
-        printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Stop server program on the host."
+        printf "Remove Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Remove client program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Remove server program on the host."
         ;;
 esac

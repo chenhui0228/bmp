@@ -551,7 +551,9 @@ class Server:
         info = {}
         info['data'] = data
         info['addr'] = addr
-        if (task.state == 'waiting' or task.state == 'running_w') and (task.type == 'backup' or task.type == 'dump'):
+        if task.type == 'backup' or task.type == 'dump':
+            if task.state == 'stopped' or task.state == 'running_s':
+                self.backup(task.id)
             try:
                 self.message.issued(info)
                 self.db.update_task(super_context, task_value)
@@ -571,6 +573,14 @@ class Server:
         except Exception as e:
             logger.error(e.message)
             return
+        task_value={}
+        task_value['id']=task.id
+        task_value['state']='waiting'
+        try:
+            self.db.update_task(super_context,task_value)
+        except Exception as e:
+            logger.error(e.message)
+            return
         if task.type=='backup':
             self.backup(id)
         elif task.type=='recover':
@@ -579,11 +589,19 @@ class Server:
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
         try:
-            task = self.db.get_task(super_context,id)
+            task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
             logger.error(e.message)
             return
         if task.state == 'stopped' or task.state == 'running_s':
+            if isRestart:
+                task_value={}
+                task_value['id']=task.id
+                task_value['state']='stopped'
+                try:
+                    self.db.update_task(super_context,task_value)
+                except Exception as e:
+                    logger.error(e.message)
             return
         worker = task.worker
         policy = task.policy
@@ -696,7 +714,7 @@ class Server:
 
     def backup(self,id,do_type=False):
         try:
-            task = self.db.get_task(super_context,id)
+            task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
             logger.error(e.message)
             return
@@ -791,11 +809,11 @@ class Listen(threading.Thread):
                         msg = self.message.get_queue()
                         self.message.con.release()
                         message_dict = []
+                        logger.info(msg)
                         try:
-                            msg_data = msg.split(":", 1)[1]
-                            msg_list=msg_data.split("}{")
+                            msg_list=msg.split("}{")
                             if len(msg_list) == 1:
-                                message_dict = eval(msg_data)
+                                message_dict = eval(msg)
                                 logger.debug(message_dict)
                             elif len(msg_list) > 1:
                                 for i in range(len(msg_list)):
@@ -807,7 +825,7 @@ class Listen(threading.Thread):
                                     message_dict = eval(msg_data_inlist)
                                     logger.debug(message_dict)
                         except Exception as e:
-                            logger.error(e.message)
+                            logger.error(e)
                             continue
                         self.choose(message_dict)
                 else:
