@@ -51,10 +51,8 @@ class TCPServer(BaseRequestHandler):
             data = self.request.recv(4096)
             if len(data) > 0:
                 #print "address=", address, "pid",pid,"recv data:", data
-                cur_thread = threading.current_thread()
-                response = '{}:{}'.format(cur_thread.ident, data)
                 # self.request.sendall('server response!')
-                do_put(response)
+                do_put(data)
                 #self.request.sendto(response, self.client_address)
                 #print "address=", address, "recv data:", data
                 self.finish()
@@ -75,13 +73,16 @@ class UDPServer(BaseRequestHandler):
                 self.request[1].sendto(response, self.client_address)
                 self.finish()
 
+class MyThreadingTCPServer(ThreadingTCPServer):
+    allow_reuse_address = True
+    pass
 
 class Message:
-    def __init__(self, ms_type):
+    def __init__(self, ms_type,log):
         global q
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
-        server_ip = cp.get('server', 'ip')
+        server_ip = cp.get('server', 'server_ip')
         server_port = cp.get('server', 'server_port')
         client_port = cp.get('client', 'client_port')
         # self.locahost=socket.gethostname
@@ -100,7 +101,7 @@ class Message:
         self.tcpclient = ''
         self.server_thread = []
         self.q = q
-        #self.log =mylogger
+        self.log =log
 
     def get_queue(self):
         #self.log.logger.info('get msg from queue')
@@ -114,7 +115,7 @@ class Message:
         # init server:
         if self.ms_type == "tcp":
             try:
-                self.tcpserver = ThreadingTCPServer(ADDR, TCPServer)
+                self.tcpserver = MyThreadingTCPServer(ADDR, TCPServer)
                 # init client:
                 # self.updclient =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
                 server_thread = threading.Thread(target=self.tcpserver.serve_forever)
@@ -122,11 +123,13 @@ class Message:
                 server_thread.start()
                 self.server_thread.append(server_thread)
             except Exception as e:
-                #self.log.logger.error('start TCP listen server failed %s'%e)
-                pass
+                self.log.logger.error('start TCP listen server failed %s'%e)
+                #pass
+                return -1
         # start server
         self.send_status = "start"
         # self.udpserver.serve_forever()
+        return 0
 
 
         # self.state="start"
@@ -167,25 +170,28 @@ class Message:
                 #print info
                 try:
                     self.tcpclient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.tcpclient.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.send(ms)
                     #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
+                    self.log.logger.info(info)
                 except Exception as e:
-                    #self.log.logger.error('UDP send failed %s' % e)
+                    self.log.logger.error('TCP send failed %s' % e)
                     return e
             else:
                 #print "error:data or address not exist ?"
-                #self.log.logger.error("error:data or address not exist!")
+                self.log.logger.error("error:data or address not exist!")
                 return "error:data or address not exist!"
         else:
             #print "error:data or address not exist ?"
-            #self.log.logger.error("error:data or address not exist!")
+            self.log.logger.error("error:data or address not exist!")
             return "error:data or address not exist!"
         return 0
 
     def issued(self,info):    # server发给client
+        ret =None
         if self.ms_type == "tcp":
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
@@ -193,10 +199,11 @@ class Message:
         return ret
 
     def send(self, data):       # client发给server
+        ret = None
+        info = {}
+        info['data'] = str(data)
+        info['addr'] = (self.send_ip, self.server_port)
         if self.ms_type == "tcp":
-            info={}
-            info['data']=str(data)
-            info['addr']=(self.send_ip,self.server_port)
             ret=self.tcpsend(info)
         if self.ms_type == "udp":
             ret=self.udpsend(info)

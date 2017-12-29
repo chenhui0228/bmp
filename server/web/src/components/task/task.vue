@@ -45,6 +45,34 @@
   .transfer-dialog-body {
     margin: -30px 0px;
   }
+  .worker_on_round {
+    width:10px;
+    height:10px;
+    background-color: #98F898;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
+    line-height: 100%;
+    margin: 7px 10px 0px 2px;
+    float: right;
+  }
+  .worker_off_round {
+    width:10px;
+    height:10px;
+    background-color: #FF4500;
+    border-radius: 5px; /* 所有角都使用半径为5px的圆角，此属性为CSS3标准属性 */
+    -moz-border-radius: 5px; /* Mozilla浏览器的私有属性 */
+    -webkit-border-radius: 5px; /* Webkit浏览器的私有属性 */
+    line-height: 100%;
+    margin: 7px 10px 0px 2px;
+    float: right;
+  }
+  .worker_name_overflow {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
 </style>
 <template>
   <el-row class="warp">
@@ -71,14 +99,17 @@
         <el-button type="primary" v-if="isTags && (role == 'superrole' || role == 'admin')" @click="newTag"
                    style="margin-left: 5px">新建
         </el-button>
-        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags.length != 0" style="margin-left: 5px">
+        <el-button type="primary" @click="batchDelete" v-if="tasks.length != 0 || tags.length != 0"
+                   style="margin-left: 5px">
           批量删除
         </el-button>
         <el-button type="primary" @click="confirmExport" v-if="!isTags">导出任务数据</el-button>
         <!--<el-button type="primary" @click="exportExcel" style="margin-left: 5px">导出</el-button>-->
-        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" v-if="!isTags" onsubmit="return false;">
+        <el-form :inline="true" :model="filters" style="float:right; margin-right: 5px" v-if="!isTags"
+                 onsubmit="return false;">
           <el-form-item>
-            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;" @keyup.native="searchTaskByName"></el-input>
+            <el-input v-model="filters.name" placeholder="任务名" style="min-width: 240px;"
+                      @keyup.native="searchTaskByName"></el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click.native="searchTaskByName">查询</el-button>
@@ -107,8 +138,8 @@
               <el-form-item label="任务名">
                 <span>{{ props.row.task.name }}</span>
               </el-form-item>
-              <el-form-item v-if="props.row.task.description" label="任务描述">
-                <span>{{ props.row.task.description }}</span>
+              <el-form-item label="任务ID">
+                <span>{{ props.row.task.id }}</span>
               </el-form-item>
               <el-form-item label="创建时间">
                 <span>{{ props.row.task.created_at | timeStamp2datetime }}</span>
@@ -131,14 +162,37 @@
               <el-form-item label="目的地址">
                 <span>{{ props.row.task.destination }}</span>
               </el-form-item>
+              <el-form-item v-if="props.row.task.description" label="任务描述">
+                <span>{{ props.row.task.description }}</span>
+              </el-form-item>
             </el-form>
           </template>
         </el-table-column>
         <el-table-column prop="task.name" label="任务名" width="taskname_label_width" show-overflow-tooltip>
         </el-table-column>
-        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" sortable width="180rem">
+        <el-table-column prop="policy.name" label="任务策略" v-if="isBackupTask" width="180rem">
         </el-table-column>
-        <el-table-column prop="worker.name" label="作业机" sortable width="180rem">
+        <el-table-column prop="worker.name" label="作业机" width="180rem" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <el-row>
+              <el-tooltip placement="top" v-if="scope.row.worker.name.length > 15" :open-delay=500>
+                <div slot="content">{{ scope.row.worker.name }}</div>
+                <el-col :span="20" class="worker_name_overflow">
+                  {{ scope.row.worker.name }}
+                </el-col>
+              </el-tooltip>
+              <el-col :span="20" v-else>
+                {{ scope.row.worker.name }}
+              </el-col>
+              <span v-if="scope.row.worker.status == 'Offline'">
+                <div class="worker_off_round"></div>
+              </span>
+              <span v-if="scope.row.worker.status == 'Active'">
+                <div class="worker_on_round"></div>
+                <!--{{ scope.row.worker.status }}-->
+              </span>
+            </el-row>
+          </template>
         </el-table-column>
         <el-table-column prop="task.state" label="状态" width="120rem">
           <template slot-scope="scope">
@@ -152,6 +206,7 @@
             <span v-else-if="scope.row.state && scope.row.task.state == 'end' && scope.row.state.state == 'aborted'">
               <el-button type="text" @click="failedMsgbox(scope.row.state)" style="color: orangered">中断</el-button>
             </span>
+            <span v-else-if="scope.row.task.state == 'end' && scope.row.state.state == 'success'" style="color: green">成功</span>
             <span v-else-if="scope.row.task.state == 'end'" style="color: green">完成</span>
             <span v-else style="color: red">未知</span>
           </template>
@@ -161,17 +216,20 @@
           width="150rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
-              <span style="color: dodgerblue" v-if="parseInt(scope.row.state.process) > 100 && scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s'" >正在dump...</span>
+              <span style="color: dodgerblue"
+                    v-if="parseInt(scope.row.state.process) > 100 && (scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s')">正在dump...</span>
               <el-progress v-if="(scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end')
-              && scope.row.state.process !== '200' && scope.row.state.state !== 'failed' && scope.row.state.state !== 'aborted'" :percentage="parseInt(scope.row.state.process)"></el-progress>
+              && scope.row.state.process !== '200' && scope.row.state.state !== 'failed' && scope.row.state.state !== 'aborted'"
+                           :percentage="parseInt(scope.row.state.process)"></el-progress>
             </span>
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="开始时间" sortable width="180rem">
+        <el-table-column label="开始时间" width="180rem">
           <template slot-scope="scope">
             <span v-if="scope.row.state">
-              <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
+              <span
+                v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.start_time | dateStampFormat }}</span>
             </span>
             <span v-else>--</span>
           </template>
@@ -179,7 +237,8 @@
         <el-table-column label="文件大小" width="120rem">
           <template slot-scope="scope">
           <span v-if="scope.row.state">
-            <span v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
+            <span
+              v-if="scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s' || scope.row.task.state == 'end'">{{ scope.row.state.total_size | Bytes  }}</span>
             <span v-else>--</span>
           </span>
           </template>
@@ -188,16 +247,17 @@
         </el-table-column>
         <el-table-column label="操作" width="">
           <template slot-scope="scope">
-            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)" v-if="isBackupTask && (scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped')">
+            <svg class="icon" aria-hidden="true" @click="showEditDialog(scope.$index,scope.row)"
+                 v-if="isBackupTask && (scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped')">
               <use xlink:href="#icon-modify"></use>
             </svg>
             <svg class="icon" aria-hidden="true" @click="delTask(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
             <!--<el-tooltip content="标记" placement="top">-->
-              <!--<svg class="icon" aria-hidden="true" @click="showMarkDialog(scope.$index,scope.row)">-->
-                <!--<use xlink:href="#icon-tags"></use>-->
-              <!--</svg>-->
+            <!--<svg class="icon" aria-hidden="true" @click="showMarkDialog(scope.$index,scope.row)">-->
+            <!--<use xlink:href="#icon-tags"></use>-->
+            <!--</svg>-->
             <!--</el-tooltip>-->
             <el-tooltip content="立即执行" placement="top"
                         v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'stopped') && isBackupTask">
@@ -212,7 +272,7 @@
               </svg>
             </el-tooltip>
             <el-tooltip content="停止" placement="top"
-                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w' || scope.row.task.state == 'running_s') && isBackupTask">
+                        v-if="(scope.row.task.state == 'waiting' || scope.row.task.state == 'running_w') && isBackupTask">
               <svg class="icon" aria-hidden="true" @click="taskActions(scope.$index,scope.row,'stop')">
                 <use xlink:href="#icon-stop"></use>
               </svg>
@@ -232,7 +292,8 @@
         </el-table-column>
       </el-table>
       <!--TODO: 标签列表-->
-      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" :key="tag.id" v-if="isTags && (role == 'superrole' || role == 'admin')"
+      <el-col v-for="(tag,index) in tags" :span="3" class="card-col" :key="tag.id"
+              v-if="isTags && (role == 'superrole' || role == 'admin')"
               @selection-change="handleSelectionChange">
         <el-card class="box-card">
           <div slot="header" class="card-header">
@@ -296,6 +357,14 @@
                 :value="policy.id">
               </el-option>
             </el-select>
+            <span v-for="policy in policies"
+                  v-if="editForm.policy_id == policy.id"
+                  style="margin-left:10px; color:#99a9bf">
+              <span v-for="group in groups"
+                    v-if="policy.group_id == group.id"
+                    style="margin-left:10px; color:#99a9bf">属组：{{ group.name }}
+              </span>
+            </span>
           </el-form-item>
           <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="editForm.worker_id" placeholder="请选择">
@@ -351,7 +420,8 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.source" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
+              <el-input v-model="editForm.source" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头"
+                        onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -366,7 +436,8 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="editForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
+              <el-input v-model="editForm.destination" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头"
+                        onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="description" label="描述">
@@ -457,7 +528,8 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.source" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头" onkeypress="return event.keyCode !== 32"></el-input>
+              <el-input v-model="addForm.source" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头"
+                        onkeypress="return event.keyCode !== 32"></el-input>
             </el-col>
           </el-form-item>
           <el-form-item prop="destination" label="目标地址">
@@ -472,7 +544,7 @@
               </el-select>
             </el-col>
             <el-col :span="21" style="padding-left:2px">
-              <el-input v-model="addForm.destination" auto-complete="off"  placeholder="请输入绝对路径，以 '/'开头"
+              <el-input v-model="addForm.destination" auto-complete="off" placeholder="请输入绝对路径，以 '/'开头"
                         onkeypress="return event.keyCode !== 32">
               </el-input>
             </el-col>
@@ -529,8 +601,10 @@
               <span v-else-if="scope.row && scope.row.state == 'aborted'">
                 <el-button type="text" @click="failedMsgbox(scope.row)" style="color: orangered">中断</el-button>
               </span>
-              <span style="color: dodgerblue" v-else-if="scope.row && parseInt(scope.row.process) > 100" >正在dump...</span>
-              <el-progress v-else-if="scope.row && scope.row.process && scope.row.process !== '200'" :percentage="parseInt(scope.row.process)"></el-progress>
+              <span style="color: dodgerblue"
+                    v-else-if="scope.row && parseInt(scope.row.process) > 100">正在dump...</span>
+              <el-progress v-else-if="scope.row && scope.row.process && scope.row.process !== '200'"
+                           :percentage="parseInt(scope.row.process)"></el-progress>
               <span v-else-if="scope.row">--</span>
               <span v-else style="color: #F7AD01">未开始</span>
             </template>
@@ -562,7 +636,8 @@
                  v-model="createRecoverTaskFormVisible"
                  :close-on-click-modal="false"
                  :beforeClose="cancelCreateRecoverTask">
-        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm" :rules="createRecoverTaskFormRules">
+        <el-form :model="createRecoverTaskForm" label-width="100px" ref="createRecoverTaskForm"
+                 :rules="createRecoverTaskFormRules">
           <el-form-item prop="worker_id" label="作业机">
             <el-select v-model="createRecoverTaskForm.worker_id" placeholder="请选择">
               <el-option
@@ -591,7 +666,8 @@
       </el-dialog>
 
       <!--TODO: 创建标签-->
-      <el-dialog :title="dialogTagTitle" :visible.sync="dialogTagVisible"  :close-on-click-modal="!dialogTagVisible" @close="cancelTagDialog">
+      <el-dialog :title="dialogTagTitle" :visible.sync="dialogTagVisible" :close-on-click-modal="!dialogTagVisible"
+                 @close="cancelTagDialog">
         <el-form :model="tagForm" ref="tagForm">
           <el-form-item label="标签名称">
             <el-input v-model="tagForm.name" auto-complete="off"></el-input>
@@ -603,7 +679,8 @@
         </div>
       </el-dialog>
       <!--TODO:dialog that selecting tag for task-->
-      <el-dialog title="标签设置" :visible.sync="dialogTagTransferVisible" :close-on-click-modal="!dialogTagVisible" @close="cancelTagTransferDialog" class="tag-transfer-dialog">
+      <el-dialog title="标签设置" :visible.sync="dialogTagTransferVisible" :close-on-click-modal="!dialogTagVisible"
+                 @close="cancelTagTransferDialog" class="tag-transfer-dialog">
         <div class="transfer-dialog-body">
           <el-col :span="24" style="margin: 10px 0px;">
             <span>
@@ -882,6 +959,13 @@
     },
     //TODO: methods
     methods: {
+      sortByTaskField(a,b){
+        if (a.task.created_at - b.task.created_at == 0) {
+            return a.task.name.localeCompare(b.task.name)
+        }else{
+          return b.task.created_at - a.task.created_at;
+        }
+      },
       handleClick(tag) {
         this.page = 1;
         this.per_page = 10;
@@ -939,7 +1023,7 @@
         //NProgress.start();
         reqGetTaskDetailList(para).then((res) => {
           this.total = res.data.total;
-          this.tasks = res.data.tasks;
+          this.tasks = res.data.tasks.sort(this.sortByTaskField);
           this.listLoading = false;
           //NProgress.done();
         }).catch(err=>{
@@ -1675,7 +1759,7 @@
             params.name_like = this.filters.name;
           }
           reqGetTaskDetailList(params).then(res =>{
-            this.tasks[index] = res.data.tasks[0];
+            this.tasks[index] = res.data.tasks.sort(this.sortByTaskField)[0];
           })
         }, err => {
           if (err.response.status == 401) {
@@ -1757,9 +1841,12 @@
         reqGetTaskDetailList(params).then((res) => {
           this.total = res.data.total;
           if(this.tasks.length != res.data.tasks.length){
-            this.tasks = res.data.tasks;
+            this.tasks = res.data.tasks.sort(this.sortByTaskField);
           }else{
+            res.data.tasks.sort(this.sortByTaskField);
             for (var i = 0; i < Math.min(this.per_page,this.total); ++i) {
+              this.tasks[i].worker.status = res.data.tasks[i].worker.status;
+              this.tasks.splice(i, {'worker.status': res.data.tasks[i].worker.status});
               this.tasks[i].task.state = res.data.tasks[i].task.state;
               this.tasks.splice(i, {'task.state': res.data.tasks[i].task.state});
               if (res.data.tasks[i].state && this.tasks[i].state){
@@ -1796,4 +1883,5 @@
       },3000)
     }
   }
+
 </script>

@@ -5,19 +5,20 @@
 #          version     : 0.0.1                       #
 ######################################################
 
-# This is script which auto-setuping datebase backup software sfbp
+# This is script which auto-setuping datebase backup software fbmp
 
 # TODO:
 logDate=$(date +%Y%m%d)
 curDate="date +%Y-%m-%d%t%H:%M:%S"
 
 project_name='fbmp'
-glusterfs_version='3.10.8'
+glusterfs_version='3.10.8-1'
 
 # system path
 etc_path='/etc/'${project_name}
 log_path='/var/log/'${project_name}
 run_path='/var/run/'${project_name}
+project_path='/usr/local/'${project_name}
 server_conf_path=${etc_path}server.conf
 client_conf_path=${etc_path}client.conf
 
@@ -55,21 +56,36 @@ function version_le() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" 
 function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
 function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; }
 
+
+funCheckToolsFromRepos(){
+    yum list | grep '^'$1 > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo install $1
+        yum install $1 -y
+    else
+        echo $1 ... yes
+    fi
+}
+
 #check pip
 funCheckpip(){
-    pip > /dev/null 2>&1
+    pip -V | grep -o 9.0.1 > /dev/null 2>&1
     if [[ "$?" != "0" ]]; then
-        echo "[${hostname}] "$(${curDate})" INFO: pip is not setuped"
-        echo "[${hostname}] "$(${curDate})" INFO: setuping pip..."
-        cnt=$(find /usr/lib* -name site-packages | wc -l)
-        if [[ $cnt -ge 2 ]]; then
-            funSetupPypi $1 pip-9.0.1
-        else
-            echo "[${hostname}] "$(${curDate})" INFO: Not found setuptools, setup it first..."
-            funSetupPypi $1 setuptools-23.1.0
-            funSetupPypi $1 pip-9.0.1
-        fi
+        echo "[${hostname}] "$(${curDate})" INFO: pip is not found or must update"
+        echo "[${hostname}] "$(${curDate})" INFO: setuping(updateing) setuptools, pip..."
+        funSetupPypi $1 setuptools-23.1.0
+        funSetupPypi $1 pip-9.0.1
+    else
+        echo pip-9.0.1 ... yes
     fi
+    echo "check python devel env..."
+    funCheckToolsFromRepos gcc
+    funCheckToolsFromRepos python-devel
+    #funCheckDevel libevent-devel
+    #funCheckToolsFromRepos libffi-devel
+    funCheckToolsFromRepos zlib-devel
+    funCheckToolsFromRepos openssl-devel
 }
 
 funSetupPypi(){
@@ -79,7 +95,7 @@ funSetupPypi(){
     $1 setup.py install
     if [[ "$?" != "0" ]]; then
         echo "[${hostname}] "$(${curDate})" ERROR: setup $2 failed"
-        exit 1
+        exit -1
     else
         echo "[${hostname}] "$(${curDate})" INFO: setup $2 success"
     fi
@@ -88,9 +104,23 @@ funSetupPypi(){
     cd $root_path
 }
 
+funCheckPython(){
+    if [[ $1 == "py27" ]]; then
+        /usr/local/bin/python2.7 -V > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo python2.7.8 ... no
+            echo install python2.7.8
+            funSetupPy27
+        else
+            echo python2.7.8 ... yes
+            funCheckpip /usr/local/bin/python2.7
+        fi
+    fi
+}
+
 funSetupPy27(){
-    yum install zlib
-    yum install zlib-devel
+    yum install zlib -y
+    yum install zlib-devel -y
     cd $root_path/requirePackages/pypi
     tar xf Python-2.7.8.tgz
     cd Python-2.7.8
@@ -107,12 +137,75 @@ funSetupPy27(){
 funSetupPy(){
     case $1 in
         py27)
-            funSetupPy27
+            funCheckPython py27
+            echo you must use /usr/local/bin/python2.7 to run all python programes "in" fbmp project .
             ;;
         pyLib)
             funCheckpip /usr/bin/python
+            echo you must use /usr/bin/python to run all python programes "in" fbmp project.
             ;;
     esac
+}
+
+funCheckGlusterFsEnv(){
+    rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo please install $1"-"$glusterfs_version".$2.x86_64" user command "./setup install -c"
+        exit -1
+    else
+        echo $1 ... yes
+    fi
+}
+
+funChecckEnv(){
+    # check python
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        /usr/local/bin/python2.7 -V > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo python2.7.8 ... no
+            echo please install python2.7.8 user command "./setup install -c"
+            exit -1
+        else
+            echo python2.7.8 ... yes
+            pip -V | grep -o 9.0.1 > /dev/null 2>&1
+                if [[ "$?" != "0" ]]; then
+                    echo pip9.0.1 ... no
+                else
+                    echo pip9.0.1 ... yes
+                fi
+        fi
+    else
+        echo 2.7.x ... yes
+    fi
+
+    # check glusterfs
+    funCompareVersion $os_version 6.6
+    os66=$?
+    funCompareVersion $os_version 6.9
+    os69=$?
+    funCompareVersion $os_version 7.0
+    os70=$?
+    if [[ $os69 -eq 0 ]]; then
+        # funSetupLibs libs-6
+        funCheckGlusterFsEnv glusterfs el6
+        funCheckGlusterFsEnv glusterfs-libs el6
+        funCheckGlusterFsEnv glusterfs-client-xlators el6
+        funCheckGlusterFsEnv glusterfs-fuse el6
+    elif [[ $os70 -eq 1 ]]; then
+        # funSetupLibs libs-7
+        funCheckGlusterFsEnv glusterfs el7
+        funCheckGlusterFsEnv glusterfs-libs el7
+        funCheckGlusterFsEnv glusterfs-client-xlators el7
+        funCheckGlusterFsEnv glusterfs-fuse el7
+    fi
+
+    # check pip
+    funSetupPipyByRequirements client/requirements.txt
 }
 
 funInitialPy(){
@@ -122,14 +215,15 @@ funInitialPy(){
     py27=$?
     
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        echo system python version is lower "then" 2.7
         funSetupPy py27
     else
+        echo system python version is 2.7.x
         funSetupPy pyLib
     fi
 }
 
 funSetupPipyByRequirements(){
-    requirements_paht=$1
     cd $root_path
     funCompareVersion $py_version 2.6
     py26=$?
@@ -147,10 +241,12 @@ funSetupGlusterFsByYum(){
     os_v=$1
     if [[ $os_v = 'el6' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el6/rpms
-        yum install glusterfs-*${glusterfs_version}*.rpm -y
+        funCheckGlusterfs el6
+        #yum install glusterfs-*${glusterfs_version}*.rpm -y
     elif [[ $os_v = 'el7' ]]; then
         cd $root_path/requirePackages/glusterfs_fuse_packages/el7/rpms
-        yum install glusterfs-*${glusterfs_version}*.rpm -y
+        funCheckGlusterfs el7
+        #yum install glusterfs-*${glusterfs_version}*.rpm -y
     fi
     cd $root_path
 }
@@ -173,8 +269,16 @@ funcInitialGlusterFS(){
 }
 
 funStopProcess(){
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
     if [[ $1 == "client" ]]; then
-        kill -9 `cat $client_pid`
+        if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+            /usr/local/bin/python2.7 $project_path/client/main.py stop
+        else
+            /usr/bin/python $project_path/client/main.py stop
+        fi
     elif [[ $1 == "server" ]]; then
         kill -9 `cat $server_pid`
     fi
@@ -186,6 +290,7 @@ funStartProcess(){
     py26=$?
     funCompareVersion $py_version 2.7
     py27=$?
+
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
         if [[ $1 == "client" ]]; then
             /usr/local/bin/python2.7 $root_path/client/main.py start
@@ -195,10 +300,71 @@ funStartProcess(){
     else
         if [[ $1 == "client" ]]; then
             /usr/bin/python $root_path/client/main.py start
-        else 
+        else
             /usr/bin/python $root_path/server/server.py -c /etc/fbmp/server.conf run
         fi
     fi
+}
+
+funRemove(){
+    #stop server
+    if [ -f /var/run/fbmp/client.pid ]; then
+        echo stop client ...
+        funStopProcess $1
+    fi
+    #remove /etc/fbmp
+    if [ -d /etc/fbmp ]; then
+        echo rm /etc/fbmp ...
+        rm -rf /etc/fbmp
+    fi
+    #remove /var/log/fbmp
+    if [ -d /var/log/fbmp ]; then
+        echo rm /var/log/fbmp ...
+        rm -rf /var/log/fbmp
+    fi
+    #remove /var/rum/fbmp
+    if [ -d /var/run/fbmp ]; then
+        echo rm /var/run/fbmp ...
+        rm -rf /var/run/fbmp
+    fi
+    #remove /usr/local/fbmp_bak
+    if [ -d /usr/local/fbmp_bak ]; then
+        echo rm /usr/local/fbmp_bak ...
+        rm -rf /usr/local/fbmp_bak
+    fi
+    #remove gluster client
+    for i in `rpm -qa | grep gluster`
+    do
+        echo remove $i
+        rpm -e --nodeps $i
+    done
+}
+
+funCheckGlusterFsAndInstallFromLocal(){
+    rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo $1 ... no
+        echo install $1 ...
+        rpm -ivh --nodeps $1"-"$glusterfs_version"*" > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            echo install $1 ... ok
+        fi
+    else
+        echo $1 ... yes
+    fi
+}
+
+funCheckGlusterfs(){
+    funCheckGlusterFsAndInstallFromLocal glusterfs $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-libs $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-client-xlators $1
+    funCheckGlusterFsAndInstallFromLocal glusterfs-fuse $1
+}
+
+funVersionUpgrade(){
+    # 1.stop service
+    funStopProcess $1
+    rm -rf ${project_path}/*
 }
 
 # TODO: Command start, receive two paramenters. $1 is action(eg:initial,start,stop) that is what are you doing; $2 is \
@@ -234,6 +400,7 @@ case "$action" in
         fi
         case "$option" in
             -c|--client)
+                funInitialPy
                 funcInitialGlusterFS
                 funSetupPipyByRequirements client/requirements.txt
                 ;;
@@ -246,7 +413,7 @@ case "$action" in
                 funSetupPipyByRequirements requirements.txt
                 ;;
             -p|--python)
-		        funInitialPy
+	            funInitialPy
                 ;;
             *)
                 printf "Usage:\n"
@@ -254,8 +421,28 @@ case "$action" in
                 printf "Initial Options:\n"
                 printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
                 printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
-                printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
-                printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+                printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the server runtime environment."
+                printf "%-20s %-50s\n" "  -a, --all" "Initialized to the server and client runtime environment."
+                ;;
+        esac
+        ;;
+    check)
+        funChecckEnv
+        ;;
+    remove)
+        case "$option" in
+            -c|--client)
+                funRemove client
+                ;;
+            -s|--serverr)
+                funRemove server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 remove <options>\n"
+                printf "Remove Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Remove client program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Remove server program on the host."
                 ;;
         esac
         ;;
@@ -273,7 +460,7 @@ case "$action" in
                 printf "  $0 start <options>\n"
                 printf "Start Options:\n"
                 printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
-                printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
                 ;;
         esac
         ;;
@@ -291,7 +478,7 @@ case "$action" in
                 printf "  $0 stop <options>\n"
                 printf "Stop Options:\n"
                 printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
-                printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Stop server program on the host."
                 ;;
         esac
         ;;
@@ -302,16 +489,21 @@ case "$action" in
         printf "%-20s %-50s\n" "  initial" "Runtime environment initialization."
         printf "%-20s %-50s\n" "  start" "Startup Programs."
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
+        printf "%-20s %-50s\n" "  check" "check the server runtime env, you do not set options"
+        printf "%-20s %-50s\n" "  remove" "stop programs and remove client runing environment"
         printf "Initial Options:\n"
         printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
         printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
-        printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the web server runtime environment."
-        printf "%-20s %-50s\n" "  -a, --all" "Initialized to the web server and client runtime environment."
+        printf "%-20s %-50s\n" "  -s, --server" "Only initialized to the server runtime environment."
+        printf "%-20s %-50s\n" "  -a, --all" "Initialized to the server and client runtime environment."
         printf "Start Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
-        printf "%-20s %-50s\n" "  -s, --server" "Startup web server program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
         printf "Stop Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
-        printf "%-20s %-50s\n" "  -s, --server" "Stop web server program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Stop server program on the host."
+        printf "Remove Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Remove client program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Remove server program on the host."
         ;;
 esac
