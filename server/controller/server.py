@@ -552,9 +552,7 @@ class Server:
         info['data'] = data
         info['addr'] = addr
         if task.type == 'backup' or task.type == 'dump':
-            #  删除备份任务时要删除之前备份的数据
             if task.state == 'stopped' or task.state == 'running_s':
-                #  client没有保存任务状态为stopped和running_s的任务的信息，删除时要先下发人物信息
                 self.backup(task.id)
             try:
                 self.message.issued(info)
