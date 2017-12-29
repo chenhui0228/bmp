@@ -273,6 +273,12 @@ class Delete:
                     except Exception as e:
                         self.log.logger.error(e.message)
                         return -1
+        if delAll:
+            try:
+                shutil.rmtree(tardir)
+            except Exception as e:
+                self.log.logger.error(e.message)
+                return -1
         return 0
 
 

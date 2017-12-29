@@ -551,7 +551,9 @@ class Server:
         info = {}
         info['data'] = data
         info['addr'] = addr
-        if (task.state == 'waiting' or task.state == 'running_w') and (task.type == 'backup' or task.type == 'dump'):
+        if task.type == 'backup' or task.type == 'dump':
+            if task.state == 'stopped' or task.state == 'running_s':
+                self.backup(task.id)
             try:
                 self.message.issued(info)
                 self.db.update_task(super_context, task_value)
@@ -587,7 +589,7 @@ class Server:
     def update_task(self,id,isRestart=False):
         logger.debug('update_task start now')
         try:
-            task = self.db.get_task(super_context,id)
+            task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
             logger.error(e.message)
             return
@@ -712,7 +714,7 @@ class Server:
 
     def backup(self,id,do_type=False):
         try:
-            task = self.db.get_task(super_context,id)
+            task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
             logger.error(e.message)
             return

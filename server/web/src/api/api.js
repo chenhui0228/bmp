@@ -4,7 +4,11 @@
 import axios from 'axios'
 import Qs from 'qs'
 
-let base = 'https://10.202.127.11:443'
+let base = '';
+
+function get_base_url() {
+  base = localStorage.getItem('ApiUrl');
+}
 
 axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
 axios.defaults.headers.put['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
@@ -32,138 +36,215 @@ axios.interceptors.request.use((config) => {
 });
 
 export const requestLogin = params => {
+  get_base_url()
   return axios.post(`${base}/login`, params)
 }
 
 //获取用户列表
 export const reqGetUserList = params => {
+  get_base_url()
   return axios.get(`${base}/backup/users/detail`, {params: params})
 }
 
 //添加用户
 export const reqPostUser = (params, data) => {
+  get_base_url()
   return axios.post(`${base}/backup/users`, data, {params: params})
 }
 
 //修改用户
 export const reqPutUser = (params, data) => {
+  get_base_url()
   return axios.put(`${base}/backup/users/${data.id}`, data, {params: params})
 }
 
 //删除用户
 export const reqDelUser = (params, id) => {
+  get_base_url()
   return axios.delete(`${base}/backup/users/${id}`, {params: params})
 }
 
 //个人信息获取
-export const reqGetUserProfile = (params,  uid) => {
+export const reqGetUserProfile = (params, uid) => {
+  get_base_url()
   return axios.get(`${base}/backup/users/${uid}`, {params: params})
 }
 
 //个人信息修改
 export const reqUpdateUserProfile = (params, data) => {
+  get_base_url()
   return axios.put(`${base}/backup/users/${data.id}`, data, {params: params})
 }
 
 //获取角色列表
 export const reqGetRoleList = params => {
+  get_base_url()
   return axios.get(`${base}/backup/roles`, {params: params})
 }
 
 //policy
 export const reqGetPolicyList = params => {
+  get_base_url()
   return axios.get(`${base}/backup/policies/detail`, {params: params})
 }
 export const reqPostPolicy = (params, data) => {
+  get_base_url()
   return axios.post(`${base}/backup/policies`, data, {params: params})
 }
 export const reqPutPolicy = (params, data) => {
+  get_base_url()
   return axios.put(`${base}/backup/policies/${data.id}`, data, {params: params})
 }
 export const reqDelPolicy = (params, id) => {
+  get_base_url()
   return axios.delete(`${base}/backup/policies/${id}`, {params: params})
 }
 
 
 //组列表相关API开始
-export const reqGetGroupList = params => { return axios.get(`${base}/backup/groups`, { params: params }) }
+export const reqGetGroupList = params => {
+  get_base_url()
+  return axios.get(`${base}/backup/groups`, {params: params})
+}
 
-export const reqGetGroupDetail = (group_id,params) =>{ return axios.get(`${base}/backup/groups/${group_id}`, { params: params }) }
+export const reqGetGroupDetail = (group_id, params) => {
+  get_base_url()
+  return axios.get(`${base}/backup/groups/${group_id}`, {params: params})
+}
 
-export const reqEditGroup = (group_id,user,params) => { return axios.put(`${base}/backup/groups/${group_id}`, params, { params: user}) }
+export const reqEditGroup = (group_id, user, params) => {
+  get_base_url()
+  return axios.put(`${base}/backup/groups/${group_id}`, params, {params: user})
+}
 
-export const reqAddGroup = (user,params) => { return axios.post(`${base}/backup/groups`,  params, { params: user}) }
+export const reqAddGroup = (user, params) => {
+  get_base_url()
+  return axios.post(`${base}/backup/groups`, params, {params: user})
+}
 
-export const reqDelGroup = (group_id,params) => { return axios.delete(`${base}/backup/groups/${group_id}`, { params: params }) }
+export const reqDelGroup = (group_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/groups/${group_id}`, {params: params})
+}
 //组列表相关API结束
 
 //主机管理相关
-export const reqGetWorkerList = params => { return axios.get(`${base}/backup/workers/detail`, { params: params }) }
+export const reqGetWorkerList = params => {
+  get_base_url()
+  return axios.get(`${base}/backup/workers/detail`, {params: params})
+}
 
-export const reqEditWorker = (worker_id,user,params) => { return axios.put(`${base}/backup/workers/${worker_id}`,params,{params: user}) }
+export const reqEditWorker = (worker_id, user, params) => {
+  get_base_url()
+  return axios.put(`${base}/backup/workers/${worker_id}`, params, {params: user})
+}
 
-export const reqAddWorker = (user,params) => { return axios.post(`${base}/backup/workers`, params, {params: user}) }
+export const reqAddWorker = (user, params) => {
+  get_base_url()
+  return axios.post(`${base}/backup/workers`, params, {params: user})
+}
 
-export const reqDelWorker = (worker_id,params) => { return axios.delete(`${base}/backup/workers/${worker_id}`, { params: params }) }
+export const reqDelWorker = (worker_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/workers/${worker_id}`, {params: params})
+}
 //主机管理相关结束
 
 //卷管理相关开始
-export const reqGetVolumeList = params => { return axios.get(`${base}/backup/volumes`, { params: params }) }
+export const reqGetVolumeList = params => {
+  get_base_url()
+  return axios.get(`${base}/backup/volumes`, {params: params})
+}
 
-export const reqEditVolume = (volume_id,user,params) => { return axios.put(`${base}/backup/volumes/${volume_id}`,params,{params: user}) }
+export const reqEditVolume = (volume_id, user, params) => {
+  get_base_url()
+  return axios.put(`${base}/backup/volumes/${volume_id}`, params, {params: user})
+}
 
-export const reqAddVolume = (user,params) => { return axios.post(`${base}/backup/volumes`, params, {params: user}) }
+export const reqAddVolume = (user, params) => {
+  get_base_url()
+  return axios.post(`${base}/backup/volumes`, params, {params: user})
+}
 
-export const reqDelVolume = (volume_id,params) => { return axios.delete(`${base}/backup/volumes/${volume_id}`, { params: params }) }
+export const reqDelVolume = (volume_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/volumes/${volume_id}`, {params: params})
+}
 //卷管理相关结束
 
 //任务管理相关
-export const reqGetTaskDetailList = params => { return axios.get(`${base}/backup/tasks/detail`, { params: params }) };
+export const reqGetTaskDetailList = params => {
+  get_base_url()
+  return axios.get(`${base}/backup/tasks/detail`, {params: params})
+};
 
-export const reqGetTaskList = params => { return axios.get(`${base}/backup/tasks`, { params: params }) };
+export const reqGetTaskList = params => {
+  get_base_url()
+  return axios.get(`${base}/backup/tasks`, {params: params})
+};
 
-export const reqEditTask = (task_id,user,params) => { return axios.put(`${base}/backup/tasks/${task_id}`,params,{params: user}) };
+export const reqEditTask = (task_id, user, params) => {
+  get_base_url()
+  return axios.put(`${base}/backup/tasks/${task_id}`, params, {params: user})
+};
 
-export const reqAddTask = (user,params) => { return axios.post(`${base}/backup/tasks`, params, {params: user}) };
+export const reqAddTask = (user, params) => {
+  get_base_url()
+  return axios.post(`${base}/backup/tasks`, params, {params: user})
+};
 
-export const reqDelTask = (task_id,params) => { return axios.delete(`${base}/backup/tasks/${task_id}`, { params: params }) };
+export const reqDelTask = (task_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/tasks/${task_id}`, {params: params})
+};
 
-export const reqTaskAction = (task_id, data, params, headers) => { return axios.post(`${base}/backup/tasks/${task_id}/action`, data, { params: params, headers: headers}) };
+export const reqTaskAction = (task_id, data, params, headers) => {
+  get_base_url()
+  return axios.post(`${base}/backup/tasks/${task_id}/action`, data, {params: params, headers: headers})
+};
 
 //任务管理相关结束
 
 //任务状态
 export const reqBackupStates = params => {
-  return axios.get(`${base}/backup/backupstates`, {params: params} )
+  get_base_url()
+  return axios.get(`${base}/backup/backupstates`, {params: params})
 };
 
 export const reqBackupStatesDetail = params => {
-  return axios.get(`${base}/backup/backupstates/detail`, {params: params} )
+  get_base_url()
+  return axios.get(`${base}/backup/backupstates/detail`, {params: params})
 };
 
 //日志管理
 export const reqGetOplogList = params => {
-  return axios.get(`${base}/backup/oplogs`, {params: params} )
+  get_base_url()
+  return axios.get(`${base}/backup/oplogs`, {params: params})
 };
 
 export const reqGetSummaries = params => {
-  return axios.get(`${base}/backup/summaries`, {params: params} )
+  get_base_url()
+  return axios.get(`${base}/backup/summaries`, {params: params})
 };
 
 
 //TODO: 标签管理接口
 export const reqGetTags = params => {
-  return axios.get(`${base}/backup/tags/detail`, {params: params} )
+  get_base_url()
+  return axios.get(`${base}/backup/tags/detail`, {params: params})
 };
 
 export const reqNewTags = (params, data) => {
-  return axios.post(`${base}/backup/tags`, data, {params: params} )
+  get_base_url()
+  return axios.post(`${base}/backup/tags`, data, {params: params})
 };
 
 export const reqEditTags = (id, params, data) => {
-  return axios.put(`${base}/backup/tags/${id}`, data, {params: params} )
+  get_base_url()
+  return axios.put(`${base}/backup/tags/${id}`, data, {params: params})
 };
 
 export const reqDeleteTags = (id, params) => {
-  return axios.delete(`${base}/backup/tags/${id}`, {params: params} )
+  get_base_url()
+  return axios.delete(`${base}/backup/tags/${id}`, {params: params})
 };
