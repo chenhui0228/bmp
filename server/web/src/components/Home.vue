@@ -3,10 +3,10 @@
     <!--头部-->
     <el-col :span="24" class="topbar-wrap">
       <div class="topbar-logo topbar-btn">
-        <a href="/"><img src="../assets/logo.png" style="padding-left:8px;"></a>
+        <a href="/"><img src="../assets/images/logo.png" style="padding-left:8px;"></a>
       </div>
       <div class="topbar-logos" v-show="!collapsed">
-        <a href="/"><img src="../assets/logo2.png"></a>
+        <a href="/"><img src="../assets/images/logo2.png"></a>
       </div>
       <div class="topbar-title">
         <span style="font-size: 18px;color: #fff;">备份管理系统</span>
