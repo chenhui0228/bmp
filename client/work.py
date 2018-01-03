@@ -87,12 +87,12 @@ class Work():
             try:
                 cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
                 ret,out=commands.getstatusoutput(cmd)
-                #print "do mount succeed"
                 if ret!=0:
                     self.errormessage='mount %s:/%s falied %s'%(self.glusterip, self.vol,out)
+                    self.log.logger.error('mount %s:/%s falied %s'%(self.glusterip, self.vol,out))
                     index += 1
                     continue
-                self.log.logger.info("do mount succeed")
+                self.log.logger.info("do mount %s:/%s succeed"%( self.glusterip,self.vol))
                 return 0
             except Exception as e:
                 #print ("do mount failed %s"%e)
