@@ -28,10 +28,11 @@ class Work():
         self.errormessage=""
         self.process=''
         self.pause=False
+        self.hostname = str(socket.gethostname())
+        self.ip = socket.gethostbyname(self.hostname)
         if self.arglist is None:
             #print "arg is NULL ?"
             self.log.logger.warning('arg is NULL!')
-            self.send_bk("log","arg is NULL ?")
             return
         return
 
@@ -64,6 +65,12 @@ class Work():
 
     def do_mount(self):       # Let gluster cluster mount to the local
         n=len(self.arglist['ip'])
+        if n>0:
+            index = hash(self.ip) % n
+        else:
+            self.errormessage = ('gluster ip is null')
+            self.log.logger.error("gluster ip is null")
+            return -1
         if os.path.ismount(self.mount_dir):
             self.errormessage="the dir has mounted"
             self.log.logger.error("the dir has mounted")
@@ -74,23 +81,25 @@ class Work():
             except Exception,e:
                 self.log.logger.error(str(e))
                 return -1
-            #self.send_bk('message','the dir has mounted,maybe there is a direct work doing now')
-        while n>0:
-            self.glusterip=self.arglist['ip'][n-1]
+        ip_index=index
+        while index-ip_index<n:
+            self.glusterip=self.arglist['ip'][(index+n)%n]
             try:
                 cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
                 ret,out=commands.getstatusoutput(cmd)
-                #print "do mount succeed"
                 if ret!=0:
                     self.errormessage='mount %s:/%s falied %s'%(self.glusterip, self.vol,out)
-                self.log.logger.info("do mount succeed")
+                    self.log.logger.error('mount %s:/%s falied %s'%(self.glusterip, self.vol,out))
+                    index += 1
+                    continue
+                self.log.logger.info("do mount %s:/%s succeed"%( self.glusterip,self.vol))
                 return 0
             except Exception as e:
                 #print ("do mount failed %s"%e)
                 #self.send_bk('message',"do mount failed %s"%e)
                 self.errormessage = str(e)
                 self.log.logger.warning("do mount failed %s"%e)
-            n=n-1
+                index+=1
         return -1
 
     def do_mkdir(self,dir):    # Create a folder

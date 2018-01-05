@@ -58,7 +58,7 @@ function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)"
 
 
 funCheckToolsFromRepos(){
-    yum list | grep '^'$1 > /dev/null 2>&1
+    rpm -qa | grep '^'$1 > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo $1 ... no
         echo install $1
@@ -284,6 +284,27 @@ funStopProcess(){
     fi
 }
 
+funCheckVersion(){
+    cd $root_path
+    funCompareVersion $py_version 2.6
+    py26=$?
+    funCompareVersion $py_version 2.7
+    py27=$?
+    if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
+        if [[ $1 == "client" ]]; then
+            /usr/local/bin/python2.7 $root_path/client/main.py version
+        else
+            /usr/local/bin/python2.7 $root_path/server/server.py --version
+        fi
+    else
+        if [[ $1 == "client" ]]; then
+            /usr/bin/python $root_path/client/main.py version
+        else
+            /usr/bin/python $root_path/server/server.py --version
+        fi
+    fi
+}
+
 funStartProcess(){
     cd $root_path
     funCompareVersion $py_version 2.6
@@ -429,6 +450,23 @@ case "$action" in
     check)
         funChecckEnv
         ;;
+    version)
+        case "$option" in
+            -c|--client)
+                funCheckVersion client
+                ;;
+            -s|--serverr)
+                funCheckVersion server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 version <options>\n"
+                printf "Version Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Return client version."
+                printf "%-20s %-50s\n" "  -s, --server" "Return client version."
+                ;;
+        esac
+        ;;
     remove)
         case "$option" in
             -c|--client)
@@ -491,6 +529,7 @@ case "$action" in
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
         printf "%-20s %-50s\n" "  check" "check the server runtime env, you do not set options"
         printf "%-20s %-50s\n" "  remove" "stop programs and remove client runing environment"
+        printf "%-20s %-50s\n" "  version" "return version of fbmp"
         printf "Initial Options:\n"
         printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
         printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
@@ -505,5 +544,8 @@ case "$action" in
         printf "Remove Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Remove client program on the host."
         printf "%-20s %-50s\n" "  -s, --server" "Remove server program on the host."
+        printf "Version Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Return client version."
+        printf "%-20s %-50s\n" "  -s, --server" "Return client version."
         ;;
 esac
