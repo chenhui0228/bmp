@@ -6,7 +6,7 @@ import time
 import datetime
 import logging
 import logging.handlers as handlers
-import subprocess
+import tarfile
 
 
 class MyRotatingFileHandler(handlers.BaseRotatingHandler):
@@ -43,8 +43,8 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         """
         files = list(os.listdir(self.filePath))
         for i in range(len(files)):
-            file_date = os.path.getmtime(self.filePath + files[i])
-            curr_date = time.time()
+            file_date = int(os.path.getmtime(self.filePath + files[i]))
+            curr_date = int(time.time())
             diff_date = (curr_date - file_date) / 60 / 60 / 24
             if diff_date >= int(self.saveTime):
                 try:
@@ -67,15 +67,11 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
             n += 1
             dfn = dfn + "-" + str(n)
         if os.path.exists(self.baseFilename):
-            # os.rename(self.baseFilename, dfn)
-            p = subprocess.Popen(
-                'tar zcf ' + dfn + '.tar.gz ' + self.baseFilename,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            outdata, errdata = p.communicate()
-            if len(errdata):
-                raise RuntimeError('unable to get tar log file')
+            os.rename(self.baseFilename, dfn)
+            tarf = tarfile.open(dfn + '.tar.gz', 'w:gz')
+            tarf.add(dfn)
+            tarf.close()
+            os.remove(dfn)
         self.stream = self._open()
 
     def shouldRollover(self, record):
