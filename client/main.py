@@ -52,7 +52,7 @@ if __name__ == '__main__':
     cp.read('/etc/fbmp/client.conf')
     log_level = cp.get('client', 'log_level')
     log_file_dir = cp.get('client', 'log_file_dir')
-
+    log_save_time = cp.get('client', 'log_save_time')
     work_dir=cp.get('client', 'work_dir')
     pid_dir=cp.get('client','pid_dir')
     pid_file=pid_dir+'client.pid'
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     if not os.path.exists(log_file_dir):
         os.makedirs(log_file_dir)
     log_file_name=log_file_dir+'client.log'
-    mylogger = MyLogging(log_level,log_file_name)   # 初始化log
+    mylogger = MyLogging(log_level, log_file_name, log_file_dir, log_save_time)   # 初始化log
     version = get_version()
     if not os.path.exists(pid_dir):
         os.mkdir(pid_dir)

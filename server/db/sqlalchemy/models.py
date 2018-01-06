@@ -365,7 +365,7 @@ class BackupState(Base, BackupBase):
     state = Column(String(255), nullable=True, default=0)
     process = Column(String(36))
     total_size = Column(BIGINT, default=0)
-    current_size = Column(Integer, default=0)
+    current_size = Column(BIGINT, default=0)
     start_time = Column(Integer, nullable=True, default=0)
     end_time = Column(Integer, nullable=True, default=0)
     message = Column(String(4096))
