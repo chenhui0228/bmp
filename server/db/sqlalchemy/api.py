@@ -1596,7 +1596,7 @@ def sync(conf):
         path = 'sqlite:///%s' % path
         engine = create_engine(path)
         Base.metadata.bind = engine
-        path = database_conf.get('path', '/var/backup/backup.db')
+        path = database_conf.get('path', '/var/fbmp/fbmp.db')
         Base.metadata.create_all(engine)
     elif driver == 'mysql' or driver == 'mariadb':
         user = database_conf.get('user')

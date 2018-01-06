@@ -76,10 +76,21 @@
 #### 1. MySql数据库安装与配置 ####
 
 管理节点需要安装MySql数据库存来储备份管理数据。你需要安装MySql服务，配置数据库用户，并赋予用户创建数据库权限。
-安装MySql数据库方法请参照MySql官方文档，这里不做详述。
-为备份软件创建用户并配置用户权限命令如下：
+安装MySql数据库方法请参照MySql官方文档，我们实际使用的是5.7.20版本，并且使用yum安装了如下组件
 
-	mysql 
+    mysql-community-libs-5.7.20-1.el7.x86_64
+    mysql-community-libs-compat-5.7.20-1.el7.x86_64
+    mysql-community-common-5.7.20-1.el7.x86_64
+    mysql-community-client-5.7.20-1.el7.x86_64
+    mysql-community-devel-5.7.20-1.el7.x86_64
+    mysql-community-server-5.7.20-1.el7.x86_64
+
+具体安装这里不做详述。
+
+安装配置完成后为备份软件创建用户并配置用户权限命令如下：
+
+	mysql -u root -p
+	#输入你的root密码
 	GRANT ALL PRIVILEGES ON fbmp.* TO 'fbmp'@'%' IDENTIFIED BY 'fbmp@fbmp';
 	FLUSH   PRIVILEGES;
 
