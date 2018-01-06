@@ -2,7 +2,8 @@
 #coding:utf-8
 
 import os
-from datetime import *
+import time
+import datetime
 import logging
 import logging.handlers as handlers
 import subprocess
@@ -29,7 +30,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         try:
             if self.shouldRollover(record):
                 self.doRollover()
-            self.removeLogBeforeSevenDays()
+            self.cleanLogBeforeSevenDays()
             logging.FileHandler.emit(self, record)
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -43,7 +44,6 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         files = list(os.listdir(self.filePath))
         for i in range(len(files)):
             file_date = os.path.getmtime(self.filePath + files[i])
-            # time1 = datetime.datetime.fromtimestamp(file_date).strftime('%Y-%m-%d')
             curr_date = time.time()
             diff_date = (curr_date - file_date) / 60 / 60 / 24
             if diff_date >= int(self.saveTime):
@@ -60,7 +60,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         if self.stream:
             self.stream.close()
             self.stream = None
-        nowtime = datetime.now()
+        nowtime = datetime.datetime.now()
         dfn = self.baseFilename + "-" + nowtime.strftime("%Y%m%d%H%M")
         n = 0
         while os.path.exists(dfn):
@@ -130,7 +130,7 @@ class MyLogging(object):
 
     def addRotatingFileHandler(self, log, maxBytes):
         rfh = MyRotatingFileHandler(
-            self.log_file_name, self.log_file_name, self.log_save_time, maxBytes=maxBytes)
+            self.log_file_name, self.log_file_path, self.log_save_time, maxBytes=maxBytes)
         rfh.setLevel(self.level)
         rfh.setFormatter(self._formatter)
         log.addHandler(rfh)
