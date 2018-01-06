@@ -85,12 +85,57 @@
     mysql-community-devel-5.7.20-1.el7.x86_64
     mysql-community-server-5.7.20-1.el7.x86_64
 
-具体安装这里不做详述。
+具体安装这里不做详述，如果你之前有安装低版本请更新数据表结构。需要注意的是，你在安装完成后可能需要重新修改root密码，具体方法可以参考如下：
+
+- 1）如果服务已经启动请先停止mysql服务
+	
+		systemctl stop mysqld.service
+
+- 2）修改配置文件
+	
+		vi /etc/my.cnf
+		# 在尾部加上
+		skip-grant-tables
+		# 保存退出
+
+- 3）启动mysql
+		
+		systemctl start mysqld.service 
+
+- 4）登录mysql
+
+		mysql -u root	# 注意不要加 -p
+
+- 5）修改密码
+
+		use mysql;
+		update mysql.user set authentication_string=password('123456') where user='root';  
+		
+- 6）回到第二步将配置文件中的skip-grant-tables去掉，保存并退出，重启mysql即可
+
+
+> <font color=red>**注意：**</font>其实默认安装完了mysql后会在日志中生成一个默认的密码 /var/log/mysqld.log 中，拿到默认密码后登录mysql可以对密码进行重设
+> 
+> 	set password=password('you password')；
+> 
+> 如果密码级别与默认的级别要求不符会报错如下
+> 	
+> 	Your password does not satisfy the current policy requirements
+> 
+> 此时需要修改级别与最小的默认密码位数
+> 
+> 	set global validate_password_policy=0;
+> 	set global validate_password_length=4;
+> 
+> 此外我们查看一下mysql库的user表，并删除表中user为空的用户
+> 
+> 	delete from mysql.user where user='';
 
 安装配置完成后为备份软件创建用户并配置用户权限命令如下：
 
 	mysql -u root -p
-	#输入你的root密码
+	# 输入你的root密码，之后进入mysql库
+	use mysql
 	GRANT ALL PRIVILEGES ON fbmp.* TO 'fbmp'@'%' IDENTIFIED BY 'fbmp@fbmp';
 	FLUSH   PRIVILEGES;
 
@@ -155,13 +200,15 @@
     	[servercontroller]
     	server_port=11111
     	client_port=11112
-    	timer_interval=60
+		# 心跳检测时间
+    	timer_interval=10
+		# server 处理线程池线程数
     	worker_size=5	#
     	
-    	# Token签发说明与超时
+    	# Token签发说明与超时,默认设置为1小时
     	[token]
     	iss = 'SFBACKUP'
-    	exp = 360000
+    	exp = 3600
     	
 		# 日志配置文件位置
     	[log]
@@ -196,7 +243,7 @@
 		# server日志
 		[handler_time_rotate_file]
 		class=logging.handlers.TimedRotatingFileHandler
-		level=DEBUG
+		level=INFO
 		formatter=backupFormater
 		args = ('/var/log/fbmp/server.log', 'D', 1 , 0, 'utf8')
 		
@@ -209,7 +256,7 @@
 		# error日志
 		[handler_cherrypy_error]
 		class=logging.handlers.TimedRotatingFileHandler
-		level=INFO
+		level=DEBUG
 		args = ('/var/log/fbmp/error.log', 'D', 1 , 0, 'utf8')
 		
 		[formatter_backupFormater]
@@ -356,11 +403,6 @@
 
 	...
 	
-	upstream fbmpserver
-	{	
-		# 备份服务端端口默认为9090，如果修改了备份服务端配置文件server.conf的server.socket_port，此处应跟随修改
-	    server 127.0.0.1:9090;	
-	}
 	
 	http {
 
@@ -377,11 +419,18 @@
 	    server {
 			listen  443 ssl default_server;
 			server_name  fbmp;
-			# 配置HTTPS证书，拷贝/usr/local/fbmp/requirePackages/tengine目录下cert.crt和cert.key到/home下
-			ssl_certificate           /home/cert.crt;
-			ssl_certificate_key       /home/cert.key;
+			# 配置HTTPS证书，拷贝/usr/local/fbmp/requirePackages/tengine目录下fbmp.crt和fbmp.key到/usr/local/tengine/conf/下, 
+			# 你也可以自行拷贝到其他目录，只需在这里配置好即可
+			ssl_certificate           /usr/local/tengine/conf/fbmp.crt;
+			ssl_certificate_key       /usr/local/tengine/conf/fbmp.key;
 			ssl on;
 		
+			upstream fbmpserver
+			{	
+				# 备份服务端端口默认为9090，如果修改了备份服务端配置文件server.conf的server.socket_port，此处应跟随修改
+			    server 127.0.0.1:9090;	
+			}
+
 			ssl_session_cache  builtin:1000  shared:SSL:10m;
 			ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
 			ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
@@ -397,7 +446,7 @@
 			    proxy_pass_request_headers on;
 				proxy_set_header    HTTP_AUTHORIZATION $http_authorization;
 				proxy_set_header    Host $host;
-				proxy_pass          fbmpserver;
+				proxy_pass          http://fbmpserver;
 			}
 		
 			location /login{
@@ -405,12 +454,12 @@
 				proxy_set_header    REMOTE_ADDR    $remote_addr;
 				proxy_set_header    HTTP_AUTHORIZATION $http_authorization;
 				proxy_set_header    Host $host;
-				proxy_pass          fbmpserver;
+				proxy_pass          http://fbmpserver;
 			}
 	    }
 	}
 
-> <font color=red>**提示：**</font>	如果你不清楚配置项具体含义和用处，只需要拷贝/usr/local/fbmp/requirePackages/tengine目录下cert.crt和cert.key到/home下，其他使用默认配置既可
+> <font color=red>**提示：**</font>	如果你不清楚配置项具体含义和用处，拷贝/usr/local/fbmp/requirePackages/tengine目录下fbmp.crt和fbmp.key到/usr/local/tengine/conf/下, ，其他使用默认配置既可
 
 启动tenginesf 
 
@@ -437,7 +486,7 @@
 		cd /usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/rpms
 		yum install glusterfs-*.rpm -y
 
-- 方式二：安装动态链接库(只需要在第一次安装)
+- 方式二：安装动态链接库(开发人员可以了解一下方法)
 
 	解压/usr/local/fbmp/requirePackages/glusterfs_fuse_packages/el6/libs目录下的sf-glusterfs-xxx-el6.tar.gz
 
@@ -492,17 +541,11 @@
 我们约定使用python版本为2.7，如果当前系统python版本小于2.7，我们将为你安装python-2.7.8。这不会影响你已有python应用的正常使用，且不会替换原来的python版本。
 执行命令如下：
 
-- **Python环境初始化**(只需要在第一次初始化)
-	
-		cd /usr/local/fbmp
-		chmod +x setup	 #如果已经是可执行文件，此步可不执行
-		./setup initial -p
-
-- **客户端Python依赖安装**(只需要在第一次初始化)
+- **客户端环境初始化**(只需要在第一次初始化)
 
 		cd /usr/local/fbmp
 		chmod +x setup	 #如果已经是可执行文件，此步可不执行
-		./setup initial -s
+		./setup initial -c
 
 > <font color=red>**注意：**</font>	原系统Python版本如果小于2.7版本，安装的Python-2.7.8路径为<font color=red>**/usr/local/bin/python2.7**</font>，使用python运行时请使用绝对径运行 *.py 文件
 
@@ -531,6 +574,8 @@
 		log_level = 20
 		#This is the log directory
 		log_file_dir = /var/log/fbmp/
+		# log file save time，default value is 15 days
+		log_save_time = 15
 		#This is the directory for the PID file
 		pid_dir = /var/run/fbmp/
 		#This is the directory for the working path
