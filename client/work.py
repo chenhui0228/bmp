@@ -8,6 +8,7 @@ from message import Message
 import tempfile
 import ConfigParser
 import commands
+import socket
 
 class Work():
     # def
