@@ -3,7 +3,7 @@
 from datetime import *
 from SocketServer import BaseRequestHandler, ThreadingTCPServer, ThreadingUDPServer
 import threading
-import socket  # 套接字
+import socket 
 import Queue
 import logging
 

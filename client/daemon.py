@@ -726,8 +726,8 @@ class Daemon:
                     self.log.logger.info('clinet stop success')
                     break
             else:
-                message = 'pidfile %s does not exist. Daemon not running!' % (self.pidfile)
-                self.log.logger.error('pidfile %s does not exist. Daemon not running!' % (self.pidfile))
+                message = 'pidfile %s does not exist.' % (self.pidfile)
+                self.log.logger.error('pidfile %s does not exist.' % (self.pidfile))
                 print message
                 sys.exit(1)
 
