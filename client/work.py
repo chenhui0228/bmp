@@ -236,7 +236,7 @@ class Work():
                     write_all = write_all + (write_now - write_old)
                     write_old = write_now
                     pro = (int((write_all * 100) / self.proctotal))
-                    if pro - self.sendpro >= 2:
+                    if (pro - self.sendpro) >= 2:
                         if pro > 100:
                             # Due to the size of the file may be implemented
                             #  changes, so the progress may Dayun 100%
@@ -244,7 +244,7 @@ class Work():
                         # The task reported to the server, each performed more than 2%
                         self.send_bk('run', process=str(pro), current_size=str(write_all))
                         self.sendpro = pro
-                        self.log.logger.debug('the work %s ' % str(pro))
+                        self.log.logger.debug('the process : %s ' % str(pro))
                 time.sleep(1)
             if self.pause:
                 self.process.kill()
@@ -261,7 +261,7 @@ class Work():
                     # whether the file backup is wrong
                     self.proclen = self.proclen + dest_file_size
                     pro = (int((self.proclen * 100) / self.proctotal))
-                    if pro - self.sendpro >= 2 or pro == 100:
+                    if (pro - self.sendpro) >= 2 or pro >= 100:
                         if pro > 100:
                             # Due to the size of the file may be implemented
                             #  changes, so the progress may Dayun 100%
