@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#coding:utf-8
+# coding:utf-8
 
 import os
 import time
@@ -10,8 +10,7 @@ import tarfile
 
 
 class MyRotatingFileHandler(handlers.BaseRotatingHandler):
-
-    def __init__(self, filename, filePath, saveTime, mode='a', maxBytes=0, encoding=None, delay=False):
+    def __init__( self, filename, filePath, saveTime, mode='a', maxBytes=0, encoding=None, delay=False ):
         if maxBytes > 0:
             mode = 'a'
         handlers.BaseRotatingHandler.__init__(
@@ -20,7 +19,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         self.filePath = filePath
         self.saveTime = saveTime
 
-    def emit(self, record):
+    def emit( self, record ):
         """
         Emit a record.
 
@@ -37,7 +36,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         except:
             self.handleError(record)
 
-    def cleanLogBeforeSevenDays(self):
+    def cleanLogBeforeSevenDays( self ):
         """
         clean log
         """
@@ -53,7 +52,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
                     raise e
         pass
 
-    def doRollover(self):
+    def doRollover( self ):
         """
         Do a rollover, as described in __init__().
         """
@@ -74,16 +73,16 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
             os.remove(dfn)
         self.stream = self._open()
 
-    def shouldRollover(self, record):
+    def shouldRollover( self, record ):
         """
         Determine if rollover should occur.
 
         Basically, see if the supplied record would cause the file to exceed
         the size limit we have.
         """
-        if self.stream is None:                 # delay was set...
+        if self.stream is None:  # delay was set...
             self.stream = self._open()
-        if self.maxBytes > 0:                   # are we rolling over?
+        if self.maxBytes > 0:  # are we rolling over?
             msg = "%s\n" % self.format(record)
             # due to non-posix-compliant Windows feature
             self.stream.seek(0, 2)
@@ -96,7 +95,7 @@ class MyLogging(object):
     """this class use to define some
      functions for our own to use"""
 
-    def __init__(self, log_level, log_file_name, log_file_path, log_save_time, logger_name=__name__):
+    def __init__( self, log_level, log_file_name, log_file_path, log_save_time, logger_name=__name__ ):
         self.level = int(log_level)
         self.log_file_name = log_file_name
         self.log_file_path = log_file_path
@@ -112,19 +111,19 @@ class MyLogging(object):
         self.addRotatingFileHandler(self._logger, 100 * 1024 * 1024)
 
     @property
-    def log_level(self):
+    def log_level( self ):
         return self.level
 
-    def set_loglevel(self, level=10):
+    def set_loglevel( self, level=10 ):
         self.level = level
         self._logger.setLevel(level)
         return
 
     @property
-    def logger(self):
+    def logger( self ):
         return self._logger
 
-    def addRotatingFileHandler(self, log, maxBytes):
+    def addRotatingFileHandler( self, log, maxBytes ):
         rfh = MyRotatingFileHandler(
             self.log_file_name, self.log_file_path, self.log_save_time, maxBytes=maxBytes)
         rfh.setLevel(self.level)
@@ -132,7 +131,7 @@ class MyLogging(object):
         log.addHandler(rfh)
         return
 
-    def addStreamHandle(self, log):
+    def addStreamHandle( self, log ):
         ch = logging.StreamHandler()
         ch.setLevel(self.level)
         log.addHandler(ch)
