@@ -18,6 +18,9 @@ con=threading.Condition()
 
 
 def do_put(info):
+    """
+    Put the message in the queue and inform the Listen class of the condition variable
+    """
     global q
     con.acquire()
     q.put_nowait(info)
@@ -162,8 +165,6 @@ class Message:
             return
         ms = ''
         address = ''
-        #print 'use TCP send %s'%str(info)
-        #self.log.logger.info('use TCP send %s'%str(info))
         if info.has_key('data'):
             ms = info['data']
             if info.has_key('addr'):
@@ -173,13 +174,17 @@ class Message:
                     self.tcpclient.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.tcpclient.connect(info['addr'])
                     self.tcpclient.send(ms)
-                    #server_reply = self.tcpclient.recv(1024)
-                    #print server_reply
                     self.tcpclient.close()
-                    self.log.logger.info(info)
+                    msg_dict=eval(ms)
+                    type=str(msg_dict['type'])
+                    if type == 'keepalive' or type ==  'pauseall':
+                        self.log.logger.info(str(msg_dict['type']))
+                    else:
+                        self.log.logger.info(str(msg_dict['data']))
                 except Exception as e:
                     self.log.logger.error('TCP send failed %s' % e)
                     return e
+
             else:
                 #print "error:data or address not exist ?"
                 self.log.logger.error("error:data or address not exist!")

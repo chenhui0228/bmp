@@ -31,14 +31,23 @@ class SingleTask():
 
 
     def stop_job( self):
+        """
+        Temporarily not used
+        """
         self.stop=True
 
     def restart_job( self):
+        """
+        Temporarily not used
+        """
         if self.stop:
             self.stop=False
 
 
-    def do_insert_job( self ):  # add work job
+    def do_insert_job( self ):
+        """
+        Add tasks to the work queue
+        """
         self.lastid = self.sumid
         self.sumid = self.sumid + 1
         self.st['ip'] = self.gluster
@@ -61,11 +70,11 @@ class SingleTask():
             except Exception as e:
                 self.log.logger.error('can put work msg in workerpool queue,%s'%str(e))
 
-    """
-    删除任务
-    """
 
     def do_remove_job( self ):
+        """
+        Temporarily not used
+        """
         if self.schd.get_job(job_id=self.name):
             self.log.logger.info(
                "Remove task from scheduling queue: %s" % (self.name))
@@ -76,10 +85,6 @@ class SingleTask():
 
     def start( self,sub):
         # self.logger.info("Start new task now!")
-        """
-        如果当前时间大于开始时间：
-        则应该根据备份计算出下一次备份的时间
-        """
         #print "**********************set start time:", time.asctime(time.localtime(time.time())), " name is:", self.name
         if sub=='cron':
             try:

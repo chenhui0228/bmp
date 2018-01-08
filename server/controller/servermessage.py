@@ -19,6 +19,9 @@ con=threading.Condition()
 
 
 def do_put(info):
+    """
+    Put the message in the queue and inform the Listen class of the condition variable
+    """
     global q
     con.acquire()
     q.put_nowait(info)
@@ -69,7 +72,7 @@ class UDPServer(BaseRequestHandler):
             if len(data) > 0:
                 #print "address=", address, "recv data:", data
                 # self.request.sendall('server response!')
-                self.request[1].sendto(response, self.client_address)
+                self.request[1].sendto(data, self.client_address)
                 self.finish()
 
 
@@ -165,7 +168,13 @@ class Message:
                     #server_reply = self.tcpclient.recv(1024)
                     #print server_reply
                     self.tcpclient.close()
-                    logger.info(info)
+                    msg_dict=eval(ms)
+                    type=str(msg_dict['type'])
+                    if type == 'keepalive':
+                        logger.info(info)
+                    else:
+                        message=str(type)+"＿"+str(info['addr'])
+                        logger.info(message)
                 except Exception as e:
                     #self.log.logger.error('UDP send failed %s' % e)
                     return e

@@ -62,6 +62,9 @@ super_context = {
 
 
 class Return:
+    """
+    According to the client's return, modify the backupstate table
+    """
     def __init__(self,db,server):
         self.db=db
         self.server=server
@@ -74,6 +77,7 @@ class Return:
         bk_value['task_id'] = dict.get('id')
         typeofMessage = dict['sub']
         if typeofMessage == 'frist':
+            # The first time a single task returns, the server will create a new one in backupstate,The main content is start_time,total_size
             try:
                 bk=self.db.get_bk_state(super_context,bk_value['id'])
                 logger.error('the backup_state %s created before get command to create it'%bk_value['id'])
@@ -89,14 +93,17 @@ class Return:
             else:
                 num=0
             try:
+                # Record the progress of the task execution
                 if self.server.workstatelock.acquire():
                     self.server.workstate_dict[dict['bk_id']] =num
                     self.server.workstatelock.release()
                 bk = self.db.bk_create(super_context, bk_value)
+                logger.info("create new one in backupstate which id is %s"%bk.id)
             except Exception as e:
                 logger.error(e)
             return
         elif typeofMessage == 'run':
+            # Return of a single task during execution,The main content is process,current_size
             try:
                 bk_old = self.db.get_bk_state(super_context, bk_value['id'])
             except Exception, e:
@@ -107,7 +114,7 @@ class Return:
                 return
             bk_value['process'] = str(dict.get('process'))
             bk_value['current_size'] = int(dict.get('current_size'))
-            logger.info(str(self.server.workstate_dict))
+            logger.debug(str(self.server.workstate_dict))
             if self.server.workstatelock.acquire():
                 if not self.server.workstate_dict.has_key(dict['bk_id']):
                     self.server.workstatelock.release()
@@ -120,16 +127,17 @@ class Return:
                     self.server.workstatelock.release()
             try:
                 self.db.bk_update(super_context, bk_value)
+                logger.info("update one in backupstate which id is %s" % bk.id)
             except Exception as e:
                 logger.error(e)
             return
         elif typeofMessage == 'last':
-            time.sleep(1)
+            # The last return of a single mission,The main content is end_time,message(Wrong log)
             if self.server.workstatelock.acquire():
                 try:
                     del self.server.workstate_dict[dict['bk_id']]
                 except Exception, e:
-                    logger.info(e.message)
+                    logger.error(e.message)
                 self.server.workstatelock.release()
             try:
                 task = self.db.get_task(super_context, bk_value['task_id'])
@@ -161,21 +169,25 @@ class Return:
                 logger.error(e.message)
                 return
         elif typeofMessage == 'delete':
-            logger.info('delete a kackupstate which id is')
+            # Delete the backup file
             backupstate_list = self.db.bk_list(super_context, task_id=dict['id'])[0]
             for line in backupstate_list:
-                logger.info(line.id)
+                logger.debug(line.id)
                 if line.start_time == dict['start_time']:
-                    logger.info('find backupstate')
+                    logger.debug('find backupstate')
                     try:
                         self.db.bk_delete(super_context, line.id)
                     except Exception as e:
                         logger.error(e)
-                    logger.info(str(bk_value))
+                        return
+                    logger.info('delete a backupstate which id is %s' % bk_value['id'])
                     return
 
 
 class State:
+    """
+    According to the client's return, modify the task table's state
+    """
     def __init__(self,db,server):
         self.db=db
         self.server=server
@@ -193,7 +205,7 @@ class State:
                     task_dict['state'] = 'waiting'
             except:
                 pass
-        logger.info(str(dict))
+        logger.debug(str(dict))
         if dict['state'] == 'deleted':
             task_dict['deleted'] == 'deleted'
         try:
@@ -201,10 +213,15 @@ class State:
             logger.debug('the work %s state change to %s'%(task_dict['id'],task_dict['state']))
         except Exception as e:
             logger.error(e.message)
-        logger.info('change task state')
+        logger.info('change task %s state to %s'%(task_dict['id'],task_dict['state']))
 
 
 class Initialize:
+    """
+    After the client starts, send Initialize message to the server,
+    server to determine whether there is a worker, the task of issuing
+    the worker, did not create a new worker
+    """
     def __init__(self,db,server):
         self.db=db
         self.server=server
@@ -217,6 +234,7 @@ class Initialize:
             logger.error(e)
             return
         if len(workers) == 1:
+            # There is a worker
             logger.debug('get worker')
             worker = workers[0]
             worker_value = {}
@@ -239,16 +257,19 @@ class Initialize:
             info['addr'] = addr
             self.server.message.issued(info)
             logger.debug('send msg to client')
+            # Deliver the job on this worker
             try:
                 self.server.update_worker(worker.id, True)
                 logger.debug('update_worker end')
             except Exception as e:
                 logger.error(e)
         elif len(workers) == 0:
+            # No worker
             worker_value = {}
             worker_value['name'] = dict['hostname']
             worker_value['ip'] = dict['ip']
             worker_value['version'] = dict['version']
+            # Query group information
             try:
                 group = self.db.group_get_by_name(super_context, dict['group'])
             except Exception, e:
@@ -264,6 +285,7 @@ class Initialize:
             worker_value['status'] = 'Active'
             worker_value['start_at'] = int(time.time())
             worker_value['last_report'] = int(time.time())
+            # Create a worker
             try:
                 worker = self.db.create_worker(super_context, worker_value)
             except Exception as e:
@@ -279,6 +301,9 @@ class Initialize:
 
 
 class Keepalive:
+    """
+    Process client sends heartbeat message
+    """
     def __init__(self,db,server):
         self.db=db
         self.server=server
@@ -308,6 +333,10 @@ class Keepalive:
 
 
 class Process_returnMessagedict:
+    """
+    Dispatch process returns information
+    """
+
     def __init__(self,db,server):
         self.db=db
         self.server=server
@@ -315,6 +344,7 @@ class Process_returnMessagedict:
         self.command_initialization()
 
     def command_initialization(self):
+        # Function registration
         retur=Return(self.db,self.server)
         state=State(self.db,self.server)
         initialize=Initialize(self.db,self.server)
@@ -335,6 +365,9 @@ class Process_returnMessagedict:
 
 
 class Send_Keepalive(threading.Thread):
+    """
+    Send heartbeat regularly
+    """
     def __init__(self,db,server):
         threading.Thread.__init__(self)
         self.db=db
@@ -363,6 +396,9 @@ class Send_Keepalive(threading.Thread):
             now = int(time.time())
             logger.debug(
                 'the worker is %s,status is %s,interval is %s' % (worker_id, worker.status, str(now - last_update)))
+            # According to the current time and the client last reported
+            # time difference is greater than 4 times the delivery cycle
+            # to determine whether the client Offline,
             if worker.status == 'Active':
                 if now - last_update >= 4 * self.server.timer_interval:
                     worker_value = {}
@@ -388,6 +424,9 @@ class Send_Keepalive(threading.Thread):
         self.t.start()
 
 class Workerpool(threading.Thread):
+    """
+    Worker thread pool, server multithreading message reported by the client
+    """
     def __init__(self,i,process_returnMessagedict):
         threading.Thread.__init__(self)
         self.con=threading.Condition()
@@ -410,6 +449,12 @@ class Workerpool(threading.Thread):
 
 
 class Choose_workerpool:
+    """
+    Determine which single thread to process a single message. For the id of the message,
+    do hash hash over id, so that the same task with the same thread of information to ensure
+    that the order of treatment of the same message. No id on the news, such as heartbeat,
+    let the thread's task queue to do the smallest thread
+    """
     def __init__(self,workerpool_list):
         self.workerpool_list=workerpool_list
 
@@ -439,6 +484,9 @@ class Choose_workerpool:
 
 @six.add_metaclass(Singleton)
 class Server:
+    """
+    For delivery operation.The parameters of each function 'id', almost all task id, if not, will explain
+    """
     def __init__(self,conf):
         mysqlconf = conf.get('database')
         try:
@@ -456,8 +504,6 @@ class Server:
             logger.error('conf is lost')
             logger.error(str(conf))
             return
-        else:
-            logger.info('get right conf %s'%str(server_dict))
 
         self.workstate_dict={}
         self.message = Message('tcp',self.server_port,self.client_port)
@@ -474,6 +520,9 @@ class Server:
 
 
     def create_workerpool(self):
+        """
+        Create a thread pool
+        """
         for i in range(self.worker_size):
             t=Workerpool(i,self.process_returnMessagedict)
             t.setDaemon(True)
@@ -481,12 +530,21 @@ class Server:
             t.start()
 
     def create_sendKeepalive(self):
+        """
+        Create a thread pool
+        """
+
+
         t=Send_Keepalive(self.db,self)
         t.setDaemon(True)
         t.start()
 
 
     def create_listen(self):
+        """
+        Create monitor
+        """
+
         listen=Listen(self.message,self.choose_workerpool)
         listen.setDaemon(True)
         try:
@@ -518,6 +576,10 @@ class Server:
             logger.error('Can not pause in waiting or stopped')
 
     def stop(self,id):
+        """
+        Stop the task by strategy backup
+        """
+        logger.info('stop task %s'%id)
         try:
             task = self.db.get_task(super_context,id)
         except Exception as e:
@@ -525,17 +587,23 @@ class Server:
             return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
+        # Stop the current task execution
         self.pause(id,False,True)
         data = "{'type':'delete','data':{'id':'%s'}}" % (id)
         info = {}
         info['data'] = data
         info['addr'] = addr
+        # Remove this task from the client
         try:
             self.message.issued(info)
         except Exception as e:
             logger.error(e)
 
     def delete(self,id):
+        """
+        Delete the task
+        """
+        logger.info('delete task %s' % id)
         try:
             task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
@@ -543,6 +611,7 @@ class Server:
             return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
+        # Stop the current task execution
         self.pause(id,True)
         task_value = {}
         task_value['id'] = id
@@ -553,6 +622,8 @@ class Server:
         info['addr'] = addr
         if task.type == 'backup' or task.type == 'dump':
             if task.state == 'stopped' or task.state == 'running_s':
+                #  For the task has been stopped, the client did not
+                #  retain the task information, the task needs to be issued
                 self.backup(task.id)
             try:
                 self.message.issued(info)
@@ -560,6 +631,8 @@ class Server:
             except Exception as e:
                 logger.error(e)
         else:
+            #   For recover tasks, because
+            #   they are executed immediately, you can delete
             try:
                 task_value['state'] = 'deleted'
                 task_value['deleted'] = 'deleted'
@@ -568,6 +641,10 @@ class Server:
                 logger.error(e)
 
     def resume(self,id):
+        """
+        Task recovery is executed by strategy
+        """
+        logger.info('resume task %s' % id)
         try:
             task = self.db.get_task(super_context,id)
         except Exception as e:
@@ -587,7 +664,15 @@ class Server:
             self.recover(id)
 
     def update_task(self,id,isRestart=False):
-        logger.debug('update_task start now')
+        """
+        With new tasks
+
+        :param isRestart: Whether the task is because the client started and need to be issued
+        """
+        if not isRestart:
+            logger.info('update_task start %s'%id)
+        else:
+            logger.debug('update_task start %s' % id)
         try:
             task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
@@ -595,6 +680,7 @@ class Server:
             return
         if task.state == 'stopped' or task.state == 'running_s':
             if isRestart:
+                # Client restart stopped tasks do not need to be issued
                 task_value={}
                 task_value['id']=task.id
                 task_value['state']='stopped'
@@ -661,7 +747,15 @@ class Server:
         self.message.issued(info)
 
     def update_worker(self,id,isRestart=False,**kwargs):
-        logger.debug('update_worker start')
+        """
+        With new worker
+        :param id: worker id
+        :param isRestart: Whether the task is because the client started and need to be issued
+        """
+        if not isRestart:
+            logger.info('update_worker  %s'%id)
+        else:
+            logger.debug('update_worker  %s' % id)
         try:
             tasks_all=self.db.get_tasks(super_context,worker_id=id)
         except Exception as e:
@@ -690,6 +784,9 @@ class Server:
                 logger.debug('the worker is no task')
                 pass
         else:
+            # If the new and old workers ip different, you need
+            # to delete the old task now the old worker, and
+            # then create a new task on the new worker
             for task in tasks:
                 if task.worker_id == id:
                     addr = (old_ip, int(self.client_port))
@@ -703,6 +800,11 @@ class Server:
                     self.update_task(task.id)
 
     def update_policy(self,id):
+        """
+        With new policy
+        :param id: policy id
+        """
+        logger.info('update_policy %s'%id)
         try:
             tasks=self.db.get_tasks(super_context)[0]
         except Exception as e:
@@ -713,6 +815,11 @@ class Server:
                 self.update_task(task.id)
 
     def backup(self,id,do_type=False):
+        """
+        Create a new backup task
+        :param do_type: if do it immediately
+        """
+        logger.info('create a backup task %s'%id)
         try:
             task = self.db.get_task(super_context,id,deleted=True)
         except Exception as e:
@@ -760,7 +867,11 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def recover(self,id):         # need change
+    def recover(self,id):
+        """
+        Create a recovery task:
+        """
+        logger.info('create a recover task %s' % id)
         try:
             task = self.db.get_task(super_context, id)
             worker = task.worker
@@ -791,11 +902,12 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def revckeepalive(self):
-        pass
 
 
 class Listen(threading.Thread):
+    """
+    Listen to the message queue
+    """
     def __init__(self,message,choose_workerpool):
         threading.Thread.__init__(self)
         self.message=message

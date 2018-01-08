@@ -34,11 +34,12 @@ class WorkerPool(threading.Thread):
         if self.workpool_workid_dict.has_key(self.name):
             del self.workpool_workid_dict[self.name]
 
-    """
-    将json 格式的数据转换为字典
-    """
+
 
     def jsonDicts(self, params):
+        """
+        将json 格式的数据转换为字典
+        """
         # dicts = {'ip': None, 'v': None, 'dir': None, 'op': None, 'vf': None, 'pf': None}
         dicts = {}
         if len(params) == 0:
@@ -50,10 +51,6 @@ class WorkerPool(threading.Thread):
         self.log.logger.debug('jsonDicts is:' + str(dicts))
         return dicts
 
-    """
-    当读写操作失败时的错误处理流程，暂时未添加
-
-    """
 
     def generate_uuid( dashed=True ):
         """Creates a random uuid string.
@@ -69,14 +66,11 @@ class WorkerPool(threading.Thread):
         return  self.threadID
 
 
-    """
-
-    主要工作者线程池实例
-    1、work_id 单调递增
-    2、
-    """
 
     def send_ta(self,id,value,bk_id=None):
+        """
+        Sending messages to modifies the state in the task table
+        """
         data="{'type':'state','data':{'id':'%s','state':'%s','bk_id':'%s'}}"%(id,value,bk_id)
         ret=self.message.send(data)
         if ret!=0:
@@ -102,26 +96,18 @@ class WorkerPool(threading.Thread):
                     self.log.logger.error("get queue timerout!!!!!!!!!!!!")
                     continue
 
-            #print "task recv:%s ,task No:%d" % (task[0], task[1])
 
-
-            """
-            获取的数据是通过http格式拿到的json 格式数据，通过转换为dicts 后进行处理
-            打桩测试的数据也已经转换为json 格式的本地文本
-            """
             if task:
                 task_d = eval(task[0])
-                #print "bay bay", task
-                #print "task_d is:", task_d
                 self.arglist = self.jsonDicts(task_d)
             if self.arglist is None:
                 continue
             ret = 0
-            """
-            建立工作实例，Work 类提供了对glusterfs 的各种操作，此时开始进行读写等操作
-            """
+
             self.log.logger.info('todo work:%s' % (self.threadID))
 
+            #  Remove the task from the waiting task
+            #  list and add it to the running task dictionary
             try:
                 self.workpool_workid_dict[self.name] = self.arglist['id']
                 self.queue_task_list.remove(self.arglist['id'])
@@ -131,7 +117,10 @@ class WorkerPool(threading.Thread):
                 continue
 
             self.arglist['threadId'] = self.name
+            #  Create bk_id for the current task in the backuptask table
             self.arglist['bk_id'] = self.generate_uuid()
+
+            #  Upload information to modify the task in the task table in the state
             if  self.arglist['state']=='stopped':
                 self.send_ta(self.arglist['id'],'running_s',self.arglist['bk_id'])
             else:
@@ -146,7 +135,7 @@ class WorkerPool(threading.Thread):
                 id=self.arglist.get('id')
                 if duration != None and vol != None and dir != None and ip != None and name != None and id != None  :
                     try:
-                        self.work=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=ip,name=name,id=id)
+                        self.work=Delete(self.log,duration=duration,vol=vol,dir=dir,ip=ip,name=name,id=id,threadID=self.threadID)
                         self.work.start(True)
                     except Exception,e:
                         self.log.logger.error(e)
@@ -172,6 +161,7 @@ class WorkerPool(threading.Thread):
                 self.log.logger.debug('change the work %s state'%self.arglist['name'])
             else:
                 self.send_ta(self.arglist['id'], 'end')
+            # Remove the task from the task dictionary to the running task
             if self.workpool_workid_dict.has_key(self.name):
                 del self.workpool_workid_dict[self.name]
             self.change_tasktable=True
@@ -197,8 +187,12 @@ class Delete:
         self.id=kwargs.get('id')
         ms = Message("tcp",self.log)
         self.message=ms
+        self.threadID=kwargs.get('threadID')
 
     def send_bk(self,sub,**kwargs):
+        """
+        Send a message to modify the backupstate table
+        """
         data={}
         data['type']='return'
         dict={}
@@ -213,33 +207,39 @@ class Delete:
             self.log.logger.error(ret)
 
     def do_mount(self):
-            n = len(self.ip)
-            if n==0:
-                return -1
-            if os.path.ismount(self.mount_dir):
-                self.log.logger.error("the dir has mounted,maybe there is a delete work doing now")
-                self.close()
-            while n > 0:
-                self.glusterip = self.ip[n - 1]
+        """
+        Mount gluster to the working directory
+        """
+        n = len(self.ip)
+        if n==0:
+            return -1
+        if os.path.ismount(self.mount_dir):
+            self.log.logger.error("the dir has mounted,maybe there is a delete work doing now")
+            self.close()
+        while n > 0:
+            self.glusterip = self.ip[n - 1]
+            try:
+                cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
                 try:
-                    cmd = ("mount.glusterfs %s:/%s %s " % (self.glusterip, self.vol, self.mount_dir))
-                    try:
-                        ret, out = commands.getstatusoutput(cmd)
-                        # print "do mount succeed"
-                        if ret != 0:
-                            self.log.logger.error("do mount failed %s"%out)
-                        return 0
-                    except  Exception as e:
-                        # print ("do mount failed %s"%e)
-                        # self.send_bk('message',"do mount failed %s"%e)
-                        self.log.logger.warning("do mount failed%s"%e.message)
-                except Exception as e:
+                    ret, out = commands.getstatusoutput(cmd)
+                    # print "do mount succeed"
+                    if ret != 0:
+                        self.log.logger.error("do mount failed %s"%out)
+                    return 0
+                except  Exception as e:
                     # print ("do mount failed %s"%e)
                     # self.send_bk('message',"do mount failed %s"%e)
                     self.log.logger.warning("do mount failed%s"%e.message)
-                n = n - 1
+            except Exception as e:
+                # print ("do mount failed %s"%e)
+                # self.send_bk('message',"do mount failed %s"%e)
+                self.log.logger.warning("do mount failed%s"%e.message)
+            n = n - 1
 
     def close(self):
+        """
+        Working directory unmounted
+        """
         try:
             cmd = ('umount %s' % (self.mount_dir))
             ret, out = commands.getstatusoutput(cmd)
@@ -265,6 +265,7 @@ class Delete:
             n=len(tarfilename)
             if filename[0:n]==tarfilename:
                 if int(filename[n+1:n+9]) < oldtime or delAll:
+                    #  If you exceed the backup cycle or forced to delete
                     realdir=os.path.join(tardir,filename)
                     start_time=int(time.mktime(time.strptime(str(filename[-14:]), '%Y%m%d%H%M%S')))
                     try:
@@ -274,6 +275,8 @@ class Delete:
                         self.log.logger.error(e.message)
                         return -1
         if delAll:
+            # If you want to delete, delete the file, determine whether
+            # the folder is empty, blank is also deleted
             try:
                 shutil.rmtree(tardir)
             except Exception as e:
@@ -283,6 +286,9 @@ class Delete:
 
 
     def get_oldtime(self,dt):
+        """
+        Calculate the mission has not expired critical time
+        """
         old= time.localtime(int(time.time())-24*3600*int(dt))
         old_timeint=int(time.strftime("%Y%m%d", old))
         return old_timeint
@@ -297,7 +303,10 @@ class Delete:
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
         self.mount = cp.get('client', 'work_dir')
-        self.mount_dir = "%sdelete/" % (self.mount)
+        if delAll:
+            self.mount_dir = "%s%s/" % (self.mount,self.threadID)
+        else:
+            self.mount_dir = "%sdelete/" % (self.mount)
         ret = self.do_mount()
         if ret !=0:
             self.log.logger.error('delete mount failed')
@@ -311,6 +320,6 @@ class Delete:
         if ret !=0:
             self.close()
             self.log.logger.error('delete mount failed')
-        self.log.logger.info('delete work success')
+        self.log.logger.info('delete work %s success'%self.name)
 
         return

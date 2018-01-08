@@ -19,8 +19,15 @@ import commands
 import logging
 #logging.basicConfig()
 
+
 def send_server(message,log,send_type,**kwargs):
+    """
+    send message to server
+    """
     if send_type == 'state':
+
+        #send message to modify the task table state item
+
         id=kwargs.get('id')
         value=kwargs.get('state')
         data = "{'type':'state','data':{'id':'%s','state':'%s'}}" % (id, value)
@@ -50,20 +57,36 @@ def send_server(message,log,send_type,**kwargs):
     else:
         pass
 
+
+
 class Backup:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler,queue_task_list,workpool_workid_dict):
+    """
+    Process backup tasks
+    """
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_schedul,scheduler,queue_task_list,workpool_workid_dict):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
-        self.task_sum= task_update.task_sum
-        self.task_update=task_update
+        self.task_sum= task_schedul.task_sum
+        self.task_schedul=task_schedul
         self.scheduler=scheduler
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
 
     def __call__(self, message_dict):
+        """
+        For non-immediate implementation of the task, to create a singlgtask class, to put the task
+        on time to the appropriate work queue, waiting for the execution of the worker thread. 'Cron'
+        is a periodic task, 'date' is a one-time task. 'Date' and 'immediately' the difference is
+        'date' to set the execution time, and 'immediately' do not have to, immediately after receiving
+        the implementation.
+
+        For immediate execution of the task, put it directly to the appropriate work queue, wait
+        Sfor the worker thread to execute it
+
+       """
         dict = message_dict['data']
         if dict['run_sub'] == 'date':
             self.addtask(message_dict, 'date')
@@ -76,8 +99,14 @@ class Backup:
             put_in_queue=True
             for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
+                    #  For immediate execution of the task, to determine whether there is
+                    #  the same task being performed, if any, Put_in_queue will be set to
+                    #  False, do not put it into the task waiting queue
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
+                #  For immediate execution of the task, to determine whether there is
+                #  waiting for the same task, if any, will put_in_queue set to False,
+                #  do not put it into the task waiting queue
                 put_in_queue=False
             if put_in_queue:
                 self.queue_task_list.append(dict['id'])
@@ -87,34 +116,44 @@ class Backup:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
 
     def addtask(self,data,do_type):
+        """
+        The singlgtask class to put tasks on the job queue at regular intervals
+        """
         dict = data['data']
         ms = dict['id']
+        #  If the client has the same task, it returns
         if self.task_dict.has_key(ms):
             self.log.logger.warning('the work %s is in client'%ms)
             send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] =data['type']
         self.log.logger.debug('create a new %s backup work,the id of it is %s' %(do_type,ms) )
-        new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+        new_task = SingleTask(ms, self.scheduler, dict, self.task_schedul.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
         send_server(self.message,self.log,'state', id=dict['id'], state='waiting')
 
 class Update:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler,queue_task_list,workpool_workid_dict):
+    """
+    Update the task
+    """
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_schedul,scheduler,queue_task_list,workpool_workid_dict):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
-        self.task_sum=task_update.task_sum
+        self.task_sum=task_schedul.task_sum
         self.scheduler=scheduler
-        self.task_update=task_update
+        self.task_schedul=task_schedul
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
 
     def __call__(self, message_dict):
+        """
+        First delete the old task in the client, save the latest task
+        """
         dict = message_dict['data']
         self.log.logger.info('update a work,the id of it is %s' % dict['id'])
         ms = dict['id']
@@ -124,17 +163,19 @@ class Update:
                 del self.task_dict[ms]
                 self.task_sum = self.task_sum - 1
                 dict['op'] = dict['sub']
-                new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+                new_task = SingleTask(ms, self.scheduler, dict, self.task_schedul.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
                 new_task.start(dict['run_sub'])
                 self.task_dict[ms] = new_task
                 self.task_sum = self.task_sum + 1
-                #send_server(self.message,self.log, 'state', id=dict['id'], state='waiting')
-            except:
-                pass
+            except Exception,e:
+                self.log.logger.error(str(e))
         else:
             self.log.logger.error('No any work which id is %s' % ms)
 
 class Recover:
+    """
+    Process recover tasks
+    """
     def __init__( self,log,task_dict,glusterip_list,q,message,queue_task_list,workpool_workid_dict ):
         self.q=q
         self.glusterip_list=glusterip_list
@@ -145,6 +186,9 @@ class Recover:
         self.workpool_workid_dict=workpool_workid_dict
 
     def __call__(self, message_dict):
+        """
+        Recovery tasks are performed immediately
+        """
         dict = message_dict['data']
         if dict['run_sub'] == 'immediately':
             dict = message_dict['data']
@@ -153,8 +197,14 @@ class Recover:
             put_in_queue=True
             for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
+                    #  For immediate execution of the task, to determine whether there is
+                    #  the same task being performed, if any, Put_in_queue will be set to
+                    #  False, do not put it into the task waiting queue
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
+                #  For immediate execution of the task, to determine whether there is
+                #  waiting for the same task, if any, will put_in_queue set to False,
+                #  do not put it into the task waiting queue
                 put_in_queue=False
             if put_in_queue:
                 self.queue_task_list.append(dict['id'])
@@ -166,17 +216,25 @@ class Recover:
             self.log.logger.error('recover  must be immediately')
 
 class Deleted:
-    def __init__( self,log,task_dict,glusterip_list,q,message,task_update,queue_task_list ):
+    """
+    Delete tasks and backup data
+    """
+    def __init__( self,log,task_dict,glusterip_list,q,message,task_schedul,queue_task_list ):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
-        self.task_sum=task_update.task_sum
+        self.task_sum=task_schedul.task_sum
         self.queue_task_list=queue_task_list
 
     def __call__(self, message_dict):
-        # print "do delete"
+        """
+        Delete the task in three cases: 1. The task was deleted; 2 task was stopped; 3 task execution host changed.
+        If there is a 'deletework' field in the information of the delete operation that is issued, it indicates that
+        the case is 1,need to delete the data backed up by the task.; If there is a 'changeworker' field indicating
+        that the case is 3; There is no 'delete' field for Case 2
+        """
         dict = message_dict['data']
         self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
         ms = dict['id']
@@ -196,6 +254,11 @@ class Deleted:
             send_server(self.message,self.log, 'state', id=ms, state='stopped')
 
     def deleteAllDataOfaWork(self,id):
+        """
+        Will delete the task data required information combined into a
+        dictionary, placed in the task queue, waiting for the execution
+        of the worker thread
+        """
         task_list = self.task_dict
         task = task_list[id]
         msg = task.st
@@ -219,6 +282,10 @@ class Deleted:
 
 
     def deleteBackupData(self):
+        """
+        This method is used to periodically delete data over the save cycle,
+         is to directly create the Delete class and execute
+        """
         task_dict=self.task_dict
         for ms in task_dict:
             task=task_dict[ms]
@@ -242,19 +309,33 @@ class Deleted:
                 t.start()
 
 class Dump:
-    def __init__(self,log,task_dict,glusterip_list,q,message,task_update,scheduler,queue_task_list,workpool_workid_dict ):
+    """
+    Process dump tasks
+    """
+    def __init__(self,log,task_dict,glusterip_list,q,message,task_schedul,scheduler,queue_task_list,workpool_workid_dict ):
         self.q=q
         self.glusterip_list=glusterip_list
         self.log=log
         self.task_dict=task_dict
         self.message=message
-        self.task_sum=task_update.task_sum
+        self.task_sum=task_schedul.task_sum
         self.scheduler=scheduler
-        self.task_update=task_update
+        self.task_schedul=task_schedul
         self.queue_task_list=queue_task_list
         self.workpool_workid_dict=workpool_workid_dict
 
     def __call__(self, message_dict):
+        """
+        For non-immediate implementation of the task, to create a singlgtask class, to put the task
+        on time to the appropriate work queue, waiting for the execution of the worker thread. 'Cron'
+        is a periodic task, 'date' is a one-time task. 'Date' and 'immediately' the difference is
+        'date' to set the execution time, and 'immediately' do not have to, immediately after receiving
+        the implementation.
+
+        For immediate execution of the task, put it directly to the appropriate work queue, wait
+        Sfor the worker thread to execute it
+
+       """
         dict = message_dict['data']
         if dict['run_sub'] == 'cron':
             self.addtask(message_dict, 'cron')
@@ -267,8 +348,14 @@ class Dump:
             put_in_queue=True
             for workpool_id,task_id in self.workpool_workid_dict.items():
                 if task_id == dict['id']:
+                    #  For immediate execution of the task, to determine whether there is
+                    #  the same task being performed, if any, Put_in_queue will be set to
+                    #  False, do not put it into the task waiting queue
                     put_in_queue=False
             if dict['id'] in self.queue_task_list:
+                #  For immediate execution of the task, to determine whether there is
+                #  waiting for the same task, if any, will put_in_queue set to False,
+                #  do not put it into the task waiting queue
                 put_in_queue=False
             if put_in_queue:
                 self.queue_task_list.append(dict['id'])
@@ -278,21 +365,28 @@ class Dump:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
 
     def addtask( self, data, do_type ):
+        """
+        The singlgtask class to put tasks on the job queue at regular intervals
+        """
         dict = data['data']
         ms = dict['id']
+        #  If the client has the same task, it returns
         if self.task_dict.has_key(ms):
             self.log.logger.warning('the work %s is in client'%ms)
             send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
             return
         dict['op'] = data['type']
         self.log.logger.debug('create a new %s dump work,the id of it is %s' % (do_type, ms))
-        new_task = SingleTask(ms, self.scheduler, dict, self.task_update.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
+        new_task = SingleTask(ms, self.scheduler, dict, self.task_schedul.client.backup_and_dump_queue, self.glusterip_list, self.log,self.queue_task_list,self.workpool_workid_dict)
         new_task.start(do_type)
         self.task_dict[ms] = new_task
         self.task_sum = self.task_sum + 1
         send_server(self.message,self.log, 'state', id=dict['id'], state='waiting')
 
 class Keepalive:
+    """
+    Received the heartbeat message, post back their own ip, hostname, version, group
+    """
     def __init__( self,log,message,clientip,hostname,version,group):
         self.log=log
         self.message=message
@@ -305,6 +399,9 @@ class Keepalive:
         send_server(self.message,self.log,'keepalive',ip=self.clientip,hostname=self.hostname,version=self.version,group=self.group)
 
 class Pause:
+    """
+    Stop the current task execution, does not affect the follow-up of scheduled execution
+    """
     def __init__( self,log,tp ,workpool_workid_dict):
         self.log=log
         self.tp=tp
@@ -313,6 +410,7 @@ class Pause:
     def __call__(self, message_dict):
         dict = message_dict['data']
         ms = dict['id']
+        #Traverse the ongoing work queue, find the task, and stop the current implementation
         for t in self.tp:
             if self.workpool_workid_dict.has_key(t.name):
                 if self.workpool_workid_dict[t.name] == ms:
@@ -327,15 +425,18 @@ class Pause:
                     break
 
 class Pauseall:
-    def __init__(self,log,tp ,workpool_workid_dict,client,task_update):
+    """
+    When the client is stopped, stop all ongoing tasks
+    """
+    def __init__(self,log,tp ,workpool_workid_dict,client,task_schedul):
         self.log=log
         self.tp=tp
         self.workpool_workid_dict=workpool_workid_dict
         self.client=client
-        self.task_update=task_update
+        self.task_schedul=task_schedul
 
     def __call__(self, message_dict):
-        self.task_update.client_stop=True
+        self.task_schedul.client_stop=True
         self.client.backup_and_dump_queue.queue.clear()
         self.client.recover_and_workimmediately_queue.queue.clear()
         self.pauseall()
@@ -354,6 +455,9 @@ class Pauseall:
                     break
 
 class First:
+    """
+    After the client starts, the server receives the return, and promised to log
+    """
     def __init__(self,log):
         self.log=log
 
@@ -362,7 +466,10 @@ class First:
         if data:
             self.log.logger.error(data)
 
-class Task_Undate:
+class Task_Schedul:
+    """
+    According to the instructions issued by the server scheduling tasks
+    """
     def __init__(self,client):
         self.q=client.recover_and_workimmediately_queue
         self.glusterip_list=client.glusterip_list
@@ -384,12 +491,18 @@ class Task_Undate:
         self.command_initialization()
 
     def periodic_deletion(self):
+        """
+        Periodically delete outdated backup data
+        """
         ret = self.scheduler.add_job(self.command_dict['delete'].deleteBackupData, 'cron', hour='0', minute='0', second='0')
         self.scheduler.start()
 
 
 
     def command_initialization(self):
+        """
+        Function registration
+        """
         backup=Backup(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler,self.queue_task_list,self.workpool_workid_dict)
         update=Update(self.log,self.task_dict,self.glusterip_list,self.q,self.message, self,self.scheduler,self.queue_task_list,self.workpool_workid_dict)
         recover=Recover(self.log,self.task_dict,self.glusterip_list,self.q,self.message,self.queue_task_list,self.workpool_workid_dict)
@@ -410,7 +523,7 @@ class Task_Undate:
         self.command_dict['start'] = first
         self.periodic_deletion()
 
-    def updatetask(self,message_dict):
+    def schedul_task(self,message_dict):
         type=message_dict.get('type')
         if not type:
             self.log.logger.error('the message %s is incomplete')
@@ -420,11 +533,11 @@ class Task_Undate:
                 self.command_dict[type](message_dict)
 
 class Listen(threading.Thread):
-    def __init__(self,message,log,task_update):
+    def __init__(self,message,log,task_schedul):
         threading.Thread.__init__(self)
         self.message=message
         self.log=log
-        self.task_update=task_update
+        self.task_schedul=task_schedul
 
     def run(self):  # listen msg from clien
         self.log.logger.debug('Listen   start')
@@ -451,7 +564,7 @@ class Listen(threading.Thread):
                         except Exception as e:
                             self.log.logger.error(e.message)
                             continue
-                        self.task_update.updatetask(message_dict)
+                        self.task_schedul.schedul_task(message_dict)
                 else:
                         self.message.con.wait(1)
                         self.message.con.release()
@@ -576,15 +689,13 @@ class Daemon:
                 if os.path.exists('/proc/%s' % pid):
                    time.sleep(1)
                 else:
-                    message = 'clinet stop success\n'
                     self.log.logger.info('clinet stop success')
-                    sys.stderr.write(message)
                     break
             else:
-                message = 'clinet stop success\n'
-                self.log.logger.info('clinet stop success')
-                sys.stderr.write(message)
-                break
+                message = 'pidfile %s does not exist. Daemon not running!'% (self.pidfile)
+                self.log.logger.error('pidfile %s does not exist. Daemon not running!' % (self.pidfile))
+                print message
+                sys.exit(1)
 
 
     def stopclient( self ):
@@ -597,11 +708,9 @@ class Daemon:
         except IOError:
             pid = None
 
-
-        if not pid:  # 重启不报错
-            message = 'pidfile %s does not exist. Daemon not running!\n'
+        if not pid:
+            message = 'pidfile %s does not exist. Daemon not running!\n'% (self.pidfile)
             self.log.logger.error('pidfile %s does not exist. Daemon not running!\n' % (self.pidfile))
-            sys.stderr.write(message % self.pidfile)
             return
 
             # 杀进程
@@ -617,22 +726,17 @@ class Daemon:
             else:
                 sys.exit(1)
 
-    def restart( self ):
-        self.stop()
-        self.start()
-
 
     def _timer_func( self ):
+        """
+        Regularly detect whether the sub-thread survival, if dead, then restart
+        """
         self.timer_id = self.timer_id + 1
-        """
-        没过60秒判断一次线程是否挂了，如果挂了需要重新启动线程加入到threadpool中
-        """
-
         if self.listen.isAlive():
             pass
         else:
             self.log.logger.warning('listen thread is dead ,restart it now')
-            self.listen = Listen(self.message,self.log,self.task_update)
+            self.listen = Listen(self.message,self.log,self.task_schedul)
             self.listen.setDaemon(True)
             self.listen.start()
 
@@ -655,6 +759,9 @@ class Daemon:
 
 
     def check_gluster(self):
+        """
+        Judge gluseter cluster can connect
+        """
         ret=-1
         for gluster_ip in self.glusterip_list:
             cmd='ping -c 3 %s'%gluster_ip
@@ -665,6 +772,9 @@ class Daemon:
         return ret
 
     def check_server(self):
+        """
+        Judge whether the server can connect
+        """
         ret = -1
         cmd = 'ping -c 3 %s' % self.message.send_ip
         ret, out = commands.getstatusoutput(cmd)
@@ -675,6 +785,10 @@ class Daemon:
 
 
     def umount_dir(self):
+        """
+        Start the client, the working directory will be fully unmounted,
+         to prevent the client before the abnormal closure of the impact
+        """
         fp = open('/proc/mounts', 'r')
         lines = fp.readlines()
         for line in lines:
@@ -694,7 +808,14 @@ class Daemon:
                 self.stopclient()
 
 
+
+
     def check_listen(self):
+        """
+        When starting the client, first close the listening port,
+        and then open, to prevent the client before the abnormal
+        closure of the impact
+        """
         try:
             while 1:
                 time.sleep(0.1)
@@ -705,15 +826,10 @@ class Daemon:
             pass
         self.log.logger.debug('now client port is available')
 
-
-    """
-    守护进程主体：
-    启动timer，此timer 主要更新备份周期的功能
-
-    """
-
     def _run( self ):
-        """ run your fun"""
+        """
+        Initialize the environment, start each sub-thread
+        """
         self.check_listen()
         self.umount_dir()
         ret=self.check_gluster()
@@ -726,7 +842,6 @@ class Daemon:
         self.hostname = socket.gethostname()
         os.system("ulimit -n " + "65535")
         self.log.logger.debug("To start  listen:")
-
         try:
             ret=self.message.start_server()
             if ret!=0:
@@ -750,6 +865,7 @@ class Daemon:
         self.backup_and_dump_queue = Queue.Queue(self.qdpth)
         self.recover_and_workimmediately_queue = Queue.Queue(self.qdpth)
         self.queue_task_list=[]
+        # Start the worker thread pool
         for i in range(self.workpool_size):
             t = WorkerPool(self.backup_and_dump_queue, i,self.workpool_size ,self.workpool_workid_dict,self.log,self.queue_task_list)
             self.tp.append(t)
@@ -759,8 +875,8 @@ class Daemon:
         for t in self.tp:
             t.setDaemon(True)
             t.start()
-        self.task_update=Task_Undate(self)
-        self.listen = Listen(self.message,self.log,self.task_update)
+        self.task_schedul=Task_Schedul(self)
+        self.listen = Listen(self.message,self.log,self.task_schedul)
         self.listen.setDaemon(True)
         self.listen.start()
         send_server(self.message, self.log, 'initialize', ip=self.ip, hostname=self.hostname, version=self.version,group=self.group)

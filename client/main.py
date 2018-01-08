@@ -8,6 +8,9 @@ from  log import MyLogging
 import ConfigParser
 
 def create_dir(path):
+    """
+    Create a working directory
+    """
     cp = ConfigParser.ConfigParser()
     cp.read('/etc/fbmp/client.conf')
     workpool_size=int(cp.get('client', 'workpool_size'))
@@ -69,9 +72,7 @@ if __name__ == '__main__':
         daemon.start()
     elif 'stop' == sys.argv[1]:
         daemon = Daemon(pid_file,  mylogger, version)
-        time.sleep(0.2)
         daemon.stop()
-        sys.exit(1)
     elif 'version' == sys.argv[1]:
         print version
     else:
