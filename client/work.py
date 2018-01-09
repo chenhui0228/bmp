@@ -49,7 +49,7 @@ class Work():
         dict['sub'] = sub
         dict['id'] = self.arglist['id']
         dict['bk_id'] = self.arglist['bk_id']
-        if sub == 'frist':
+        if sub == 'first':
             dict['start_time'] = kwargs['start_time']
             dict['total_size'] = kwargs['total_size']
             if kwargs.get('process'):
@@ -251,8 +251,9 @@ class Work():
             if self.process.poll() != None:
                 if self.pause:
                     break
-                list = pd.split('/')
-                new_file = os.path.join(vd, list[-1])
+                # The address by '/' split, get the last level address
+                sub_address_list = pd.split('/')
+                new_file = os.path.join(vd, sub_address_list[-1])
                 source_file_size_after_copy = self.get_file_size(pd)
                 dest_file_size = self.get_file_size(new_file)
                 if source_file_size_before_copy != source_file_size_after_copy or source_file_size_after_copy == dest_file_size:
@@ -345,22 +346,22 @@ class Work():
             self.pfile = self.arglist['source_address']
             if not os.path.exists(self.pfile):
                 self.errormessage = '%s is not exist' % self.pfile
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(start_time))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             # The source file size is less than or equal to 0, an error will be reported
             self.proctotal = self.get_file_size(self.pfile)
             timeArray = time.localtime(start_time)
             if self.proctotal < 0:
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(start_time))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             elif self.proctotal == 0:
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(start_time))
                 self.errormessage = 'the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
-            self.send_bk('frist', total_size=self.proctotal, start_time=str(start_time))
+            self.send_bk('first', total_size=self.proctotal, start_time=str(start_time))
             self.vfile = self.arglist['destination_address'] + "/" + self.arglist['name'] + "_" + self.arglist[
                 'id'] + "_" + time.strftime("%Y%m%d%H%M%S", timeArray) + "/"  # 添加时间戳
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
@@ -414,7 +415,7 @@ class Work():
         elif self.op == 'dump':
             start_time = float(int(time.time()))
             timeArray = time.localtime(start_time)
-            self.send_bk('frist', total_size=-1, start_time=str(start_time), process=200)
+            self.send_bk('first', total_size=-1, start_time=str(start_time), process=200)
             self.mount_dir = "%s%s" % (self.mount, self.arglist['threadId'])
             self.vol = self.arglist['destination_vol']
             self.vfile = self.arglist['destination_address'] + "/" + self.arglist['name'] + "_" + self.arglist[
@@ -423,7 +424,7 @@ class Work():
             instance = str(self.arglist['instance']).lower()
             if not os.path.exists(path):
                 self.errormessage = 'the shell %s is not exist' % path
-                self.send_bk('frist', total_size=-1, start_time=str(start_time))
+                self.send_bk('first', total_size=-1, start_time=str(start_time))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             ret = self.do_mount()
@@ -484,17 +485,17 @@ class Work():
                 return
             if not os.path.exists(self.mount_dir + self.pfile):
                 self.errormessage = '%s is not exist' % self.pfile
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(time.time()))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 return
             self.proctotal = self.get_file_size((self.mount_dir + self.pfile))
             if self.proctotal < 0:
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(time.time()))
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 self.do_close()
                 return
             elif self.proctotal == 0:
-                self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+                self.send_bk('first', total_size=self.proctotal, start_time=str(time.time()))
                 self.errormessage = 'the size of file is zero'
                 self.send_bk('last', state='failed', end_time=str(time.time()))
                 try:
@@ -502,7 +503,7 @@ class Work():
                 except Exception, e:
                     self.log.logger.error(str(e))
                 return
-            self.send_bk('frist', total_size=self.proctotal, start_time=str(time.time()))
+            self.send_bk('first', total_size=self.proctotal, start_time=str(time.time()))
             ret = self.do_mkdir(self.vfile)
             if ret != 0:
                 if self.errormessage == "":

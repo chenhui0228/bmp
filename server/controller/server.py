@@ -85,14 +85,8 @@ class Return:
         bk_value['id'] = dict.get('bk_id')
         bk_value['task_id'] = dict.get('id')
         typeofMessage = dict['sub']
-        if typeofMessage == 'frist':
+        if typeofMessage == 'first':
             # The first time a single task returns, the server will create a new one in backupstate,The main content is start_time,total_size
-            try:
-                bk = self.db.get_bk_state(super_context, bk_value['id'])
-                logger.error('the backup_state %s created before get command to create it' % bk_value['id'])
-                return
-            except:
-                pass
             bk_value['start_time'] = dict.get('start_time')
             bk_value['total_size'] = dict.get('total_size')
             bk_value['process'] = str(dict.get('process'))
@@ -136,7 +130,7 @@ class Return:
                     self.server.workstatelock.release()
             try:
                 self.db.bk_update(super_context, bk_value)
-                logger.info("update one in backupstate which id is %s" % bk.id)
+                logger.info("update one in backupstate which id is %s" % bk_value['id'])
             except Exception as e:
                 logger.error(e)
             return
@@ -182,7 +176,7 @@ class Return:
             # Delete the backup file
             backupstate_list = self.db.bk_list(super_context, task_id=dict['id'])[0]
             for line in backupstate_list:
-                logger.debug(line.id)
+                logger.debug('the task has one which backupstate_id is %s'%line.id)
                 if line.start_time == dict['start_time']:
                     logger.debug('find backupstate')
                     try:
@@ -217,8 +211,6 @@ class State:
             except:
                 pass
         logger.debug(str(dict))
-        if dict['state'] == 'deleted':
-            task_dict['deleted'] == 'deleted'
         try:
             self.db.update_task(super_context, task_dict)
             logger.debug('the work %s state change to %s' % (task_dict['id'], task_dict['state']))
@@ -566,7 +558,7 @@ class Server:
         except Exception as e:
             logger.error(e)
 
-    def pause( self, id, deleted=False, stopped=False ):
+    def pause( self, id, deleted=False, do_not_return=False ):
         try:
             task = self.db.get_task(super_context, id, deleted=deleted)
         except Exception as e:
@@ -574,8 +566,8 @@ class Server:
             return
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
-        if stopped:
-            data = "{'type':'pause','data':{'id':'%s','stop':'True'}}" % (id)
+        if do_not_return:
+            data = "{'type':'pause','data':{'id':'%s','do_not_return':'True'}}" % (id)
         else:
             data = "{'type':'pause','data':{'id':'%s'}}" % (id)
         info = {}
@@ -626,7 +618,7 @@ class Server:
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         # Stop the current task execution
-        self.pause(id, True)
+        self.pause(id, True ,True)
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'

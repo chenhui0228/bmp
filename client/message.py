@@ -175,8 +175,8 @@ class Message:
                     self.tcpclient.send(ms)
                     self.tcpclient.close()
                     msg_dict = eval(ms)
-                    type = str(msg_dict['type'])
-                    if type == 'keepalive' or type == 'pauseall':
+                    message_type = str(msg_dict['type'])
+                    if  message_type == 'keepalive' or message_type == 'pauseall':
                         self.log.logger.info(str(msg_dict['type']))
                     else:
                         self.log.logger.info(str(msg_dict['data']))

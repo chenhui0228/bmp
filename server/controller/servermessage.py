@@ -166,12 +166,11 @@ class Message:
                     # print server_reply
                     self.tcpclient.close()
                     msg_dict = eval(ms)
-                    type = str(msg_dict['type'])
-                    if type == 'keepalive':
+                    message_type = str(msg_dict['type'])
+                    if message_type == 'keepalive':
                         logger.info(info)
                     else:
-                        message = str(type) + "＿" + str(info['addr'])
-                        logger.info(message)
+                        logger.info("%s %s"%(str(message_type),str(info['addr'])))
                 except Exception as e:
                     # self.log.logger.error('UDP send failed %s' % e)
                     return e
