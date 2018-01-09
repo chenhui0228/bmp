@@ -69,7 +69,7 @@ super_context = {
 }
 
 
-class Return:
+class Backupstate:
     """
     According to the client's return, modify the backupstate table
     """
@@ -350,11 +350,11 @@ class Process_returnMessagedict:
 
     def command_initialization( self ):
         # Function registration
-        retur = Return(self.db, self.server)
+        backupstate = Backupstate(self.db, self.server)
         state = State(self.db, self.server)
         initialize = Initialize(self.db, self.server)
         keepalive = Keepalive(self.db, self.server)
-        self.command_dict['return'] = retur
+        self.command_dict['return'] = backupstate
         self.command_dict['state'] = state
         self.command_dict['initialize'] = initialize
         self.command_dict['keepalive'] = keepalive
