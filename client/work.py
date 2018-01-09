@@ -225,11 +225,11 @@ class Work():
                 s = line
                 if len(s) <= 1:
                     continue
-                list = s.split()
-                if list[0].isdigit():
+                line_list = s.split()
+                if line_list[0].isdigit():
                     write_old = write_now
                     list_digit = []
-                    for i in list:
+                    for i in line_list:
                         if i.isdigit():
                             list_digit.append(int(i))
                     write_now = int(max(list_digit))

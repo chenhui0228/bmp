@@ -69,7 +69,7 @@ super_context = {
 }
 
 
-class Return:
+class Backupstate:
     """
     According to the client's return, modify the backupstate table
     """
@@ -215,7 +215,7 @@ class State:
             self.db.update_task(super_context, task_dict)
             logger.debug('the work %s state change to %s' % (task_dict['id'], task_dict['state']))
         except Exception as e:
-            logger.error(e.message)
+            logger.error(str(e))
         logger.info('change task %s state to %s' % (task_dict['id'], task_dict['state']))
 
 
@@ -350,22 +350,22 @@ class Process_returnMessagedict:
 
     def command_initialization( self ):
         # Function registration
-        retur = Return(self.db, self.server)
+        backupstate = Backupstate(self.db, self.server)
         state = State(self.db, self.server)
         initialize = Initialize(self.db, self.server)
         keepalive = Keepalive(self.db, self.server)
-        self.command_dict['return'] = retur
+        self.command_dict['return'] = backupstate
         self.command_dict['state'] = state
         self.command_dict['initialize'] = initialize
         self.command_dict['keepalive'] = keepalive
 
     def processMessage( self, message_dict ):
-        type = message_dict.get('type')
-        if not type:
+        message_type = message_dict.get('type')
+        if not message_type:
             logger.error('the message %s is incomplete')
             return
         else:
-            self.command_dict[type](message_dict)
+            self.command_dict[message_type](message_dict)
 
 
 class Send_Keepalive(threading.Thread):
@@ -468,9 +468,9 @@ class Choose_workerpool:
 
     def __call__( self, message_dict ):
         data = message_dict.get('data')
-        id = data.get('id')
-        if id != None:
-            workerpool_id = hash(id) % len(self.workerpool_list)
+        task_id = data.get('id')
+        if task_id != None:
+            workerpool_id = hash(task_id) % len(self.workerpool_list)
         else:
             min_queue_size = 65536
             index = 0
@@ -481,7 +481,7 @@ class Choose_workerpool:
                     min_queue_size = queue_size
             workerpool_id = index
         try:
-            logger.debug("%s %s" % (workerpool_id, id))
+            logger.debug("%s %s" % (workerpool_id, task_id))
             self.workerpool_list[workerpool_id].con.acquire()
             self.workerpool_list[workerpool_id].queue.put_nowait(message_dict)
             self.workerpool_list[workerpool_id].con.notify()

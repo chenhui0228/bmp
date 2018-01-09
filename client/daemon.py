@@ -265,7 +265,7 @@ class Deleted:
         # Determine the type of task
         if dict.has_key('delete'):
             # Delete the task
-            send_server(self.message, self.log, 'state', id=ms, state='deleted')
+            pass
         elif dict.has_key('changeworker'):
             # Modify the task execution host
             pass
