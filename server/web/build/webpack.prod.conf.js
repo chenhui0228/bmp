@@ -13,7 +13,7 @@ var GenerateAssetPlugin = require('generate-asset-webpack-plugin');
 var env = config.build.env
 
 var createServerConfig=function(compilation){
-  let cfgJson={ApiUrl:"https://10.202.127.11:443"};
+  let cfgJson={ApiUrl:"https://10.202.127.11:443",AnsibleApiUrl:"http://10.202.235.198:8083"};
   return JSON.stringify(cfgJson);
 }
 

@@ -252,19 +252,25 @@ class Deleted:
         dict = message_dict['data']
         self.log.logger.info('delete a work,the id of it is %s' % dict['id'])
         ms = dict['id']
+        # Determine if you need to delete the data
         if dict.has_key('deletework'):
             self.deleteAllDataOfaWork(dict['id'])
+        # Delete local task
         if self.task_dict.has_key(ms):
             self.task_dict[ms].do_remove_job()
             del self.task_dict[ms]
             self.task_sum = self.task_sum - 1
         else:
             self.log.logger.error('No any work which id is %s' % ms)
+        # Determine the type of task
         if dict.has_key('delete'):
-            send_server(self.message, self.log, 'state', id=ms, state='deleted')
+            # Delete the task
+            pass
         elif dict.has_key('changeworker'):
+            # Modify the task execution host
             pass
         else:
+            # Stop the task
             send_server(self.message, self.log, 'state', id=ms, state='stopped')
 
     def deleteAllDataOfaWork( self, id ):
@@ -437,7 +443,7 @@ class Pause:
             if self.workpool_workid_dict.has_key(t.name):
                 if self.workpool_workid_dict[t.name] == ms:
                     try:
-                        if dict.has_key('stop'):
+                        if dict.has_key('do_not_return'):
                             t.stopwork(False)
 
                         else:
