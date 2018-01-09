@@ -88,6 +88,35 @@ funCheckpip(){
     funCheckToolsFromRepos openssl-devel
 }
 
+funCheckPypiDependencies(){
+    cd $root_path
+    tmpfile=`mktemp /tmp/pip.XXXXXXXXXXXX.json` || exit 1
+    pip list --format=json > $tmpfile
+    dependencies=(routes cherrypy sqlalchemy six APScheduler xlwt eventlet pyjwt pymysql ipaddress PyYAML requests MySQL-python)
+    if [[ $1 == "client" ]]; then
+        dependencies=(six APScheduler eventlet requests)
+    elif [[ $1 == "server" ]]; then
+        dependencies=(routes cherrypy sqlalchemy six xlwt eventlet pyjwt pymysql ipaddress PyYAML requests MySQL-python)
+    fi
+    installed_pkgs=0
+    for i in ${dependencies[@]};
+    do
+        grep -Po "${i}" -nr $tmpfile > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo $i ... no
+
+        else
+            echo $i ... yes
+            installed_pkgs=$(expr ${installed_pkgs} + 1)
+        fi
+    done
+    rm -f $tmpfile
+    if [[ ${#dependencies[@]} -ne $installed_pkgs ]]; then
+        echo project interpreter missing necessary dependencies
+        exit -1
+    fi
+}
+
 funSetupPypi(){
     cd $root_path/requirePackages/pypi
     tar xzf ${2}.tar.gz
@@ -151,7 +180,7 @@ funCheckGlusterFsEnv(){
     rpm -qa | grep $1"-"$glusterfs_version".$2.x86_64" > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo $1 ... no
-        echo please install $1"-"$glusterfs_version".$2.x86_64" user command "./setup install -c"
+        echo please install $1"-"$glusterfs_version".$2.x86_64" user command "./setup initial -c"
         exit -1
     else
         echo $1 ... yes
@@ -190,13 +219,13 @@ funChecckEnv(){
     os69=$?
     funCompareVersion $os_version 7.0
     os70=$?
-    if [[ $os69 -eq 0 ]]; then
+    if [[ $1 == 'client' && $os69 -eq 0 ]]; then
         # funSetupLibs libs-6
         funCheckGlusterFsEnv glusterfs el6
         funCheckGlusterFsEnv glusterfs-libs el6
         funCheckGlusterFsEnv glusterfs-client-xlators el6
         funCheckGlusterFsEnv glusterfs-fuse el6
-    elif [[ $os70 -eq 1 ]]; then
+    elif [[ $1 == 'client' && $os70 -eq 1 ]]; then
         # funSetupLibs libs-7
         funCheckGlusterFsEnv glusterfs el7
         funCheckGlusterFsEnv glusterfs-libs el7
@@ -205,7 +234,8 @@ funChecckEnv(){
     fi
 
     # check pip
-    funSetupPipyByRequirements client/requirements.txt
+    #funSetupPipyByRequirements client/requirements.txt
+    funCheckPypiDependencies $1
 }
 
 funInitialPy(){
@@ -213,7 +243,6 @@ funInitialPy(){
     py26=$?
     funCompareVersion $py_version 2.7
     py27=$?
-    
     if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
         echo system python version is lower "then" 2.7
         funSetupPy py27
@@ -276,8 +305,14 @@ funStopProcess(){
     if [[ $1 == "client" ]]; then
         if [[ $py27 -eq 0 && $py26 -eq 1 ]]; then
             /usr/local/bin/python2.7 $project_path/client/main.py stop
+            if [[ $? -ne 0 ]]; then
+                exit -1
+            fi
         else
             /usr/bin/python $project_path/client/main.py stop
+            if [[ $? -ne 0 ]]; then
+                exit -1
+            fi
         fi
     elif [[ $1 == "server" ]]; then
         kill -9 `cat $server_pid`
@@ -448,7 +483,22 @@ case "$action" in
         esac
         ;;
     check)
-        funChecckEnv
+        case "$option" in
+            -s|--serverr)
+                funChecckEnv server
+                ;;
+            -h|--help)
+                printf "Usage:\n"
+                printf "  $0 check <options>\n"
+                printf "default check client runtime environment"
+                printf "Check Options:\n"
+                printf "%-20s %-50s\n" "  -h, --help" "get helpful info of check"
+                printf "%-20s %-50s\n" "  -s, --server" "check server runtime environment"
+                ;;
+            *)
+                funChecckEnv client
+                ;;
+        esac
         ;;
     version)
         case "$option" in
@@ -527,9 +577,9 @@ case "$action" in
         printf "%-20s %-50s\n" "  initial" "Runtime environment initialization."
         printf "%-20s %-50s\n" "  start" "Startup Programs."
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
-        printf "%-20s %-50s\n" "  check" "check the server runtime env, you do not set options"
-        printf "%-20s %-50s\n" "  remove" "stop programs and remove client runing environment"
-        printf "%-20s %-50s\n" "  version" "return version of fbmp"
+        printf "%-20s %-50s\n" "  check" "Default check the client runtime env."
+        printf "%-20s %-50s\n" "  remove" "Stop programs and remove client runing environment"
+        printf "%-20s %-50s\n" "  version" "Return version of fbmp"
         printf "Initial Options:\n"
         printf "%-20s %-50s\n" "  -p, --python" "Only initialized to the Python runtime environment."
         printf "%-20s %-50s\n" "  -c, --client" "Only initialized to the client runtime environment."
@@ -538,6 +588,10 @@ case "$action" in
         printf "Start Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
         printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
+        printf "Check Options:\n"
+        printf "%-20s %-50s\n" "  *" "Default, check client runtime environment"
+        printf "%-20s %-50s\n" "  -h, --help" "Get helpful info of check"
+        printf "%-20s %-50s\n" "  -s, --server" "Check server runtime environment"
         printf "Stop Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Stop client program on the host."
         printf "%-20s %-50s\n" "  -s, --server" "Stop server program on the host."
