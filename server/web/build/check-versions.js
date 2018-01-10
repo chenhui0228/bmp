@@ -1,4 +1,5 @@
 var chalk = require('chalk')
+//语义化版本规范工具
 var semver = require('semver')
 var packageConfig = require('../package.json')
 

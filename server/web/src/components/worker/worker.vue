@@ -446,8 +446,8 @@
           user: this.sysUserName,
         };
         if(this.exportConds.customize){
-          var page_offset = this.filter.per_page * (this.exportConds.from - 1);
-          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
+          var page_offset = this.per_page * (this.exportConds.from - 1);
+          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.per_page;
           params.offset = page_offset;
         }
         reqGetWorkerList(params).then(res => {
@@ -545,55 +545,33 @@
         this.$confirm('确认卸载该客户机吗?', '提示', {type: 'warning'}).then(() => {
           this.listLoading = true;
           //NProgress.start();
-          let para = {user: this.sysUserName};
-          reqDelWorker(row.id, para).then((res) => {
-            this.listLoading = false;
-            this.$prompt('请输入您的工号', '提示',{
-              confirmButtonText: '确定',
-              cancelButtonText: '取消',
-              inputPattern: /^\d{3,}$/,
-              inputErrorMessage: '请输入正确的工号'
-            }).then(({value}) => {
-              let params = {
-                ips: row.ip,
-                user: value,
-                task_module: "softfbmp",
-                args: {
-                  run_type: "uninstall"
-                }
-              };
-              reqAnsible(params).then(res => {
-                data = res.data.data;
-                if (data.task_result.indexOf("Run Error -- 0") !== -1 && data.task_result.indexOf("Connect Error -- 0") !== -1) {
-                  this.openMsg('卸载成功！', 'success');
-                } else {
-                  this.openMsg('卸载失败，执行ID：' + data.taskid, 'error');
-                }
-              },err => {
-                this.openMsg('Ansible 接口调用失败，错误码：' + err.response.status, 'error');
-              });
-            }).catch(() => {
+          this.listLoading = false;
+          this.$prompt('请输入您的工号', '提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            inputPattern: /^\d{3,}$/,
+            inputErrorMessage: '请输入正确的工号'
+          }).then(({value}) => {
+            let params = {
+              ips: row.ip,
+              user: value,
+              task_module: "softfbmp",
+              args: {
+                run_type: "uninstall"
+              }
+            };
+            let timeout = 5000;
+            reqAnsible(params,timeout).then(res => {
+              data = res.data.data;
+              if (data.task_result.indexOf("Run Error -- 0") !== -1 && data.task_result.indexOf("Connect Error -- 0") !== -1) {
+                this.openMsg('卸载成功！', 'success');
+              } else {
+                this.openMsg('卸载失败，执行ID：' + data.taskid, 'error');
+              }
+            }).catch(err => {
+              this.openMsg('Ansible 接口调用失败，错误码：' + err.code, 'error');
             });
-          }).catch((err) => {
-            this.listLoading = false;
-            if (err.response.status == 401) {
-              this.openMsg('请重新登陆', 'error');
-              sessionStorage.removeItem('access-user');
-              this.$router.push({ path: '/' });
-            }else if(err.response.data.code === 403) {
-              this.openMsg('卸载失败', 'error');
-              let tips = err.response.data.tasks[0].name+' 等 '+
-                err.response.data.tasks.length+" 个备份任务正在使用，请先删除任务";
-              this.$notify({
-                title: '卸载失败',
-                message: tips,
-                type: 'error'
-              });
-            }else if(err.response.data.code === 401) {
-              this.openMsg('没有权限', 'error');
-            }else {
-              this.openMsg('请求失败', 'error');
-            }
+          }).catch(() => {
           });
         }).catch(() => {
         });

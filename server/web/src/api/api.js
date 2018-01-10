@@ -218,6 +218,11 @@ export const reqBackupStatesDetail = params => {
   return axios.get(`${base}/backup/backupstates/detail`, {params: params})
 };
 
+export const reqDelBackupStates = (task_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/backupstates/${task_id}`, {params: params})
+};
+
 //日志管理
 export const reqGetOplogList = params => {
   get_base_url()
@@ -251,7 +256,7 @@ export const reqDeleteTags = (id, params) => {
   return axios.delete(`${base}/backup/tags/${id}`, {params: params})
 };
 
-export const reqAnsible = params => {
+export const reqAnsible = (data, timeout) => {
   get_base_url()
-  return axios.post(`${ansible_url}/vishnu/task_execute`, params)
+  return axios.post(`${ansible_url}/vishnu/task_execute`, data, {timeout: timeout})
 };

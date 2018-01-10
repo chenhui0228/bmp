@@ -2,9 +2,14 @@ require('./check-versions')()
 
 process.env.NODE_ENV = 'production'
 
+//实现node.js 命令行环境的 loading效果， 和显示各种状态的图标等
 var ora = require('ora')
+//rimraf 删除输出目录 类似于linux中的rm -rf命令
 var rm = require('rimraf')
+//clean-webpack-plugin
+//处理文件路径
 var path = require('path')
+//颜色插件
 var chalk = require('chalk')
 var webpack = require('webpack')
 var config = require('../config')
