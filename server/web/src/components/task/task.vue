@@ -611,6 +611,9 @@
           </el-table-column>
           <el-table-column label="操作" min-width="180" v-if="isBackupTask">
             <template slot-scope="scope">
+              <el-button type="text" v-if="role == 'admin' || role == 'superrole'"
+                         @click="deleteTaskStates(scope.row)">删除
+              </el-button>
               <!--TODO:创建恢复任务-->
               <el-button type="text" v-if="scope.row && scope.row.state == 'success'"
                          @click="showCreateRecoverTaskDialog(scope.row)">创建恢复任务
@@ -738,7 +741,7 @@
 <script>
   //TODO: import ruquest api
   import { reqGetTaskDetailList, reqGetTaskList, reqAddTask, reqEditTask, reqDelTask, reqTaskAction, reqGetVolumeList,
-    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail,reqGetGroupList,
+    reqGetWorkerList, reqGetPolicyList, reqBackupStates, reqBackupStatesDetail, reqDelBackupStates, reqGetGroupList,
      reqGetTags, reqNewTags, reqEditTags, reqDeleteTags} from '../../api/api';
   import {bus} from '../../bus.js'
   import util from '../../common/util'
@@ -1070,8 +1073,14 @@
           params.type = 'recover';
         }
         if(this.exportConds.customize){
-          var page_offset = this.filter.per_page * (this.exportConds.from - 1);
-          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
+          let per_page = 10;
+          if (this.dialogTaskStateDetailTableVisible){
+            per_page = this.taskStateFilter.per_page;
+          } else {
+            per_page = this.per_page;
+          }
+          var page_offset = per_page * (this.exportConds.from - 1);
+          params.limit = (this.exportConds.to - this.exportConds.from + 1)*per_page;
           params.offset = page_offset;
         }
         var file_save_name;
@@ -1683,6 +1692,29 @@
           this.getTaskStates(this.currTaskRow);
           this.currTaskStateTabTitle = row.task.name;
         }
+      },
+      //TODO:delete task states
+      deleteTaskStates(row){
+        this.$confirm('确认删除该记录吗?', '提示', {type: 'warning'}).then(() => {
+          this.listLoading = true;
+          //NProgress.start();
+          let para = {user: this.sysUserName};
+          reqDelBackupStates(row.id, para).then((res) => {
+            this.listLoading = false;
+            //NProgress.done();
+            this.$message({
+              message: '删除成功',
+              type: 'success'
+            });
+            this.getTaskStates(row.task_id);
+          }).catch(() => {
+            this.listLoading = false;
+            this.$message({
+              message: '删除失败',
+              type: 'error'
+            });
+          });
+        });
       },
       getTaskStates(task_id){
         var page_offset = this.taskStateFilter.per_page * (this.taskStateFilter.page - 1);

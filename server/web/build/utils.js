@@ -1,5 +1,6 @@
 var path = require('path')
 var config = require('../config')
+//样式文件单独打包工具
 var ExtractTextPlugin = require('extract-text-webpack-plugin')
 
 exports.assetsPath = function (_path) {

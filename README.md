@@ -618,3 +618,31 @@
 	停止客户端服务
 
 		/usr/local/bin/python2.7 /usr/local/fbmp/client/main.py stop
+
+### 三、自动化脚本 ###
+
+我们提供自动化脚本setup来帮助完成环境的初始化，服务的启停，版本检查以及软件卸载。你可以使用如下命令查看帮助
+
+	./setup -h
+
+### 四、前端框架 ###
+
+需要了解的的前端技术如下
+
+- [Node.js](http://nodejs.cn/api/)
+- [Express](http://www.expressjs.com.cn/)
+- [NPM](https://docs.npmjs.com/cli/npm)
+- [Vue.js](https://cn.vuejs.org/)
+- [Element](http://element-cn.eleme.io/#/zh-CN "Element")
+- [Webpack](https://doc.webpack-china.org/concepts/)
+
+项目开发运行环境，在web根目录下执行命令如下
+
+	npm run dev
+
+项目打包，在web根目录下执行如下命令
+
+	npm run build
+
+打包完成会在在web根目录下生产dist目录，你会看到有一个文件serverCongig.json，在实际环境中需要配置ApiUrl的具体地址
+
