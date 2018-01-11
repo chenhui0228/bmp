@@ -1,0 +1,9 @@
+/var/log/backup/*.log {
+    rotate 15
+    daily
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
