@@ -16,7 +16,7 @@ class Work():
     Class of task execution
     """
 
-    def __init__( self, arglist, log ):
+    def __init__(self, arglist, log):
         self.log = log
         self.proclen = 0
         self.proctotal = 0
@@ -38,7 +38,7 @@ class Work():
             return
         return
 
-    def send_bk( self, sub, **kwargs ):
+    def send_bk(self, sub, **kwargs):
         """
         Send the message to the server side to make changes to the backupstate table
         """
@@ -68,7 +68,7 @@ class Work():
         if ret != 0:
             self.log.logger.error(ret)
 
-    def do_mount( self ):
+    def do_mount(self):
         """
         Mount gluster to the working directory
         """
@@ -108,7 +108,7 @@ class Work():
                 self.log.logger.warning("do mount failed %s" % e)
         return -1
 
-    def do_mkdir( self, dir ):
+    def do_mkdir(self, dir):
         """
         Create a directory
         """
@@ -131,7 +131,7 @@ class Work():
                 # self.send_bk('message',"do mkidr failed %s"%e)
                 return -1
 
-    def do_work( self, pd, vd ):
+    def do_work(self, pd, vd):
         """
         All the things under the pd path, copy to the vd path
         """
@@ -160,7 +160,7 @@ class Work():
             ret = self.do_write_file(pd, vd)
         return ret
 
-    def do_dump( self, cmd ):
+    def do_dump(self, cmd):
         """
         Execute the cmd command to complete the dump operation
         """
@@ -196,7 +196,7 @@ class Work():
         self.log.logger.info("dump work finished")
         return 0
 
-    def do_write_file( self, pd, vd ):
+    def do_write_file(self, pd, vd):
         """
         The pd file is copied to the vd directory
         """
@@ -289,7 +289,7 @@ class Work():
         self.log.logger.info("cmd %s work finished" % cmd)
         return 0
 
-    def do_write_dir( self, pdir, vdir, pname ):
+    def do_write_dir(self, pdir, vdir, pname):
         """
         Backup directory, first in the destination address to create
         a directory of the same name, the content of the directory backup
@@ -303,7 +303,7 @@ class Work():
         ret = self.do_work(pdir, vfilepath)
         return ret
 
-    def do_close( self ):
+    def do_close(self):
         """
         Working directory unmounted
         """
@@ -321,7 +321,7 @@ class Work():
             self.log.logger.error("do close failed %s" % e)
             return -1
 
-    def get_file_size( self, file_path ):
+    def get_file_size(self, file_path):
         """
         Get the file, the folder size
         """
@@ -338,7 +338,7 @@ class Work():
             size = -1L
         return size
 
-    def start( self ):
+    def start(self):
         self.op = self.arglist['op']
         if self.op == 'backup':
 
@@ -546,6 +546,6 @@ class Work():
         self.log.logger.info("the work %s is success" % self.arglist['name'])
         return
 
-    def stop( self ):
+    def stop(self):
         self.pause = True
         self.log.logger.info('kill process')

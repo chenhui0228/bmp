@@ -15,7 +15,7 @@ q = Queue.Queue()
 con = threading.Condition()
 
 
-def do_put( info ):
+def do_put(info):
     """
     Put the message in the queue and inform the Listen class of the condition variable
     """
@@ -27,23 +27,23 @@ def do_put( info ):
 
 
 class Performance:
-    def __init__( self ):
+    def __init__(self):
         print "Performance init"
         self.perfs = {}
         self.worklist = []
         self.hashmap = {}
 
-    def register( self, worker ):
+    def register(self, worker):
         self.worklist.append(worker)
         # self.
 
-    def unregist( self, worker ):
+    def unregist(self, worker):
         hashid = worker.hashid
         self.hashmap['hashid'] = worker
 
 
 class TCPServer(BaseRequestHandler):
-    def handle( self ):
+    def handle(self):
         # address, pid = self.client_address
         # while True:
         if True:
@@ -59,7 +59,7 @@ class TCPServer(BaseRequestHandler):
 
 
 class UDPServer(BaseRequestHandler):
-    def handle( self ):
+    def handle(self):
         address, pid = self.client_address
         # while True:
         if True:
@@ -80,7 +80,7 @@ class MyThreadingTCPServer(ThreadingTCPServer):
 
 
 class Message:
-    def __init__( self, ms_type, log ):
+    def __init__(self, ms_type, log):
         global q
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
@@ -105,11 +105,11 @@ class Message:
         self.q = q
         self.log = log
 
-    def get_queue( self ):
+    def get_queue(self):
         # self.log.logger.info('get msg from queue')
         return self.q.get_nowait()
 
-    def start_server( self ):  # 监听
+    def start_server(self):  # 监听
         global con
         self.con = con
         ADDR = (self.local_ip, self.client_port)
@@ -136,7 +136,7 @@ class Message:
 
         # self.state="start"
 
-    def udpsend( self, info ):
+    def udpsend(self, info):
         if not info:
             return
         if info.has_key('data'):
@@ -159,7 +159,7 @@ class Message:
             return "error:data or address not exist!"
         return 0
 
-    def tcpsend( self, info ):
+    def tcpsend(self, info):
         if not info:
             return
         ms = ''
@@ -176,7 +176,7 @@ class Message:
                     self.tcpclient.close()
                     msg_dict = eval(ms)
                     message_type = str(msg_dict['type'])
-                    if  message_type == 'keepalive' or message_type == 'pauseall':
+                    if message_type == 'keepalive' or message_type == 'pauseall':
                         self.log.logger.info(str(msg_dict['type']))
                     else:
                         self.log.logger.info(str(msg_dict['data']))
@@ -194,7 +194,7 @@ class Message:
             return "error:data or address not exist!"
         return 0
 
-    def issued( self, info ):  # Destination address variable communication
+    def issued(self, info):  # Destination address variable communication
         ret = None
         if self.ms_type == "tcp":
             ret = self.tcpsend(info)
@@ -202,7 +202,7 @@ class Message:
             ret = self.udpsend(info)
         return ret
 
-    def send( self, data ):  # Destination address immutable communication
+    def send(self, data):  # Destination address immutable communication
         ret = None
         info = {}
         info['data'] = str(data)
@@ -213,7 +213,7 @@ class Message:
             ret = self.udpsend(info)
         return ret
 
-    def closeall( self ):
+    def closeall(self):
         if self.tcpclient:
             # self.log.logger.info('tcpclient close')
             self.tcpclient.close()

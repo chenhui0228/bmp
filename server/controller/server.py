@@ -18,7 +18,7 @@ import Queue
 logger = logging.getLogger('backup')
 
 
-def translate_date( sub, start_time, every, weekday ):
+def translate_date(sub, start_time, every, weekday):
     timestamp = int(start_time)
     time_local = datetime.fromtimestamp(timestamp)
     dict = {'run_sub': 'date', 'year': '*', 'month': '*', 'day': '*', 'week': '*', 'day_of_week': '*', 'hour': '*',
@@ -55,7 +55,7 @@ class Singleton(type):
     _instances = {}
     lock = Lock()
 
-    def __call__( cls, *args, **kwargs ):
+    def __call__(cls, *args, **kwargs):
         cls.lock.acquire()
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(
@@ -74,11 +74,11 @@ class Backupstate:
     According to the client's return, modify the backupstate table
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         self.db = db
         self.server = server
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         dict = message_dict.get('data')
         logger.debug(str(dict))
         bk_value = {}
@@ -176,7 +176,7 @@ class Backupstate:
             # Delete the backup file
             backupstate_list = self.db.bk_list(super_context, task_id=dict['id'])[0]
             for line in backupstate_list:
-                logger.debug('the task has one which backupstate_id is %s'%line.id)
+                logger.debug('the task has one which backupstate_id is %s' % line.id)
                 if line.start_time == dict['start_time']:
                     logger.debug('find backupstate')
                     try:
@@ -193,11 +193,11 @@ class State:
     According to the client's return, modify the task table's state
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         self.db = db
         self.server = server
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         dict = message_dict['data']
         task_dict = {}
         task_dict['id'] = dict['id']
@@ -226,11 +226,11 @@ class Initialize:
     the worker, did not create a new worker
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         self.db = db
         self.server = server
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         dict = message_dict['data']
         try:
             workers = self.db.get_workers(super_context, name=dict['hostname'], worker_ip=dict['ip'])[0]
@@ -304,16 +304,16 @@ class Initialize:
             logger.error('more than one client has same information')
 
 
-class Keepalive:
+class KeepaliveReceiver:
     """
     Process client sends heartbeat message
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         self.db = db
         self.server = server
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         dict = message_dict['data']
         try:
             workers = self.db.get_workers(super_context, name=dict['hostname'], worker_ip=dict['ip'])[0]
@@ -337,29 +337,29 @@ class Keepalive:
             logger.error('more than one client has same information or has no client')
 
 
-class Process_returnMessagedict:
+class MessageResolver:
     """
     Dispatch process returns information
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         self.db = db
         self.server = server
         self.command_dict = {}
         self.command_initialization()
 
-    def command_initialization( self ):
+    def command_initialization(self):
         # Function registration
         backupstate = Backupstate(self.db, self.server)
         state = State(self.db, self.server)
         initialize = Initialize(self.db, self.server)
-        keepalive = Keepalive(self.db, self.server)
+        keepalive_receiver = KeepaliveReceiver(self.db, self.server)
         self.command_dict['return'] = backupstate
         self.command_dict['state'] = state
         self.command_dict['initialize'] = initialize
-        self.command_dict['keepalive'] = keepalive
+        self.command_dict['keepalive'] = keepalive_receiver
 
-    def processMessage( self, message_dict ):
+    def processMessage(self, message_dict):
         message_type = message_dict.get('type')
         if not message_type:
             logger.error('the message %s is incomplete')
@@ -368,22 +368,22 @@ class Process_returnMessagedict:
             self.command_dict[message_type](message_dict)
 
 
-class Send_Keepalive(threading.Thread):
+class KeepaliveSender(threading.Thread):
     """
     Send heartbeat regularly
     """
 
-    def __init__( self, db, server ):
+    def __init__(self, db, server):
         threading.Thread.__init__(self)
         self.db = db
         self.server = server
 
-    def run( self ):
+    def run(self):
         self.t = threading.Timer(self.server.timer_interval, self.keeplaive)
         self.t.setDaemon(True)
         self.t.start()
 
-    def keeplaive( self ):
+    def keeplaive(self):
         logger.debug('start sned keepalive %s' % str(self.server.workeralivedict))
         workers = self.db.get_workers(super_context)
         workersnum = workers[1]
@@ -434,14 +434,14 @@ class Workerpool(threading.Thread):
     Worker thread pool, server multithreading message reported by the client
     """
 
-    def __init__( self, i, process_returnMessagedict ):
+    def __init__(self, i, process_returnMessagedict):
         threading.Thread.__init__(self)
         self.con = threading.Condition()
         self.queue = Queue.Queue()
         self.name = i
         self.process_returnMessagedict = process_returnMessagedict
 
-    def run( self ):
+    def run(self):
         logger.debug('Workerpool %s    start')
         while True:
             if self.con.acquire():
@@ -455,7 +455,7 @@ class Workerpool(threading.Thread):
                     self.con.release()
 
 
-class Choose_workerpool:
+class WorkerBalancer:
     """
     Determine which single thread to process a single message. For the id of the message,
     do hash hash over id, so that the same task with the same thread of information to ensure
@@ -463,10 +463,10 @@ class Choose_workerpool:
     let the thread's task queue to do the smallest thread
     """
 
-    def __init__( self, workerpool_list ):
+    def __init__(self, workerpool_list):
         self.workerpool_list = workerpool_list
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         data = message_dict.get('data')
         task_id = data.get('id')
         if task_id != None:
@@ -496,7 +496,7 @@ class Server:
     For delivery operation.The parameters of each function 'id', almost all task id, if not, will explain
     """
 
-    def __init__( self, conf ):
+    def __init__(self, conf):
         mysqlconf = conf.get('database')
         try:
             self.db = db_api.get_database(mysqlconf)
@@ -521,44 +521,44 @@ class Server:
         self.workstatelock = threading.Lock()
         self.workeralivedict = {}
         self.workerpool_list = []
-        self.process_returnMessagedict = Process_returnMessagedict(self.db, self)
+        self.message_resolver = MessageResolver(self.db, self)
         self.create_workerpool()
-        self.choose_workerpool = Choose_workerpool(self.workerpool_list)
+        self.worker_balancer = WorkerBalancer(self.workerpool_list)
         self.create_listen()
-        self.create_sendKeepalive()
+        self.create_keepalive_sender()
 
-    def create_workerpool( self ):
+    def create_workerpool(self):
         """
         Create a thread pool
         """
         for i in range(self.worker_size):
-            t = Workerpool(i, self.process_returnMessagedict)
+            t = Workerpool(i, self.message_resolver)
             t.setDaemon(True)
             self.workerpool_list.append(t)
             t.start()
 
-    def create_sendKeepalive( self ):
+    def create_keepalive_sender(self):
         """
         Create a thread pool
         """
 
-        t = Send_Keepalive(self.db, self)
+        t = KeepaliveSender(self.db, self)
         t.setDaemon(True)
         t.start()
 
-    def create_listen( self ):
+    def create_listen(self):
         """
         Create monitor
         """
 
-        listen = Listen(self.message, self.choose_workerpool)
+        listen = Listen(self.message, self.worker_balancer)
         listen.setDaemon(True)
         try:
             listen.start()
         except Exception as e:
             logger.error(e)
 
-    def pause( self, id, deleted=False, do_not_return=False ):
+    def pause(self, id, deleted=False, do_not_return=False):
         try:
             task = self.db.get_task(super_context, id, deleted=deleted)
         except Exception as e:
@@ -581,7 +581,7 @@ class Server:
         else:
             logger.error('Can not pause in waiting or stopped')
 
-    def stop( self, id ):
+    def stop(self, id):
         """
         Stop the task by strategy backup
         """
@@ -605,7 +605,7 @@ class Server:
         except Exception as e:
             logger.error(e)
 
-    def delete( self, id ):
+    def delete(self, id):
         """
         Delete the task
         """
@@ -618,7 +618,7 @@ class Server:
         worker = task.worker
         addr = (worker.ip, int(self.client_port))
         # Stop the current task execution
-        self.pause(id, True ,True)
+        self.pause(id, True, True)
         task_value = {}
         task_value['id'] = id
         task_value['state'] = 'deleteing'
@@ -646,7 +646,7 @@ class Server:
             except Exception as e:
                 logger.error(e)
 
-    def resume( self, id ):
+    def resume(self, id):
         """
         Task recovery is executed by strategy
         """
@@ -669,7 +669,7 @@ class Server:
         elif task.type == 'recover':
             self.recover(id)
 
-    def update_task( self, id, isRestart=False ):
+    def update_task(self, id, isRestart=False):
         """
         With new tasks
 
@@ -720,9 +720,9 @@ class Server:
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
                "'second':'%s','start_date':'%s'}}} " % (
-               id, task.name, task.state, worker.ip, source, dir, vol, policy.protection, run_sub, dict['year'],
-               dict['month'], dict['day'], dict['week'], dict['day_of_week'], dict['hour'], dict['minute'],
-               dict['second'], dict['start_date'])
+                   id, task.name, task.state, worker.ip, source, dir, vol, policy.protection, run_sub, dict['year'],
+                   dict['month'], dict['day'], dict['week'], dict['day_of_week'], dict['hour'], dict['minute'],
+                   dict['second'], dict['start_date'])
 
         try:
             data = eval(data)
@@ -755,7 +755,7 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def update_worker( self, id, isRestart=False, **kwargs ):
+    def update_worker(self, id, isRestart=False, **kwargs):
         """
         With new worker
         :param id: worker id
@@ -808,7 +808,7 @@ class Server:
                 if task.worker_id == id:
                     self.update_task(task.id)
 
-    def update_policy( self, id ):
+    def update_policy(self, id):
         """
         With new policy
         :param id: policy id
@@ -823,7 +823,7 @@ class Server:
             if task.policy_id == id:
                 self.update_task(task.id)
 
-    def backup( self, id, do_type=False ):
+    def backup(self, id, do_type=False):
         """
         Create a new backup task
         :param do_type: if do it immediately
@@ -862,9 +862,9 @@ class Server:
                "'source_ip':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_vol':'%s','duration':'%s','run_sub':'%s','cron': {'year':'%s','month':'%s','day':'%s', 'week':'%s','day_of_week':'%s','hour':'%s','minute':'%s'," \
                "'second':'%s','start_date':'%s'}}} " % (
-               id, task.name, task.state, worker.ip, source, dir, vol, policy.protection, run_sub, dict['year'],
-               dict['month'], dict['day'], dict['week'], dict['day_of_week'], dict['hour'], dict['minute'],
-               dict['second'], dict['start_date'])
+                   id, task.name, task.state, worker.ip, source, dir, vol, policy.protection, run_sub, dict['year'],
+                   dict['month'], dict['day'], dict['week'], dict['day_of_week'], dict['hour'], dict['minute'],
+                   dict['second'], dict['start_date'])
         data = eval(data)
         try:
             if task.source.split('/', 1)[0] == 'shell:':
@@ -880,7 +880,7 @@ class Server:
         info['addr'] = addr
         self.message.issued(info)
 
-    def recover( self, id ):
+    def recover(self, id):
         """
         Create a recovery task:
         """
@@ -910,7 +910,7 @@ class Server:
         data = "{'type':'recover','data':{'id':'%s','name':'%s','state':'%s'," \
                "'source_vol':'%s','source_address':'%s','destination_address': '%s'," \
                "'destination_ip':'%s','run_sub':'%s'}} " % (
-               id, task.name, task.state, vol, dir, destination, worker.ip, run_sub)
+                   id, task.name, task.state, vol, dir, destination, worker.ip, run_sub)
         info = {}
         info['data'] = data
         info['addr'] = addr
@@ -922,12 +922,12 @@ class Listen(threading.Thread):
     Listen to the message queue
     """
 
-    def __init__( self, message, choose_workerpool ):
+    def __init__(self, message, choose_workerpool):
         threading.Thread.__init__(self)
         self.message = message
         self.choose = choose_workerpool
 
-    def run( self ):  # listen msg from clien
+    def run(self):  # listen msg from clien
         logger.debug('Listen   start')
         while True:
             if self.message.con.acquire():
