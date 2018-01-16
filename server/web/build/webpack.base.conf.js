@@ -29,17 +29,17 @@ module.exports = {
     rules: [
       {
         test: /\.vue$/,
-        loader: 'vue-loader',
+        loader: 'vue-loader', //处理.vue文件
         options: vueLoaderConfig
       },
       {
         test: /\.js$/,
-        loader: 'babel-loader',
-        include: [resolve('src'), resolve('test'),resolve('node_modules/element-ui/packages/col/src/col.js')]
+        loader: 'babel-loader',//允许使用Babel和webpack转换JavaScript代码，实现es6转es5语法，需要配置
+        include: [resolve('src'),resolve('node_modules/element-ui/packages/col/src/col.js')]
       },
       {
         test: /\.(png|jpe?g|gif|svg)(\?.*)?$/,
-        loader: 'url-loader',
+        loader: 'url-loader',//将图片文件转换为base64编码并载入浏览器能够减少http请求数，但是增大了js或html文件的体积
         options: {
           limit: 10000,
           name: utils.assetsPath('img/[name].[hash:7].[ext]')

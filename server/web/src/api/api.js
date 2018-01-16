@@ -4,10 +4,12 @@
 import axios from 'axios'
 import Qs from 'qs'
 
-let base = '';
+let base = 'https://10.202.127.11:443';
+let ansible_url = 'http://10.202.235.198:8083';
 
 function get_base_url() {
   base = localStorage.getItem('ApiUrl');
+  ansible_url = localStorage.getItem('AnsibleApiUrl');
 }
 
 axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
@@ -216,6 +218,11 @@ export const reqBackupStatesDetail = params => {
   return axios.get(`${base}/backup/backupstates/detail`, {params: params})
 };
 
+export const reqDelBackupStates = (task_id, params) => {
+  get_base_url()
+  return axios.delete(`${base}/backup/backupstates/${task_id}`, {params: params})
+};
+
 //日志管理
 export const reqGetOplogList = params => {
   get_base_url()
@@ -247,4 +254,9 @@ export const reqEditTags = (id, params, data) => {
 export const reqDeleteTags = (id, params) => {
   get_base_url()
   return axios.delete(`${base}/backup/tags/${id}`, {params: params})
+};
+
+export const reqAnsible = (data, timeout) => {
+  get_base_url()
+  return axios.post(`${ansible_url}/vishnu/task_execute`, data, {timeout: timeout})
 };

@@ -11,6 +11,7 @@ export default {
   mounted() {
     axios.get("serverConfig.json").then((res) => {
       localStorage.setItem('ApiUrl', res.data.ApiUrl);
+      localStorage.setItem('AnsibleApiUrl', res.data.AnsibleApiUrl);
     });
   }
 }

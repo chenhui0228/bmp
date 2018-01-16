@@ -5,6 +5,7 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = JSON.parse(config.dev.env.NODE_ENV)
 }
 
+//返回生成的子进程的promise，打开想要打开的任何东西（URL，文件，或者可执行文件等）
 var opn = require('opn')
 var path = require('path')
 var express = require('express')
@@ -74,6 +75,7 @@ devMiddleware.waitUntilValid(() => {
   console.log('> Listening at ' + uri + '\n')
   // when env is testing, don't need open it
   if (autoOpenBrowser && process.env.NODE_ENV !== 'testing') {
+    //自动在浏览器中打开指定的URL
     opn(uri)
   }
   _resolve()

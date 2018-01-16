@@ -4,16 +4,20 @@ var webpack = require('webpack')
 var config = require('../config')
 var merge = require('webpack-merge')
 var baseWebpackConfig = require('./webpack.base.conf')
+//资源拷贝
 //var CopyWebpackPlugin = require('copy-webpack-plugin')
+//生成html文件并，并引用相关资源
 var HtmlWebpackPlugin = require('html-webpack-plugin')
+//抽离css样式
 var ExtractTextPlugin = require('extract-text-webpack-plugin')
+//压缩提取出的css，并解决ExtractTextPlugin分离出的js重复问题(多个文件引入同一css文件)
 var OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
 var GenerateAssetPlugin = require('generate-asset-webpack-plugin');
 
 var env = config.build.env
 
 var createServerConfig=function(compilation){
-  let cfgJson={ApiUrl:"https://10.202.127.11:443"};
+  let cfgJson={ApiUrl:"https://10.202.127.11:443",AnsibleApiUrl:"http://10.202.235.198:8083"};
   return JSON.stringify(cfgJson);
 }
 

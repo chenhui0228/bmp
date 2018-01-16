@@ -1,20 +1,56 @@
 #!/usr/bin/env python
-#coding:utf-8
+# coding:utf-8
 
 import os
-from datetime import *
+import time
+import datetime
 import logging
 import logging.handlers as handlers
+import tarfile
 
 
 class MyRotatingFileHandler(handlers.BaseRotatingHandler):
-
-    def __init__(self, filename, mode='a', maxBytes=0, encoding=None, delay=False):
+    def __init__(self, filename, filePath, saveTime, mode='a', maxBytes=0, encoding=None, delay=False):
         if maxBytes > 0:
             mode = 'a'
         handlers.BaseRotatingHandler.__init__(
             self, filename, mode, encoding, delay)
         self.maxBytes = maxBytes
+        self.filePath = filePath
+        self.saveTime = saveTime
+
+    def emit(self, record):
+        """
+        Emit a record.
+
+        Output the record to the file, catering for rollover as described
+        in doRollover().
+        """
+        try:
+            if self.shouldRollover(record):
+                self.doRollover()
+            self.cleanLogBeforeSevenDays()
+            logging.FileHandler.emit(self, record)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
+
+    def cleanLogBeforeSevenDays(self):
+        """
+        clean log
+        """
+        files = list(os.listdir(self.filePath))
+        for i in range(len(files)):
+            file_date = int(os.path.getmtime(self.filePath + files[i]))
+            curr_date = int(time.time())
+            diff_date = (curr_date - file_date) / 60 / 60 / 24
+            if diff_date >= int(self.saveTime):
+                try:
+                    os.remove(self.filePath + files[i])
+                except Exception as e:
+                    raise e
+        pass
 
     def doRollover(self):
         """
@@ -23,7 +59,7 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         if self.stream:
             self.stream.close()
             self.stream = None
-        nowtime = datetime.now()
+        nowtime = datetime.datetime.now()
         dfn = self.baseFilename + "-" + nowtime.strftime("%Y%m%d%H%M")
         n = 0
         while os.path.exists(dfn):
@@ -31,6 +67,10 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
             dfn = dfn + "-" + str(n)
         if os.path.exists(self.baseFilename):
             os.rename(self.baseFilename, dfn)
+            tarf = tarfile.open(dfn + '.tar.gz', 'w:gz')
+            tarf.add(dfn)
+            tarf.close()
+            os.remove(dfn)
         self.stream = self._open()
 
     def shouldRollover(self, record):
@@ -40,9 +80,9 @@ class MyRotatingFileHandler(handlers.BaseRotatingHandler):
         Basically, see if the supplied record would cause the file to exceed
         the size limit we have.
         """
-        if self.stream is None:                 # delay was set...
+        if self.stream is None:  # delay was set...
             self.stream = self._open()
-        if self.maxBytes > 0:                   # are we rolling over?
+        if self.maxBytes > 0:  # are we rolling over?
             msg = "%s\n" % self.format(record)
             # due to non-posix-compliant Windows feature
             self.stream.seek(0, 2)
@@ -55,10 +95,11 @@ class MyLogging(object):
     """this class use to define some
      functions for our own to use"""
 
-    def __init__(self, log_level, log_file_name, logger_name=__name__):
+    def __init__(self, log_level, log_file_name, log_file_path, log_save_time, logger_name=__name__):
         self.level = int(log_level)
         self.log_file_name = log_file_name
-
+        self.log_file_path = log_file_path
+        self.log_save_time = log_save_time
         self._logger = logging.getLogger(logger_name)
         self._logger.setLevel(self.level)
         self._formatter = logging.Formatter(
@@ -84,7 +125,7 @@ class MyLogging(object):
 
     def addRotatingFileHandler(self, log, maxBytes):
         rfh = MyRotatingFileHandler(
-            self.log_file_name, maxBytes=maxBytes)
+            self.log_file_name, self.log_file_path, self.log_save_time, maxBytes=maxBytes)
         rfh.setLevel(self.level)
         rfh.setFormatter(self._formatter)
         log.addHandler(rfh)

@@ -75,6 +75,16 @@
             <svg class="icon" aria-hidden="true" @click="delWorker(scope.$index,scope.row)">
               <use xlink:href="#icon-delete"></use>
             </svg>
+            <el-tooltip content="版本升级" placement="top">
+              <svg class="icon" aria-hidden="true" @click="upgrade(scope.$index,scope.row)">
+                <use xlink:href="#icon-upgrade"></use>
+              </svg>
+            </el-tooltip>
+            <el-tooltip content="客户端卸载" placement="top">
+              <svg class="icon" aria-hidden="true" @click="uninstall(scope.$index,scope.row)">
+                <use xlink:href="#icon-uninstall2"></use>
+              </svg>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -132,6 +142,37 @@
           <el-button type="primary" @click.native="addSubmit" :loading="addLoading">提交</el-button>
         </div>
       </el-dialog>
+      <el-dialog title="更新选项" v-model="dialogUpgradeVisible" :close-on-click-modal="!dialogUpgradeVisible">
+        <el-form :model="clientConf" :rules="clientConfRules" ref="clientConf">
+          <el-form-item prop="package_name" label="软件包名" label-width="120px">
+            <el-input v-model="clientConf.package_name" auto-complete="off" placeholder="软件包名请不要输入后缀，如fbmp-v1.0.1-xxxxx.tar.gz,请输入fbmp-v1.0.1-xxxxx"></el-input>
+          </el-form-item>
+          <el-form-item prop="user" label="工号" label-width="120px">
+            <el-input v-model="clientConf.user" auto-complete="off" placeholder="您的员工号"></el-input>
+          </el-form-item>
+          <el-form-item label="客户端配置更新" label-width="120px">
+            <!--<el-input v-model="randomPassword" auto-complete="off"></el-input>-->
+            <template>
+              <el-switch v-model="updateClientconf" on-text="是" off-text="否"></el-switch>
+            </template>
+          </el-form-item>
+          <el-form-item prop="gluster_ip" label="Gluster集群IP" label-width="120px" v-if="updateClientconf">
+            <el-input v-model="clientConf.gluster_ip" auto-complete="off" placeholder="多个IP之间使用空格符分隔"></el-input>
+          </el-form-item>
+          <el-form-item prop="server_ip" label="服务端IP" label-width="120px" v-if="updateClientconf">
+            <el-input v-model="clientConf.server_ip" auto-complete="off" placeholder="服务端IP"></el-input>
+          </el-form-item>
+          <el-form-item prop="group" label="属组" label-width="120px" v-if="updateClientconf">
+            <el-input v-model="clientConf.group" auto-complete="off" placeholder="如sysdb"></el-input>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="cancelUpgrade">取 消</el-button>
+          <el-button type="primary"
+                     @click="saveUpgrade('clientConf')">确定
+          </el-button>
+        </div>
+      </el-dialog>
 
     </el-col>
     <el-dialog title="导出客户端" :visible.sync="dialogExportVisible" class="export-dialog">
@@ -172,7 +213,7 @@
 </template>
 
 <script>
-  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqDelWorker} from '../../api/api';
+  import { reqGetWorkerList, reqAddWorker, reqEditWorker, reqDelWorker, reqAnsible} from '../../api/api';
   import export2Excel from '../../common/export2Excel'
   export default {
     data() {
@@ -180,6 +221,14 @@
         var ip = /^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}$/
         if (!ip.test(value)) {
           callback(new Error('输入IP格式不正确，请重新输入！'));
+        }else{
+          callback();
+        }
+      };
+      var validateUserID = (rule, value, callback) => {
+        var ip = /^\d{3,}$/
+        if (!ip.test(value)) {
+          callback(new Error('输入您正确的工号！'));
         }else{
           callback();
         }
@@ -203,6 +252,18 @@
         editFormVisible: false,//编辑界面是否显示
         editLoading: false,
         dialogExportVisible: false,
+        dialogUpgradeVisible: false,
+        clientConf: {
+          gluster_ip: '',
+          group: '',
+          server_ip: '',
+          package_name: '',
+          user: '',
+          ips: '',
+          task_module: 'softfbmp',
+          selected_worker_ip: '',
+        },
+        updateClientconf: false,
         exportConds: {
           customize: false,
           from: 1,
@@ -218,6 +279,17 @@
           ],
           description: [
             {required: true, message: '请输入描述', trigger: 'blur'}
+          ]
+        },
+        clientConfRules: {
+          package_name: [
+            {required: true, message: '请输入需要升级的软件包名', trigger: 'blur'}
+          ],
+          user: [
+            {required: true, validator: validateUserID, trigger: 'blur'}
+          ],
+          server_ip: [
+            {validator: validateIp, trigger: 'blur'}
           ]
         },
         editForm: {
@@ -374,8 +446,8 @@
           user: this.sysUserName,
         };
         if(this.exportConds.customize){
-          var page_offset = this.filter.per_page * (this.exportConds.from - 1);
-          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.filter.per_page;
+          var page_offset = this.per_page * (this.exportConds.from - 1);
+          params.limit = (this.exportConds.to - this.exportConds.from + 1)*this.per_page;
           params.offset = page_offset;
         }
         reqGetWorkerList(params).then(res => {
@@ -410,6 +482,100 @@
           }
           this.cancelExport();
         });
+      },
+      //
+      pre_upgrade(){
+        this.clientConf.user = '';
+        this.clientConf.package_name = '';
+        this.clientConf.gluster_ip = '';
+        this.clientConf.server_ip = '';
+        this.clientConf.group = '';
+      },
+      upgrade(index, row){
+        this.dialogUpgradeVisible = true;
+        this.updateClientconf = false;
+        this.pre_upgrade();
+        this.clientConf.selected_worker_ip = row.ip;
+      },
+      cancelUpgrade(){
+        this.dialogUpgradeVisible = false;
+      },
+      saveUpgrade(clientConf){
+        this.$refs[clientConf].validate((valid) => {
+          if(valid){
+            let params = {
+              ips: this.clientConf.selected_worker_ip,
+              user: this.clientConf.user,
+              task_module: this.clientConf.task_module,
+              args: {
+                run_type: "upgrade",
+                package_name: this.clientConf.package_name
+              }
+            };
+            if (this.updateClientconf){
+              if (this.clientConf.gluster_ip == ''){
+                params.args.gluster_ip = this.clientConf.gluster_ip;
+              }
+              if (this.clientConf.server_ip == ''){
+                params.args.server_ip = this.clientConf.server_ip;
+              }
+              if (this.clientConf.group == ''){
+                params.args.group = this.clientConf.group;
+              }
+            }
+            reqAnsible(params).then(res => {
+              data = res.data.data;
+              if (data.task_result.indexOf("Run Error -- 0") !== -1 && data.task_result.indexOf("Connect Error -- 0") !== -1) {
+                this.openMsg('升级成功！', 'success');
+              } else {
+                this.openMsg('升级失败，执行ID：' + data.taskid, 'error');
+              }
+            },err => {
+              this.openMsg('Ansible 接口调用失败，错误码：' + err.response.status, 'error');
+            });
+          }else{
+            this.openMsg('信息输入不正确，请检查格式！', 'error');
+          }
+        });
+        this.dialogUpgradeVisible = false;
+        this.pre_upgrade();
+        this.getWorker();
+      },
+      uninstall(index, row){
+        this.$confirm('确认卸载该客户机吗?', '提示', {type: 'warning'}).then(() => {
+          this.listLoading = true;
+          //NProgress.start();
+          this.listLoading = false;
+          this.$prompt('请输入您的工号', '提示',{
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            inputPattern: /^\d{3,}$/,
+            inputErrorMessage: '请输入正确的工号'
+          }).then(({value}) => {
+            let params = {
+              ips: row.ip,
+              user: value,
+              task_module: "softfbmp",
+              args: {
+                run_type: "uninstall"
+              }
+            };
+            let timeout = 5000;
+            reqAnsible(params,timeout).then(res => {
+              data = res.data.data;
+              if (data.task_result.indexOf("Run Error -- 0") !== -1 && data.task_result.indexOf("Connect Error -- 0") !== -1) {
+                this.openMsg('卸载成功！', 'success');
+              } else {
+                this.openMsg('卸载失败，执行ID：' + data.taskid, 'error');
+              }
+            }).catch(err => {
+              this.openMsg('Ansible 接口调用失败，错误码：' + err.code, 'error');
+            });
+          }).catch(() => {
+          });
+        }).catch(() => {
+        });
+        this.getWorker();
       },
       //====新建相关====
       //显示新建界面
