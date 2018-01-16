@@ -22,7 +22,7 @@ import logging
 # logging.basicConfig()
 
 
-def send_server( message, log, send_type, **kwargs ):
+def send_server(message, log, send_type, **kwargs):
     """
     send message to server
     """
@@ -42,7 +42,7 @@ def send_server( message, log, send_type, **kwargs ):
         version = kwargs.get('version')
         group = kwargs.get('group')
         data = "{'type': 'keepalive', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (
-        ip, hostname, version, group)
+            ip, hostname, version, group)
         try:
             message.send(data)
         except Exception as e:
@@ -53,7 +53,7 @@ def send_server( message, log, send_type, **kwargs ):
         version = kwargs.get('version')
         group = kwargs.get('group')
         data = "{'type': 'initialize', 'data': {'ip': '%s', 'hostname': '%s', 'version': '%s','group':'%s'}}" % (
-        ip, hostname, version, group)
+            ip, hostname, version, group)
         try:
             message.send(data)
         except Exception as e:
@@ -67,8 +67,8 @@ class Backup:
     Process backup tasks
     """
 
-    def __init__( self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
-                  workpool_workid_dict ):
+    def __init__(self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
+                 workpool_workid_dict):
         self.q = q
         self.glusterip_list = glusterip_list
         self.log = log
@@ -80,7 +80,7 @@ class Backup:
         self.queue_task_list = queue_task_list
         self.workpool_workid_dict = workpool_workid_dict
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         """
         For non-immediate implementation of the task, to create a singlgtask class, to put the task
         on time to the appropriate work queue, waiting for the execution of the worker thread. 'Cron'
@@ -120,7 +120,7 @@ class Backup:
             else:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
 
-    def addtask( self, data, do_type ):
+    def addtask(self, data, do_type):
         """
         The singlgtask class to put tasks on the job queue at regular intervals
         """
@@ -146,8 +146,8 @@ class Update:
     Update the task
     """
 
-    def __init__( self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
-                  workpool_workid_dict ):
+    def __init__(self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
+                 workpool_workid_dict):
         self.q = q
         self.glusterip_list = glusterip_list
         self.log = log
@@ -159,7 +159,7 @@ class Update:
         self.queue_task_list = queue_task_list
         self.workpool_workid_dict = workpool_workid_dict
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         """
         First delete the old task in the client, save the latest task
         """
@@ -188,7 +188,7 @@ class Recover:
     Process recover tasks
     """
 
-    def __init__( self, log, task_dict, glusterip_list, q, message, queue_task_list, workpool_workid_dict ):
+    def __init__(self, log, task_dict, glusterip_list, q, message, queue_task_list, workpool_workid_dict):
         self.q = q
         self.glusterip_list = glusterip_list
         self.log = log
@@ -197,7 +197,7 @@ class Recover:
         self.queue_task_list = queue_task_list
         self.workpool_workid_dict = workpool_workid_dict
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         """
         Recovery tasks are performed immediately
         """
@@ -233,7 +233,7 @@ class Deleted:
     Delete tasks and backup data
     """
 
-    def __init__( self, log, task_dict, glusterip_list, q, message, task_schedul, queue_task_list ):
+    def __init__(self, log, task_dict, glusterip_list, q, message, task_schedul, queue_task_list):
         self.q = q
         self.glusterip_list = glusterip_list
         self.log = log
@@ -242,7 +242,7 @@ class Deleted:
         self.task_sum = task_schedul.task_sum
         self.queue_task_list = queue_task_list
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         """
         Delete the task in three cases: 1. The task was deleted; 2 task was stopped; 3 task execution host changed.
         If there is a 'deletework' field in the information of the delete operation that is issued, it indicates that
@@ -273,7 +273,7 @@ class Deleted:
             # Stop the task
             send_server(self.message, self.log, 'state', id=ms, state='stopped')
 
-    def deleteAllDataOfaWork( self, id ):
+    def deleteAllDataOfaWork(self, id):
         """
         Will delete the task data required information combined into a
         dictionary, placed in the task queue, waiting for the execution
@@ -300,7 +300,7 @@ class Deleted:
             self.queue_task_list.append(dict['id'])
             self.q.put([str(dict), 2], block=True, timeout=None)
 
-    def deleteBackupData( self ):
+    def deleteBackupData(self):
         """
         This method is used to periodically delete data over the save cycle,
          is to directly create the Delete class and execute
@@ -333,8 +333,8 @@ class Dump:
     Process dump tasks
     """
 
-    def __init__( self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
-                  workpool_workid_dict ):
+    def __init__(self, log, task_dict, glusterip_list, q, message, task_schedul, scheduler, queue_task_list,
+                 workpool_workid_dict):
         self.q = q
         self.glusterip_list = glusterip_list
         self.log = log
@@ -346,7 +346,7 @@ class Dump:
         self.queue_task_list = queue_task_list
         self.workpool_workid_dict = workpool_workid_dict
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         """
         For non-immediate implementation of the task, to create a singlgtask class, to put the task
         on time to the appropriate work queue, waiting for the execution of the worker thread. 'Cron'
@@ -386,7 +386,7 @@ class Dump:
             else:
                 self.log.logger.warning('%s %s is in doing or in queue' % (dict['id'], dict['name']))
 
-    def addtask( self, data, do_type ):
+    def addtask(self, data, do_type):
         """
         The singlgtask class to put tasks on the job queue at regular intervals
         """
@@ -412,7 +412,7 @@ class Keepalive:
     Received the heartbeat message, post back their own ip, hostname, version, group
     """
 
-    def __init__( self, log, message, clientip, hostname, version, group ):
+    def __init__(self, log, message, clientip, hostname, version, group):
         self.log = log
         self.message = message
         self.clientip = clientip
@@ -420,7 +420,7 @@ class Keepalive:
         self.version = version
         self.group = group
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         send_server(self.message, self.log, 'keepalive', ip=self.clientip, hostname=self.hostname, version=self.version,
                     group=self.group)
 
@@ -430,12 +430,12 @@ class Pause:
     Stop the current task execution, does not affect the follow-up of scheduled execution
     """
 
-    def __init__( self, log, tp, workpool_workid_dict ):
+    def __init__(self, log, tp, workpool_workid_dict):
         self.log = log
         self.tp = tp
         self.workpool_workid_dict = workpool_workid_dict
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         dict = message_dict['data']
         ms = dict['id']
         # Traverse the ongoing work queue, find the task, and stop the current implementation
@@ -458,14 +458,14 @@ class Pauseall:
     When the client is stopped, stop all ongoing tasks
     """
 
-    def __init__( self, log, tp, workpool_workid_dict, client, task_schedul ):
+    def __init__(self, log, tp, workpool_workid_dict, client, task_schedul):
         self.log = log
         self.tp = tp
         self.workpool_workid_dict = workpool_workid_dict
         self.client = client
         self.task_schedul = task_schedul
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         self.task_schedul.client_stop = True
         self.client.backup_and_dump_queue.queue.clear()
         self.client.recover_and_workimmediately_queue.queue.clear()
@@ -475,7 +475,7 @@ class Pauseall:
             time.sleep(1)
         self.client.stopclient()
 
-    def pauseall( self ):
+    def pauseall(self):
         for t in self.tp:
             if self.workpool_workid_dict.has_key(t.name):
                 try:
@@ -490,10 +490,10 @@ class First:
     After the client starts, the server receives the return, and promised to log
     """
 
-    def __init__( self, log ):
+    def __init__(self, log):
         self.log = log
 
-    def __call__( self, message_dict ):
+    def __call__(self, message_dict):
         data = message_dict.get('data')
         if data:
             self.log.logger.error(data)
@@ -504,7 +504,7 @@ class Task_Schedul:
     According to the instructions issued by the server scheduling tasks
     """
 
-    def __init__( self, client ):
+    def __init__(self, client):
         self.q = client.recover_and_workimmediately_queue
         self.glusterip_list = client.glusterip_list
         self.log = client.log
@@ -524,7 +524,7 @@ class Task_Schedul:
         self.client_stop = False
         self.command_initialization()
 
-    def periodic_deletion( self ):
+    def periodic_deletion(self):
         """
         Periodically delete outdated backup data
         """
@@ -532,7 +532,7 @@ class Task_Schedul:
                                      second='0')
         self.scheduler.start()
 
-    def command_initialization( self ):
+    def command_initialization(self):
         """
         Function registration
         """
@@ -561,7 +561,7 @@ class Task_Schedul:
         self.command_dict['start'] = first
         self.periodic_deletion()
 
-    def schedul_task( self, message_dict ):
+    def schedul_task(self, message_dict):
         type = message_dict.get('type')
         if not type:
             self.log.logger.error('the message %s is incomplete')
@@ -572,13 +572,13 @@ class Task_Schedul:
 
 
 class Listen(threading.Thread):
-    def __init__( self, message, log, task_schedul ):
+    def __init__(self, message, log, task_schedul):
         threading.Thread.__init__(self)
         self.message = message
         self.log = log
         self.task_schedul = task_schedul
 
-    def run( self ):  # listen msg from clien
+    def run(self):  # listen msg from clien
         self.log.logger.debug('Listen   start')
         while True:
             if self.message.con.acquire():
@@ -611,8 +611,8 @@ class Listen(threading.Thread):
 
 
 class Daemon:
-    def __init__( self, pidfile, mylogger, version, stdin='/dev/stderr', stdout='/dev/stderr',
-                  stderr='/dev/stderr' ):
+    def __init__(self, pidfile, mylogger, version, stdin='/dev/stderr', stdout='/dev/stderr',
+                 stderr='/dev/stderr'):
         cp = ConfigParser.ConfigParser()
         cp.read('/etc/fbmp/client.conf')
         self.log = mylogger
@@ -641,7 +641,7 @@ class Daemon:
         self.ip = socket.gethostbyname(self.hostname)
         self.workpool_workid_dict = {}
 
-    def _daemonize( self ):
+    def _daemonize(self):
         try:
             pid = os.fork()  # 第一次fork，生成子进程，脱离父进程
             if pid > 0:
@@ -668,7 +668,7 @@ class Daemon:
                                   (e.errno, e.strerror))
             sys.exit(1)
 
-            # 重定向文件描述符
+        # 重定向文件描述符
         sys.stdout.flush()
         sys.stderr.flush()
         si = file(self.stdin, 'r')
@@ -685,10 +685,10 @@ class Daemon:
         file(self.pidfile, 'w+').write('%s\n' % pid)
         self.log.logger.debug("pid file write succeed")
 
-    def delpid( self ):
+    def delpid(self):
         os.remove(self.pidfile)
 
-    def start( self ):
+    def start(self):
         # 检查pid文件是否存在以探测是否存在进程
 
         try:
@@ -706,12 +706,12 @@ class Daemon:
                 sys.stderr.flush()
                 sys.exit(1)
 
-                # 启动监控
+        # 启动监控
         self.log.logger.info('client start now')
         self._daemonize()
         self._run()
 
-    def stop( self ):
+    def stop(self):
         data = "{'type':'pauseall'}"
         addr = (self.ip, int(self.client_port))
         info = {}
@@ -737,7 +737,7 @@ class Daemon:
                 print message
                 sys.exit(1)
 
-    def stopclient( self ):
+    def stopclient(self):
         # 从pid文件中获取pid
         try:
             # self.message.closeall()
@@ -765,7 +765,7 @@ class Daemon:
             else:
                 sys.exit(1)
 
-    def _timer_func( self ):
+    def _timer_func(self):
         """
         Regularly detect whether the sub-thread survival, if dead, then restart
         """
@@ -797,7 +797,7 @@ class Daemon:
         self.t = Timer(self.timer_interval, self._timer_func)
         self.t.start()
 
-    def check_gluster( self ):
+    def check_gluster(self):
         """
         Judge gluseter cluster can connect
         """
@@ -810,7 +810,7 @@ class Daemon:
             self.log.logger.warning('Can not connect ip %s' % gluster_ip)
         return ret
 
-    def check_server( self ):
+    def check_server(self):
         """
         Judge whether the server can connect
         """
@@ -822,7 +822,7 @@ class Daemon:
         self.log.logger.error('Can not connect ip %s' % self.message.send_ip)
         return ret
 
-    def umount_dir( self ):
+    def umount_dir(self):
         """
         Start the client, the working directory will be fully unmounted,
          to prevent the client before the abnormal closure of the impact
@@ -845,7 +845,7 @@ class Daemon:
                 self.log.logger.error(e)
                 self.stopclient()
 
-    def check_listen( self ):
+    def check_listen(self):
         """
         When starting the client, first close the listening port,
         and then open, to prevent the client before the abnormal
@@ -861,7 +861,7 @@ class Daemon:
             pass
         self.log.logger.debug('now client port is available')
 
-    def _run( self ):
+    def _run(self):
         """
         Initialize the environment, start each sub-thread
         """

@@ -8,7 +8,7 @@ from  log import MyLogging
 import ConfigParser
 
 
-def create_dir( path ):
+def create_dir(path):
     """
     Create a working directory
     """

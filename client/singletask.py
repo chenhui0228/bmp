@@ -6,7 +6,7 @@ from message import Message
 
 
 class SingleTask():
-    def __init__( self, name, schd, info, q, glusterip, log, queue_task_list, workpool_workid_dict ):
+    def __init__(self, name, schd, info, q, glusterip, log, queue_task_list, workpool_workid_dict):
         # self.logger = logging.getLogger(__name__)
         self.log = log
         ms = Message("tcp", self.log)
@@ -27,20 +27,20 @@ class SingleTask():
         self.queue_task_list = queue_task_list
         self.workpool_workid_dict = workpool_workid_dict
 
-    def stop_job( self ):
+    def stop_job(self):
         """
         Temporarily not used
         """
         self.stop = True
 
-    def restart_job( self ):
+    def restart_job(self):
         """
         Temporarily not used
         """
         if self.stop:
             self.stop = False
 
-    def do_insert_job( self ):
+    def do_insert_job(self):
         """
         Add tasks to the work queue
         """
@@ -66,7 +66,7 @@ class SingleTask():
             except Exception as e:
                 self.log.logger.error('can put work msg in workerpool queue,%s' % str(e))
 
-    def do_remove_job( self ):
+    def do_remove_job(self):
         """
         Temporarily not used
         """
@@ -75,10 +75,10 @@ class SingleTask():
                 "Remove task from scheduling queue: %s" % (self.name))
             self.schd.remove_job(self.name)
 
-    def getname( self ):
+    def getname(self):
         return self.name
 
-    def start( self, sub ):
+    def start(self, sub):
         # self.logger.info("Start new task now!")
         # print "**********************set start time:", time.asctime(time.localtime(time.time())), " name is:", self.name
         if sub == 'cron':
