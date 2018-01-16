@@ -533,6 +533,7 @@ case "$action" in
                 ;;
             -s|--serverr)
                 funRemove server
+                rm -f $logrotate_path/backup.rotate
                 ;;
             *)
                 printf "Usage:\n"
