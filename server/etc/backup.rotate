@@ -1,4 +1,24 @@
-/var/log/backup/*.log {
+/var/log/fbmp/backup.log {
+    rotate 15
+    daily
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+/var/log/fbmp/access.log {
+    rotate 15
+    daily
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+/var/log/fbmp/error.log {
     rotate 15
     daily
     compress

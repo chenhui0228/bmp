@@ -85,6 +85,10 @@
     mysql-community-devel-5.7.20-1.el7.x86_64
     mysql-community-server-5.7.20-1.el7.x86_64
 
+> <font color=red>**注意：**</font>如果你的Mysql是单独部署在与管理结点不同的服务器上，你只需要在管理结点安装数据库开发包
+> 
+>     mysql-community-devel-5.7.20-1.el7.x86_64
+
 具体安装这里不做详述，如果你之前有安装低版本请更新数据表结构。需要注意的是，你在安装完成后可能需要重新修改root密码，具体方法可以参考如下：
 
 - 1）如果服务已经启动请先停止mysql服务
@@ -265,7 +269,48 @@
 
 	> <font color=red>**提示：**</font>	如果你不清楚配置项具体含义和用处，使用默认配置既可
 
-	**3) RESTFul访问权限配置文件policy.json**
+	**3) 服务端日志打包配置文件backup.rotate**
+
+	日志文件管理工具Logrotate，用来把旧文件轮转、压缩、删除，并且创建新的日志文件。我们可以根据日志文件的大小、天数等来转储，便于对日志文件管理，一般都是通过cron计划任务来完成的。我们需要将给配置文件拷贝到/etc/logrotate.d目录下
+	
+		cd /usr/local/fbmp
+		cp -f server/etc/backup.rotate /etc/logrotate.d/
+
+	文件详细内容如下
+
+		/var/log/fbmp/backup.log {
+		    rotate 15 # 默认保存15天
+		    daily	# 每天打包
+		    compress
+		    delaycompress
+		    missingok
+		    notifempty
+		    copytruncate
+		}
+		
+		/var/log/fbmp/access.log {
+		    rotate 15
+		    daily
+		    compress
+		    delaycompress
+		    missingok
+		    notifempty
+		    copytruncate
+		}
+		
+		/var/log/fbmp/error.log {
+		    rotate 15
+		    daily
+		    compress
+		    delaycompress
+		    missingok
+		    notifempty
+		    copytruncate
+		}
+
+
+
+	**4) RESTFul访问权限配置文件policy.json**
 
 		# 各角色对各接口的权限配置表，super user无需进行权限配置，它已经拥有最高的权限，默认super user为root，
 		# 密码可以在第一次启动服务端程序后的日志中获取，第一次登陆后必须修改super user用户密码。
@@ -363,8 +408,8 @@
 
 	<font color=red size=3>**第一次启动server之前**</font>我们需要先初始化数据库，然后初始化用户角色，命令如下：
 	
-		/bin/python2.7 /usr/local/fbmp/server/server.py db --sync
-		/bin/python2.7 /usr/local/fbmp/server/server.py role --create-default
+		/bin/python2.7 /usr/local/fbmp/server/server.py -c /etc/fbmp/server.conf db --sync
+		/bin/python2.7 /usr/local/fbmp/server/server.py -c /etc/fbmp/server.conf role --create-default
 	
 	> <font color=red>**提示：**</font>如果是首次启动服务，会生成默认的超级管理员用户root和随机密码，请从服务日志中获取root初始密码，并首次登陆后进行修改。
 	
@@ -372,9 +417,17 @@
 	
 		/bin/python2.7 /usr/local/fbmp/server/server.py -c /etc/fbmp/server.conf run
 
-	
+	或
+
+		./setup start -s
 	
 	停止server时，只需要kill掉进程即可
+
+		kill -9 `cat /var/run/fbmp/backup.pid`
+
+	或
+
+		./stop start -s
 
 #### 3. Nginx配置安装 ####
 
@@ -581,7 +634,7 @@
 		#This is the directory for the working path
 		work_dir = /mnt/fbmp/
 		#This is the ip address of the gluster cluster
-		# 配置glusterfs集群IP
+		# 配置glusterfs集群IP，多个IP请使用空格分隔
 		gluster_ip = 10.202.125.82
 		#This is the port on which the client receives the message sent by the server
 		client_port = 11112
@@ -646,3 +699,64 @@
 
 打包完成会在在web根目录下生产dist目录，你会看到有一个文件serverCongig.json，在实际环境中需要配置ApiUrl的具体地址
 
+### 三、备份软件升级 ###
+
+1. 版本检查
+
+		# -s为服务端，-c为客户端
+		./setup version [-s|-c]
+
+2. 客户端软件升级
+
+	- 停客户端服务
+	
+			 cd /usr/local/fbmp
+			 ./setup stop -c
+	
+	- 备份当前版本
+
+			mkdir /usr/local/fbmp_bak
+			mv /usr/local/fbmp/* /usr/local/fbmp_bak/*
+			
+	- 下载新版本并拷贝新版本软件
+
+			cd /tmp
+         	wget http://xxx/fbmp-vXXXX.tar.gz
+         	tar zxf fbmp-vXXXX.tar.gz
+         	cp -rf fbmp-vXXXX/* /usr/local/fbmp/
+
+	- 配置文件更新（如果配置文件有更改）
+
+			 # 先删除已有配置文件
+	         rm -f /etc/fbmp/client.conf
+	         # 拷贝新的配置文件到/etc/fbmp目录
+	         cp -f /usr/local/fbmp/client/client.conf /etc/fbmp/
+	         # 根据维石调用给出的gluster_ip，server_ip，group修改/etc/fbmp/client.conf文件中的相应属性
+
+	- 重新启动客户端
+
+			cd /usr/local/fbmp
+         	./setup start –c
+
+3. 服务端软件升级
+
+	与客户端软件升级类似，不同的是配置文件如果需要修改的话不是修改client.conf，而是server.conf，此外启动和停止命令分别如下
+
+		cd /usr/local/fbmp
+		# 停服务端
+	 	./setup stop -s
+		# 起服务端
+		./setup start -s
+
+4. 软件卸载
+
+	- 停止服务并清除配置，日志，运行文件或者目录
+
+			cd /usr/local/fbmp
+			./setup remove [-c|-s]
+
+	- 删除安装包目录
+
+			cd /tmp
+			rm -rf /usr/local/fbmp
+	

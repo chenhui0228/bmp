@@ -21,6 +21,7 @@ run_path='/var/run/'${project_name}
 project_path='/usr/local/'${project_name}
 server_conf_path=${etc_path}server.conf
 client_conf_path=${etc_path}client.conf
+logrotate_path='/etc/logrotate.d'
 
 # project file path
 root_path=$(cd "$(dirname "$0")"; pwd)
@@ -454,6 +455,13 @@ case "$action" in
             echo "mkdir system runtime file directory "${run_path}
             mkdir ${run_path}
         fi
+
+        if [ -d ${logrotate_path} ]; then
+            echo "Rotate log configure directory is "${logrotate_path}
+        else
+            echo "mkdir rotate log configure directory "${logrotate_path}
+            mkdir ${logrotate_path}
+        fi
         case "$option" in
             -c|--client)
                 funInitialPy
@@ -461,6 +469,7 @@ case "$action" in
                 funSetupPipyByRequirements client/requirements.txt
                 ;;
             -s|--serverr)
+                cp -f server/etc/backup.rotate $logrotate_path/
                 funSetupPipyByRequirements server/requirements.txt
                 ;;
             -a|--all)
