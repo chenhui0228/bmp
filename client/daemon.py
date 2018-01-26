@@ -407,22 +407,30 @@ class Dump:
         send_server(self.message, self.log, 'state', id=dict['id'], state='waiting')
 
 
-class Keepalive:
+class KeepaliveReceiver:
     """
     Received the heartbeat message, post back their own ip, hostname, version, group
     """
 
-    def __init__(self, log, message, clientip, hostname, version, group):
+    def __init__(self, log, message, clientip, hostname, version, group, keepalive_sender):
         self.log = log
         self.message = message
         self.clientip = clientip
         self.hostname = hostname
         self.version = version
         self.group = group
+        self.keepalive_sender = keepalive_sender
 
     def __call__(self, message_dict):
-        send_server(self.message, self.log, 'keepalive', ip=self.clientip, hostname=self.hostname, version=self.version,
-                    group=self.group)
+        dict = {}
+        dict['clientip'] = self.clientip
+        dict['hostname'] = self.hostname
+        dict['version'] = self.version
+        dict['group'] = self.group
+        self.keepalive_sender.con.acquire()
+        self.keepalive_sender.queue.put_nowait(dict)
+        self.keepalive_sender.con.notify()
+        self.keepalive_sender.con.release()
 
 
 class Pause:
@@ -519,6 +527,7 @@ class Task_Schedul:
         self.hostname = client.hostname
         self.version = client.version
         self.group = client.group
+        self.keepalive_sender = client.keepalive_sender
         self.task_sum = 0
         self.scheduler = BackgroundScheduler()
         self.client_stop = False
@@ -546,7 +555,8 @@ class Task_Schedul:
                          self.queue_task_list)
         dump = Dump(self.log, self.task_dict, self.glusterip_list, self.q, self.message, self, self.scheduler,
                     self.queue_task_list, self.workpool_workid_dict)
-        keepalive = Keepalive(self.log, self.message, self.ip, self.hostname, self.version, self.group)
+        keepalive_receiver = KeepaliveReceiver(self.log, self.message, self.ip, self.hostname, self.version, self.group,
+                                              self.keepalive_sender)
         pause = Pause(self.log, self.tp, self.workpool_workid_dict)
         pauseall = Pauseall(self.log, self.tp, self.workpool_workid_dict, self.client, self)
         first = First(self.log)
@@ -555,7 +565,7 @@ class Task_Schedul:
         self.command_dict['recover'] = recover
         self.command_dict['delete'] = delete
         self.command_dict['dump'] = dump
-        self.command_dict['keepalive'] = keepalive
+        self.command_dict['keepalive'] = keepalive_receiver
         self.command_dict['pause'] = pause
         self.command_dict['pauseall'] = pauseall
         self.command_dict['start'] = first
@@ -569,6 +579,30 @@ class Task_Schedul:
         else:
             if not self.client_stop:
                 self.command_dict[type](message_dict)
+
+
+class KeepaliveSender(threading.Thread):
+    def __init__(self, queue, log):
+        self.log = log
+        threading.Thread.__init__(self)
+        self.message = Message("tcp", self.log)
+        self.queue = queue
+        self.con = threading.Condition()
+
+    def run(self):
+        while True:
+            if self.con.acquire():
+                if not self.queue.empty():
+                    dict = self.queue.get_nowait()
+                    self.con.release()
+                    send_server(self.message, self.log, 'keepalive', ip=dict.get('clientip'),
+                                hostname=dict.get('hostname'),
+                                version=dict.get('version'),
+                                group=dict.get('group'))
+                else:
+                    self.con.wait(1)
+                    self.con.release()
+                    # time.sleep(1)
 
 
 class Listen(threading.Thread):
@@ -778,6 +812,14 @@ class Daemon:
             self.listen.setDaemon(True)
             self.listen.start()
 
+        if self.keepalive_sender.isAlive():
+            pass
+        else:
+            self.log.logger.warning('keepalivesender thread is dead ,restart it now')
+            self.keepalive_sender = KeepaliveSender(self.keepalive_sender_queue, self.log)
+            self.keepalive_sender.setDaemon(True)
+            self.keepalive_sender.start()
+
         for t in self.tp:
             if t.isAlive():
                 continue
@@ -899,6 +941,7 @@ class Daemon:
         self.log.logger.debug("To start threading pool:")
         self.backup_and_dump_queue = Queue.Queue(self.qdpth)
         self.recover_and_workimmediately_queue = Queue.Queue(self.qdpth)
+        self.keepalive_sender_queue = Queue.Queue()
         self.queue_task_list = []
         # Start the worker thread pool
         for i in range(self.workpool_size):
@@ -912,6 +955,9 @@ class Daemon:
         for t in self.tp:
             t.setDaemon(True)
             t.start()
+        self.keepalive_sender = KeepaliveSender(self.keepalive_sender_queue, self.log)
+        self.keepalive_sender.setDaemon(True)
+        self.keepalive_sender.start()
         self.task_schedul = Task_Schedul(self)
         self.listen = Listen(self.message, self.log, self.task_schedul)
         self.listen.setDaemon(True)

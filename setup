@@ -19,9 +19,10 @@ etc_path='/etc/'${project_name}
 log_path='/var/log/'${project_name}
 run_path='/var/run/'${project_name}
 project_path='/usr/local/'${project_name}
-server_conf_path=${etc_path}server.conf
-client_conf_path=${etc_path}client.conf
+server_conf_path=${etc_path}'/server.conf'
+client_conf_path=${etc_path}'/client.conf'
 logrotate_path='/etc/logrotate.d'
+dump_script_path='/opt/omni/lbin'
 
 # project file path
 root_path=$(cd "$(dirname "$0")"; pwd)
@@ -389,6 +390,11 @@ funRemove(){
         echo rm /usr/local/fbmp_bak ...
         rm -rf /usr/local/fbmp_bak
     fi
+    #remove dump_script_path
+    if [ -d $dump_script_path ]; then
+        echo rm $dump_script_path ...
+        rm -rf $dump_script_path
+    fi
     #remove gluster client
     for i in `rpm -qa | grep gluster`
     do
@@ -454,6 +460,13 @@ case "$action" in
         else
             echo "mkdir system runtime file directory "${run_path}
             mkdir ${run_path}
+        fi
+
+        if [ -d ${dump_script_path} ]; then
+            echo "Dump script local directory is "${dump_script_path}
+        else
+            echo "mkdir dump script local directory is "${dump_script_path}
+            mkdir ${dump_script_path} -p
         fi
 
         if [ -d ${logrotate_path} ]; then
@@ -533,6 +546,7 @@ case "$action" in
                 ;;
             -s|--serverr)
                 funRemove server
+                rm -f $logrotate_path/backup.rotate
                 ;;
             *)
                 printf "Usage:\n"
@@ -561,6 +575,25 @@ case "$action" in
                 ;;
         esac
         ;;
+    restart)
+        case "$option" in
+            -c|--client)
+                funStopProcess client
+                funStartProcess client
+                ;;
+            -s|--serverr)
+                funStopProcess server
+                funStartProcess server
+                ;;
+            *)
+                printf "Usage:\n"
+                printf "  $0 restart <options>\n"
+                printf "Restart Options:\n"
+                printf "%-20s %-50s\n" "  -c, --client" "Restart client program on the host."
+                printf "%-20s %-50s\n" "  -s, --server" "Restart server program on the host."
+                ;;
+        esac
+        ;;
     stop)
         case "$option" in
             -c|--client)
@@ -585,6 +618,7 @@ case "$action" in
         printf "Commands:\n"
         printf "%-20s %-50s\n" "  initial" "Runtime environment initialization."
         printf "%-20s %-50s\n" "  start" "Startup Programs."
+        printf "%-20s %-50s\n" "  restart" "Restart Programs."
         printf "%-20s %-50s\n" "  stop" "Stop Programs."
         printf "%-20s %-50s\n" "  check" "Default check the client runtime env."
         printf "%-20s %-50s\n" "  remove" "Stop programs and remove client runing environment"
@@ -597,6 +631,9 @@ case "$action" in
         printf "Start Options:\n"
         printf "%-20s %-50s\n" "  -c, --client" "Startup client program on the host."
         printf "%-20s %-50s\n" "  -s, --server" "Startup server program on the host."
+        printf "Restart Options:\n"
+        printf "%-20s %-50s\n" "  -c, --client" "Restart client program on the host."
+        printf "%-20s %-50s\n" "  -s, --server" "Restart server program on the host."
         printf "Check Options:\n"
         printf "%-20s %-50s\n" "  *" "Default, check client runtime environment"
         printf "%-20s %-50s\n" "  -h, --help" "Get helpful info of check"
