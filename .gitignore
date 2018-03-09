@@ -1,0 +1,4 @@
+.idea/
+server/log/
+server/static/dist/
+server/web/node_modules/

@@ -1,0 +1,13 @@
+routes
+cherrypy
+sqlalchemy
+six
+APScheduler
+xlwt
+eventlet
+pyjwt
+pymysql
+ipaddress
+PyYAML
+requests
+MySQL-python

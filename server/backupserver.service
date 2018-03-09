@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup Server and REST API
+
+[Service]
+Type=forking
+PIDFile=/var/run/backup.pid
+ExecStart=/usr/bin/python /home/python/server.py
+
+[Install]
+WantedBy=multi-user.target
