@@ -760,7 +760,6 @@
 			cd /tmp
 			rm -rf /usr/local/fbmp
 	
-<<<<<<< HEAD
 ### 四、视图示例 ###
 
 1. 首页
@@ -778,5 +777,3 @@
 4. 主机页面
 
 ![worker](screenshots/worker.png)
-=======
->>>>>>> d6ab69fa0e155e2974b94b7b299c4914ab7032fb
